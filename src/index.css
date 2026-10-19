@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #fffbeb;
+  --color-brand-100: #fef3c7;
+  --color-brand-400: #fbbf24;
+  --color-brand-500: #f59e0b;
+  --color-brand-600: #d97706;
+  --color-brand-700: #b45309;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-slate-100 text-slate-900 antialiased; }
+
+/* Touch screens: no tap highlight, no accidental text selection on tiles. */
+button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.tile { user-select: none; }
+
+@utility input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+}
+@utility label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+@utility btn-primary { @apply btn bg-brand-500 text-slate-950 hover:bg-brand-400; }
+@utility btn-dark { @apply btn bg-slate-900 text-white hover:bg-slate-800; }
+@utility btn-ghost { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+@utility btn-danger { @apply btn bg-red-600 text-white hover:bg-red-500; }
+@utility card { @apply rounded-xl border border-slate-200 bg-white; }
+@utility table-head {
+  & th { @apply bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500; }
+}
+@utility table-row {
+  & td { @apply border-t border-slate-100 px-3 py-2 text-sm; }
+}
+
+/* Browser-print receipt (fallback when no raw printer is connected). */
+#print-root { display: none; }
+@media print {
+  @page { margin: 0; }
+  body * { visibility: hidden; }
+  #print-root, #print-root * { visibility: visible; }
+  #print-root { display: block; position: absolute; left: 0; top: 0; }
+}
