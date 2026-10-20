@@ -181,14 +181,14 @@ export default function SellPage() {
   return (
     <div className="flex h-full">
       {/* Catalogue */}
-      <section className="flex min-w-0 flex-1 flex-col bg-gradient-to-b from-white via-slate-50 to-navy-50 p-4">
+      <section className="flex min-w-0 flex-1 flex-col bg-[#f5f5f5] p-4">
         <div className="mb-3 flex gap-2">
           <div className="relative flex-1">
             <Search size={18} className="absolute left-3 top-3 text-slate-400" />
             <input
               ref={searchRef}
               data-scan="allow"
-              className="input h-11 border-slate-200 bg-white pl-10 text-base shadow-sm"
+              className="input h-11 rounded-md border-[#e5e5e5] bg-white pl-10 pr-14 text-base shadow-none focus:border-[#F68B1E] focus:ring-[#F68B1E]/25"
               placeholder="Search name, SKU, part number — or scan a barcode (F2)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -202,14 +202,33 @@ export default function SellPage() {
               }}
             />
             {query && (
-              <button className="absolute right-3 top-3 text-slate-400" onClick={() => setQuery('')} aria-label="Clear search">
+              <button className="absolute right-12 top-3 text-slate-400" onClick={() => setQuery('')} aria-label="Clear search">
                 <X size={18} />
               </button>
             )}
+            <button
+              type="button"
+              aria-label="Search"
+              className="absolute right-1.5 top-1.5 grid h-8 w-10 place-items-center rounded bg-[#F68B1E] text-white transition hover:bg-[#E67D0F]"
+              onClick={() => {
+                const p = findExact(query) ?? (visible.length === 1 ? visible[0] : undefined)
+                if (p) {
+                  addProduct(p)
+                  setQuery('')
+                }
+              }}
+            >
+              <Search size={16} />
+            </button>
           </div>
           <div className="relative">
             <Bike size={18} className="pointer-events-none absolute left-3 top-3 text-slate-500" />
-            <select className="input h-11 w-48 border-slate-200 bg-white pl-10 shadow-sm" value={bike} onChange={(e) => setBike(e.target.value)} title="Show parts that fit this bike">
+            <select
+              className="input h-11 w-48 rounded-md border-[#e5e5e5] bg-white pl-10 shadow-none focus:border-[#F68B1E] focus:ring-[#F68B1E]/25"
+              value={bike}
+              onChange={(e) => setBike(e.target.value)}
+              title="Show parts that fit this bike"
+            >
               <option value="all">All bikes</option>
               {settings.bikeModels.map((m) => (
                 <option key={m} value={m}>
@@ -238,13 +257,13 @@ export default function SellPage() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="tile group flex flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md active:translate-y-0 active:scale-[0.98]"
+                className="tile group flex flex-col overflow-hidden rounded-lg border border-[#e8e8e8] bg-white text-left transition hover:border-[#F68B1E] hover:shadow-md active:scale-[0.99]"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+                <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[#f1f1f1] bg-white">
                   {p.image ? (
                     <img src={p.image} alt={p.name} className="h-full w-full object-cover transition group-hover:scale-105" draggable={false} />
                   ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-400">
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-300">
                       <Package size={32} strokeWidth={1.5} />
                       <span className="px-2 text-center text-[10px] font-medium uppercase tracking-wide text-slate-400">
                         {p.brand || 'No photo'}
@@ -253,8 +272,8 @@ export default function SellPage() {
                   )}
                   {p.trackStock && (
                     <span
-                      className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm ${
-                        p.stock <= 0 ? 'bg-red-500 text-white' : low ? 'bg-amber-400 text-amber-950' : 'bg-white/95 text-slate-700'
+                      className={`absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-sm ${
+                        p.stock <= 0 ? 'bg-red-500 text-white' : low ? 'bg-[#F68B1E]/15 text-[#C96A0B]' : 'bg-white/95 text-slate-600 ring-1 ring-[#ececec]'
                       }`}
                     >
                       {p.stock} left
@@ -262,12 +281,15 @@ export default function SellPage() {
                   )}
                 </div>
                 <div className="flex flex-1 flex-col p-3">
-                  <div className="line-clamp-2 text-sm font-semibold leading-tight text-slate-800">{p.name}</div>
+                  <div className="line-clamp-2 text-sm font-medium leading-snug text-slate-700">{p.name}</div>
                   <div className="mt-0.5 font-mono text-[11px] text-slate-400">{p.sku}</div>
-                  <div className="mt-auto flex items-end justify-between pt-2">
-                    <span className="text-base font-bold text-navy-900">{moneyShort(p.price)}</span>
+                  <div className="mt-auto flex items-baseline gap-1.5 pt-1.5">
+                    <span className="text-[17px] font-extrabold leading-none text-slate-900">{moneyShort(p.price)}</span>
                     {!p.trackStock && <Badge tone="blue">service</Badge>}
                   </div>
+                  <span className="mt-2.5 block w-full rounded bg-[#F68B1E] py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white transition group-hover:bg-[#E67D0F]">
+                    Add to cart
+                  </span>
                 </div>
               </button>
             )
@@ -282,9 +304,9 @@ export default function SellPage() {
       </section>
 
       {/* Cart / ticket */}
-      <aside className="flex w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white xl:w-[420px]">
-        <div className="flex items-center gap-2 border-b border-slate-200 p-3">
-          <button className="btn-ghost flex-1 justify-start truncate" onClick={() => setDialog('customer')}>
+      <aside className="flex w-[380px] shrink-0 flex-col border-l border-[#e8e8e8] bg-white xl:w-[420px]">
+        <div className="flex items-center gap-2 border-b border-[#f0f0f0] bg-[#FAFAFA] p-3">
+          <button className="btn-ghost flex-1 justify-start truncate border-[#e5e5e5] bg-white" onClick={() => setDialog('customer')}>
             <UserRound size={16} />
             {customer ? (
               <span className="truncate">
@@ -295,13 +317,13 @@ export default function SellPage() {
               'Add customer (F4)'
             )}
           </button>
-          <button className="btn-ghost relative px-3" onClick={() => setDialog('parked')} title="Parked sales">
+          <button className="btn-ghost relative border-[#e5e5e5] bg-white px-3" onClick={() => setDialog('parked')} title="Parked sales">
             <PauseCircle size={16} />
             {parkedCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold">{parkedCount}</span>
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#F68B1E] text-[10px] font-bold">{parkedCount}</span>
             )}
           </button>
-          <button className="btn-ghost px-3" onClick={clear} disabled={!cart.lines.length} title="Clear sale">
+          <button className="btn-ghost border-[#e5e5e5] bg-white px-3" onClick={clear} disabled={!cart.lines.length} title="Clear sale">
             <Trash2 size={16} />
           </button>
         </div>
@@ -309,48 +331,53 @@ export default function SellPage() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           {cart.lines.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
-              <ShoppingCart size={40} />
+              <ShoppingCart size={40} className="text-[#F68B1E]/50" />
               <p className="text-sm">Tap a part or scan a barcode to start</p>
             </div>
           ) : (
             cart.lines.map((l, i) => (
-              <div key={i} className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
+              <div key={i} className="flex items-center gap-2 border-b border-[#f1f1f1] px-3 py-2.5">
                 <button className="min-w-0 flex-1 text-left" onClick={() => setDialog({ line: i })}>
-                  <div className="truncate text-sm font-semibold">{l.name}</div>
+                  <div className="truncate text-sm font-semibold text-slate-800">{l.name}</div>
                   <div className="text-xs text-slate-500">
                     {money(l.unitPrice, '')}
                     {l.discount > 0 && <span className="text-emerald-700"> · −{money(l.discount, '')}</span>}
                     {l.serial && <span> · S/N {l.serial}</span>}
                   </div>
                 </button>
-                <div className="flex items-center rounded-lg border border-slate-200">
-                  <button className="p-1.5" onClick={() => setQty(i, l.qty - 1)} aria-label="Decrease">
+                <div className="flex items-center rounded border border-[#e5e5e5]">
+                  <button className="p-1.5 text-[#F68B1E] transition hover:bg-[#F68B1E]/10" onClick={() => setQty(i, l.qty - 1)} aria-label="Decrease">
                     <Minus size={14} />
                   </button>
-                  <span className="w-7 text-center text-sm font-semibold">{l.qty}</span>
-                  <button className="p-1.5" onClick={() => setQty(i, l.qty + 1)} disabled={!!l.serial} aria-label="Increase">
+                  <span className="w-7 border-x border-[#e5e5e5] text-center text-sm font-bold">{l.qty}</span>
+                  <button
+                    className="p-1.5 text-[#F68B1E] transition hover:bg-[#F68B1E]/10"
+                    onClick={() => setQty(i, l.qty + 1)}
+                    disabled={!!l.serial}
+                    aria-label="Increase"
+                  >
                     <Plus size={14} />
                   </button>
                 </div>
-                <div className="w-20 text-right text-sm font-semibold">{money(lineTotal(l), '')}</div>
+                <div className="w-20 text-right text-sm font-bold text-slate-900">{money(lineTotal(l), '')}</div>
               </div>
             ))
           )}
         </div>
 
-        <div className="border-t border-slate-200 p-3">
+        <div className="border-t border-[#e8e8e8] p-3">
           <div className="mb-2 flex gap-2">
-            <button className="btn-ghost flex-1 px-2" onClick={() => setDialog('custom')}>
+            <button className="btn-ghost flex-1 border-[#e5e5e5] px-2" onClick={() => setDialog('custom')}>
               <Wrench size={16} /> Custom item
             </button>
-            <button className="btn-ghost flex-1 px-2" onClick={() => setDialog('discount')} disabled={!cart.lines.length || !can('discount')}>
+            <button className="btn-ghost flex-1 border-[#e5e5e5] px-2" onClick={() => setDialog('discount')} disabled={!cart.lines.length || !can('discount')}>
               <Percent size={16} /> Discount
             </button>
-            <button className="btn-ghost flex-1 px-2" onClick={park} disabled={!cart.lines.length}>
+            <button className="btn-ghost flex-1 border-[#e5e5e5] px-2" onClick={park} disabled={!cart.lines.length}>
               <PauseCircle size={16} /> Park
             </button>
           </div>
-          <dl className="space-y-1 text-sm">
+          <dl className="space-y-1 rounded-md bg-[#FAFAFA] p-2.5 text-sm">
             <div className="flex justify-between text-slate-600">
               <dt>Subtotal · {totals.itemCount} items</dt>
               <dd>{money(totals.subtotal, settings.currency)}</dd>
@@ -368,7 +395,11 @@ export default function SellPage() {
               <dd>{money(totals.tax, settings.currency)}</dd>
             </div>
           </dl>
-          <button className="btn-primary mt-3 h-16 w-full text-xl" onClick={charge} disabled={!cart.lines.length}>
+          <button
+            className="mt-3 h-14 w-full rounded-md bg-[#F68B1E] text-lg font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#E67D0F] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={charge}
+            disabled={!cart.lines.length}
+          >
             Charge {money(totals.total, settings.currency)}
           </button>
           <p className="mt-1 text-center text-[11px] text-slate-400">F2 search · F4 customer · F8 park · F9 charge</p>
@@ -465,8 +496,8 @@ function CategoryChip({ active, onClick, children }: { active: boolean; onClick:
       onClick={onClick}
       className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
         active
-          ? 'border-navy-900 bg-navy-900 text-white shadow-sm'
-          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+          ? 'border-[#F68B1E] bg-[#F68B1E] text-white shadow-sm'
+          : 'border-[#e5e5e5] bg-white text-slate-600 hover:border-[#F68B1E]/60 hover:text-[#C96A0B]'
       }`}
     >
       {children}
