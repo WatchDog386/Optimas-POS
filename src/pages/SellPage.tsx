@@ -188,7 +188,7 @@ export default function SellPage() {
             <input
               ref={searchRef}
               data-scan="allow"
-              className="input h-11 rounded-md border-[#e5e5e5] bg-white pl-10 pr-14 text-base shadow-none focus:border-[#F68B1E] focus:ring-[#F68B1E]/25"
+              className="input h-11 rounded-md border-[#e5e5e5] bg-white pl-10 pr-14 text-base shadow-none focus:border-[#00A94F] focus:ring-[#00A94F]/25"
               placeholder="Search name, SKU, part number — or scan a barcode (F2)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -209,7 +209,7 @@ export default function SellPage() {
             <button
               type="button"
               aria-label="Search"
-              className="absolute right-1.5 top-1.5 grid h-8 w-10 place-items-center rounded bg-[#F68B1E] text-white transition hover:bg-[#E67D0F]"
+              className="absolute right-1.5 top-1.5 grid h-8 w-10 place-items-center rounded bg-[#00A94F] text-white transition hover:bg-[#008F43]"
               onClick={() => {
                 const p = findExact(query) ?? (visible.length === 1 ? visible[0] : undefined)
                 if (p) {
@@ -224,7 +224,7 @@ export default function SellPage() {
           <div className="relative">
             <Bike size={18} className="pointer-events-none absolute left-3 top-3 text-slate-500" />
             <select
-              className="input h-11 w-48 rounded-md border-[#e5e5e5] bg-white pl-10 shadow-none focus:border-[#F68B1E] focus:ring-[#F68B1E]/25"
+              className="input h-11 w-48 rounded-md border-[#e5e5e5] bg-white pl-10 shadow-none focus:border-[#00A94F] focus:ring-[#00A94F]/25"
               value={bike}
               onChange={(e) => setBike(e.target.value)}
               title="Show parts that fit this bike"
@@ -257,7 +257,7 @@ export default function SellPage() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="tile group flex flex-col overflow-hidden rounded-lg border border-[#e8e8e8] bg-white text-left transition hover:border-[#F68B1E] hover:shadow-md active:scale-[0.99]"
+                className="tile group flex flex-col overflow-hidden rounded-xl border border-[#e8e8e8] bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-150 hover:-translate-y-0.5 hover:border-[#00A94F]/50 hover:shadow-md active:scale-[0.99]"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[#f1f1f1] bg-white">
                   {p.image ? (
@@ -273,7 +273,7 @@ export default function SellPage() {
                   {p.trackStock && (
                     <span
                       className={`absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-sm ${
-                        p.stock <= 0 ? 'bg-red-500 text-white' : low ? 'bg-[#F68B1E]/15 text-[#C96A0B]' : 'bg-white/95 text-slate-600 ring-1 ring-[#ececec]'
+                        p.stock <= 0 ? 'bg-red-500 text-white' : low ? 'bg-amber-100 text-amber-700' : 'bg-white/95 text-slate-600 ring-1 ring-[#ececec]'
                       }`}
                     >
                       {p.stock} left
@@ -287,8 +287,8 @@ export default function SellPage() {
                     <span className="text-[17px] font-extrabold leading-none text-slate-900">{moneyShort(p.price)}</span>
                     {!p.trackStock && <Badge tone="blue">service</Badge>}
                   </div>
-                  <span className="mt-2.5 block w-full rounded bg-[#F68B1E] py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white transition group-hover:bg-[#E67D0F]">
-                    Add to cart
+                  <span className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-md bg-[#00A94F] py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition group-hover:bg-[#008F43]">
+                    <ShoppingCart size={13} /> Add to cart
                   </span>
                 </div>
               </button>
@@ -304,8 +304,8 @@ export default function SellPage() {
       </section>
 
       {/* Cart / ticket */}
-      <aside className="flex w-[380px] shrink-0 flex-col border-l border-[#e8e8e8] bg-white xl:w-[420px]">
-        <div className="flex items-center gap-2 border-b border-[#f0f0f0] bg-[#FAFAFA] p-3">
+      <aside className="flex w-[380px] shrink-0 flex-col border-l border-[#e0e0e0] bg-[#EFF0EF] xl:w-[420px]">
+        <div className="flex items-center gap-2 border-b border-[#e5e5e5] bg-white p-3">
           <button className="btn-ghost flex-1 justify-start truncate border-[#e5e5e5] bg-white" onClick={() => setDialog('customer')}>
             <UserRound size={16} />
             {customer ? (
@@ -320,7 +320,7 @@ export default function SellPage() {
           <button className="btn-ghost relative border-[#e5e5e5] bg-white px-3" onClick={() => setDialog('parked')} title="Parked sales">
             <PauseCircle size={16} />
             {parkedCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#F68B1E] text-[10px] font-bold">{parkedCount}</span>
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#00A94F] text-[10px] font-bold">{parkedCount}</span>
             )}
           </button>
           <button className="btn-ghost border-[#e5e5e5] bg-white px-3" onClick={clear} disabled={!cart.lines.length} title="Clear sale">
@@ -331,12 +331,12 @@ export default function SellPage() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           {cart.lines.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
-              <ShoppingCart size={40} className="text-[#F68B1E]/50" />
+              <ShoppingCart size={40} className="text-[#00A94F]/50" />
               <p className="text-sm">Tap a part or scan a barcode to start</p>
             </div>
           ) : (
             cart.lines.map((l, i) => (
-              <div key={i} className="flex items-center gap-2 border-b border-[#f1f1f1] px-3 py-2.5">
+              <div key={i} className="flex items-center gap-2 border-b border-[#f1f1f1] bg-white px-3 py-2.5">
                 <button className="min-w-0 flex-1 text-left" onClick={() => setDialog({ line: i })}>
                   <div className="truncate text-sm font-semibold text-slate-800">{l.name}</div>
                   <div className="text-xs text-slate-500">
@@ -346,12 +346,12 @@ export default function SellPage() {
                   </div>
                 </button>
                 <div className="flex items-center rounded border border-[#e5e5e5]">
-                  <button className="p-1.5 text-[#F68B1E] transition hover:bg-[#F68B1E]/10" onClick={() => setQty(i, l.qty - 1)} aria-label="Decrease">
+                  <button className="p-1.5 text-[#00A94F] transition hover:bg-[#00A94F]/10" onClick={() => setQty(i, l.qty - 1)} aria-label="Decrease">
                     <Minus size={14} />
                   </button>
                   <span className="w-7 border-x border-[#e5e5e5] text-center text-sm font-bold">{l.qty}</span>
                   <button
-                    className="p-1.5 text-[#F68B1E] transition hover:bg-[#F68B1E]/10"
+                    className="p-1.5 text-[#00A94F] transition hover:bg-[#00A94F]/10"
                     onClick={() => setQty(i, l.qty + 1)}
                     disabled={!!l.serial}
                     aria-label="Increase"
@@ -377,7 +377,7 @@ export default function SellPage() {
               <PauseCircle size={16} /> Park
             </button>
           </div>
-          <dl className="space-y-1 rounded-md bg-[#FAFAFA] p-2.5 text-sm">
+          <dl className="mb-2 space-y-1 rounded-md border border-[#e5e5e5] bg-white p-2.5 text-sm">
             <div className="flex justify-between text-slate-600">
               <dt>Subtotal · {totals.itemCount} items</dt>
               <dd>{money(totals.subtotal, settings.currency)}</dd>
@@ -396,7 +396,7 @@ export default function SellPage() {
             </div>
           </dl>
           <button
-            className="mt-3 h-14 w-full rounded-md bg-[#F68B1E] text-lg font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#E67D0F] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-3 h-14 w-full rounded-md bg-[#00A94F] text-lg font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#008F43] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
             onClick={charge}
             disabled={!cart.lines.length}
           >
@@ -496,8 +496,8 @@ function CategoryChip({ active, onClick, children }: { active: boolean; onClick:
       onClick={onClick}
       className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
         active
-          ? 'border-[#F68B1E] bg-[#F68B1E] text-white shadow-sm'
-          : 'border-[#e5e5e5] bg-white text-slate-600 hover:border-[#F68B1E]/60 hover:text-[#C96A0B]'
+          ? 'border-[#00A94F] bg-[#00A94F] text-white shadow-sm'
+          : 'border-[#e5e5e5] bg-white text-slate-600 hover:border-[#00A94F]/60 hover:text-[#008F43]'
       }`}
     >
       {children}
