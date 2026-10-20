@@ -6,6 +6,8 @@ import {
   ArrowRight,
   Banknote,
   Boxes,
+  CheckCircle2,
+  Package,
   Receipt,
   ScrollText,
   Settings as SettingsIcon,
@@ -15,6 +17,7 @@ import {
   Users,
   Wallet,
   Wrench,
+  Zap,
 } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
@@ -24,6 +27,7 @@ import { money, moneyShort } from '../lib/money'
 import { Badge, Empty, ListPanel } from '../components/ui'
 
 const METHOD_LABEL: Record<PaymentMethod, string> = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', account: 'On account' }
+const METHOD_COLOR: Record<PaymentMethod, string> = { cash: '#22c55e', mpesa: '#2c8286', card: '#8b5cf6', account: '#fbbf24' }
 
 function startOfDay(d = new Date()): number {
   const x = new Date(d)
@@ -149,6 +153,7 @@ export default function DashboardPage() {
       to: '/inventory',
       perm: 'inventory' as const,
       btn: 'btn-primary',
+      icon: Package,
     },
     {
       title: 'Service bay',
@@ -159,6 +164,7 @@ export default function DashboardPage() {
       action: 'Open service jobs',
       to: '/service',
       btn: 'btn-primary',
+      icon: Wrench,
     },
     {
       title: 'Shift',
@@ -168,6 +174,7 @@ export default function DashboardPage() {
       action: shift ? 'View shift' : 'Open a shift',
       to: '/shift',
       btn: 'btn-primary',
+      icon: Wallet,
     },
     {
       title: 'Customers',
@@ -175,10 +182,22 @@ export default function DashboardPage() {
       action: 'Manage customers',
       to: '/customers',
       btn: 'btn-primary',
+      icon: Users,
     },
   ]
 
   const methodTotal = Object.values(stats.byMethod).reduce((a, b) => a + b, 0) || 1
+
+  const activeMethods = (Object.keys(stats.byMethod) as PaymentMethod[]).filter((m) => stats.byMethod[m] > 0)
+  const methodPct = (m: PaymentMethod) => Math.max(0, Math.round((stats.byMethod[m] / methodTotal) * 100))
+  let donutAcc = 0
+  const donutStops = activeMethods
+    .map((m) => {
+      const start = donutAcc
+      donutAcc += (stats.byMethod[m] / methodTotal) * 100
+      return `${METHOD_COLOR[m]} ${start}% ${donutAcc}%`
+    })
+    .join(', ')
 
   const tiles = [
     { label: 'Customers', value: String(customers), icon: Users, bg: 'bg-[#FFC107]', fg: 'text-black', to: '/customers' },
@@ -248,7 +267,30 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* Mobile: quick actions — icon + name only */}
+          <div className="sm:hidden">
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-slate-600">
+              <Zap size={14} className="text-amber-500" />
+              Quick actions
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {panels.map(({ title, to, icon: Icon }) => (
+                <Link
+                  key={title}
+                  to={to}
+                  className="flex flex-col items-center gap-1.5 rounded-xl bg-white px-1.5 py-3 text-center shadow-sm ring-1 ring-hairline transition active:scale-95 active:bg-brand-50"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-50 text-brand-600">
+                    <Icon size={17} />
+                  </span>
+                  <span className="text-[11px] font-semibold leading-tight text-slate-700">{title}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: description panels */}
+          <div className="hidden gap-4 sm:grid sm:grid-cols-2">
             {panels.map(({ title, body, action, to, btn }) => (
               <div key={title} className="card flex flex-col p-4">
                 <h2 className="text-sm font-bold text-navy-900 sm:text-lg">{title}</h2>
@@ -262,8 +304,28 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <ListPanel
-            title="Today's sales"
+          {/* Mobile: heading + status only */}
+          <div className="border border-hairline bg-white p-4 shadow-card sm:hidden">
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ink">
+              <Receipt size={15} className="text-brand-500" />
+              Today's sales
+            </div>
+            {recentSales.length === 0 ? (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                <Receipt size={14} className="shrink-0 text-slate-400" />
+                No sales yet today.
+              </p>
+            ) : (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+                <CheckCircle2 size={14} className="shrink-0 text-cta" />
+                {stats.count} sale{stats.count === 1 ? '' : 's'} · {money(stats.revenue, settings.currency)} collected
+              </p>
+            )}
+          </div>
+
+          <div className="hidden sm:block">
+            <ListPanel
+              title="Today's sales"
             actions={
               <Link to="/sales" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
                 All sales <ArrowRight size={15} />
@@ -314,7 +376,8 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             )}
-          </ListPanel>
+            </ListPanel>
+          </div>
 
           {isAdmin && (
             <ListPanel
@@ -374,7 +437,37 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <div className="card p-4">
             <h2 className="text-sm font-bold text-navy-900 sm:text-lg">Payment mix today</h2>
-            <ul className="mt-3 space-y-3">
+
+            {/* Mobile: donut graph */}
+            <div className="sm:hidden">
+              {activeMethods.length === 0 ? (
+                <p className="py-6 text-center text-xs text-slate-500">No payments recorded yet today.</p>
+              ) : (
+                <>
+                  <div className="mt-3 flex justify-center">
+                    <div className="h-36 w-36 rounded-full p-5" style={{ background: `conic-gradient(${donutStops})` }}>
+                      <div className="grid h-full w-full place-items-center rounded-full bg-white text-center">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-slate-400">Total</div>
+                          <div className="text-sm font-bold text-slate-800">{money(stats.revenue, settings.currency)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5">
+                    {activeMethods.map((m) => (
+                      <span key={m} className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                        <span className="h-2 w-2 rounded-full" style={{ background: METHOD_COLOR[m] }} />
+                        {METHOD_LABEL[m]} {methodPct(m)}%
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Desktop: bars */}
+            <ul className="mt-3 hidden space-y-3 sm:block">
               {(Object.keys(stats.byMethod) as PaymentMethod[]).map((m) => {
                 const amount = stats.byMethod[m]
                 const pct = Math.max(0, Math.round((amount / methodTotal) * 100))
@@ -393,14 +486,34 @@ export default function DashboardPage() {
             </ul>
           </div>
 
-          <ListPanel
-            title="Low stock"
-            actions={
-              <Link to="/inventory" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
-                Inventory <ArrowRight size={14} />
-              </Link>
-            }
-          >
+          {/* Mobile: heading + status only */}
+          <div className="border border-hairline bg-white p-4 shadow-card sm:hidden">
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ink">
+              <Boxes size={15} className="text-amber-500" />
+              Low stock
+            </div>
+            {lowStock.length === 0 ? (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                <CheckCircle2 size={14} className="shrink-0 text-cta" />
+                Nothing needs reordering.
+              </p>
+            ) : (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+                <AlertTriangle size={14} className="shrink-0 text-amber-500" />
+                {lowStock.length} part{lowStock.length === 1 ? '' : 's'} at or below reorder level.
+              </p>
+            )}
+          </div>
+
+          <div className="hidden sm:block">
+            <ListPanel
+              title="Low stock"
+              actions={
+                <Link to="/inventory" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
+                  Inventory <ArrowRight size={14} />
+                </Link>
+              }
+            >
             {lowStock.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-slate-500">Nothing needs reordering.</p>
             ) : (
@@ -426,7 +539,8 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             )}
-          </ListPanel>
+            </ListPanel>
+          </div>
 
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-1">
             {tiles.map(({ label, value, icon: Icon, bg, fg, to }) => (
