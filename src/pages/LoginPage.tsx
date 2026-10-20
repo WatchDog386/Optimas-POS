@@ -52,9 +52,13 @@ export default function LoginPage() {
   })
 
   return (
-    <div className="flex h-full items-center justify-center overflow-hidden bg-mist p-4 sm:p-6">
+    <div className="relative flex h-full items-stretch overflow-hidden bg-ink md:items-center md:justify-center md:bg-mist md:p-4 lg:p-6">
+      {/* Mobile: the hero image fills the screen and sits behind everything */}
+      <img src="login.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center md:hidden" />
+      <div className="pointer-events-none absolute inset-0 bg-ink/75 md:hidden" />
+
       {/* ===================================================== Auth card */}
-      <div className="grid h-full max-h-[780px] w-full max-w-7xl grid-cols-1 overflow-visible shadow-[0_35px_90px_-20px_rgba(15,39,44,0.45)] md:grid-cols-[45fr_55fr]">
+      <div className="relative grid h-full w-full grid-cols-1 overflow-visible md:max-h-[780px] md:max-w-7xl md:shadow-[0_35px_90px_-20px_rgba(15,39,44,0.45)] md:grid-cols-[45fr_55fr]">
         {/* ------------------------------------------------- Left: hero art */}
         <aside className="relative hidden items-center justify-center overflow-visible bg-white md:flex">
           {/* background text — sits behind the artwork */}
@@ -72,20 +76,9 @@ export default function LoginPage() {
         </aside>
 
         {/* ------------------------------------------------- Right: sign in */}
-        <main className="relative flex flex-col overflow-y-auto bg-ink p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8">
+        <main className="relative flex flex-col overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8 md:bg-ink">
           <div className="relative m-auto w-[460px] max-w-full py-2">
-            {/* small-screen logo */}
-            <div className="mb-5 flex justify-center md:hidden">
-              <span className="flex items-center gap-2.5">
-                <img src="logo.png" alt="" className="h-9 w-9 object-contain" />
-                <span className="text-[16px] font-bold text-white">{settings.shopName}</span>
-              </span>
-            </div>
-
-            <h2 className="text-center text-[30px] font-bold leading-tight tracking-tight text-white sm:text-[36px]">
-              Welcome back!
-            </h2>
-            <p className="mt-1.5 text-center text-[16px] text-white/55">Enter your staff PIN to continue</p>
+            <p className="text-center text-sm text-white/70">Enter your staff PIN to continue</p>
 
             {/* PIN field */}
             <div className="mt-7 sm:mt-10">
@@ -93,7 +86,7 @@ export default function LoginPage() {
                 <label htmlFor="pin-input" className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">
                   Staff PIN
                 </label>
-                <button type="button" onClick={() => setHelp((h) => !h)} className="text-[13px] font-medium text-brand-300 transition hover:text-white">
+                <button type="button" onClick={() => setHelp((h) => !h)} className="text-sm font-medium text-brand-300 transition hover:text-white">
                   Forgot PIN?
                 </button>
               </div>
@@ -109,7 +102,7 @@ export default function LoginPage() {
                     setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))
                   }}
                   placeholder="••••"
-                  className={`w-full bg-transparent py-2.5 text-lg tracking-[0.4em] text-white placeholder:text-white/45 focus:outline-none ${
+                  className={`w-full bg-transparent py-2.5 text-sm tracking-[0.4em] text-white placeholder:text-white/45 focus:outline-none ${
                     show ? 'font-mono tracking-[0.3em]' : ''
                   }`}
                 />
@@ -135,7 +128,7 @@ export default function LoginPage() {
                   key={k}
                   type="button"
                   onClick={() => press(k)}
-                  className={`h-14 rounded-xl border border-white/10 text-xl font-semibold transition active:scale-95 ${
+                  className={`h-14 rounded-xl border border-white/10 text-sm font-semibold transition active:scale-95 ${
                     k === 'C' || k === '⌫' ? 'bg-white/[0.07] text-white/70' : 'bg-white/[0.04] text-white'
                   }`}
                 >
@@ -149,7 +142,7 @@ export default function LoginPage() {
               type="button"
               onClick={submit}
               disabled={pin.length !== PIN_LENGTH || busy}
-              className="mt-6 w-full rounded-xl bg-cta py-4 text-[13px] font-bold uppercase tracking-[0.25em] text-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] transition duration-150 hover:bg-cta-hover active:scale-[0.99] disabled:opacity-40 disabled:shadow-none sm:mt-8 sm:py-3.5"
+              className="mt-6 w-full rounded-xl bg-cta py-4 text-sm font-bold uppercase tracking-[0.25em] text-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] transition duration-150 hover:bg-cta-hover active:scale-[0.99] disabled:opacity-40 disabled:shadow-none sm:mt-8 sm:py-3.5"
             >
               Login
             </button>
@@ -176,7 +169,7 @@ export default function LoginPage() {
             </button>
 
             {/* footer */}
-            <p className="mt-5 text-center text-[13px] text-white/60 sm:mt-6">
+            <p className="mt-5 text-center text-sm text-white/60 sm:mt-6">
               First run? <span className="font-bold text-cta">OWNER 1234</span>
             </p>
           </div>
