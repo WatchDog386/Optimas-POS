@@ -7,7 +7,9 @@ import {
   Banknote,
   Boxes,
   CheckCircle2,
+  FileText,
   Package,
+  Plus,
   Receipt,
   ScrollText,
   Settings as SettingsIcon,
@@ -92,6 +94,10 @@ export default function DashboardPage() {
     () => weekSales.filter((s) => s.status !== 'voided' && s.total >= 0).reduce((s, x) => s + x.total, 0),
     [weekSales],
   )
+  const weekCount = useMemo(
+    () => weekSales.filter((s) => s.status !== 'voided' && s.total >= 0).length,
+    [weekSales],
+  )
 
   const today = new Date()
   const dateLabel = today.toLocaleDateString('en-KE', {
@@ -108,6 +114,11 @@ export default function DashboardPage() {
       label: 'Sales today',
       value: String(stats.count),
       sub: `${money(stats.revenue, settings.currency)} collected`,
+      hero: money(stats.revenue, settings.currency),
+      right: `${stats.count} sale${stats.count === 1 ? '' : 's'}`,
+      meta: `Avg sale ${money(stats.avg, settings.currency)}`,
+      badge: 'Live',
+      act: { label: 'New sale', to: '/sell', icon: Plus },
       icon: Receipt,
       bg: 'bg-[#2480E8]',
       grad: 'linear-gradient(135deg, #2480E8 0%, #0B3F78 100%)',
@@ -118,6 +129,11 @@ export default function DashboardPage() {
       label: 'Gross profit',
       value: money(stats.profit, settings.currency),
       sub: stats.refunds > 0 ? `${money(stats.refunds, settings.currency)} in refunds` : 'No refunds today',
+      hero: money(stats.profit, settings.currency),
+      right: stats.revenue > 0 ? `${Math.round((stats.profit / stats.revenue) * 100)}% margin` : 'No sales yet',
+      meta: stats.refunds > 0 ? `${money(stats.refunds, settings.currency)} in refunds` : 'No refunds today',
+      badge: 'After costs',
+      act: { label: 'Sales', to: '/sales', icon: Receipt },
       icon: TrendingUp,
       bg: 'bg-[#2F8F54]',
       grad: 'linear-gradient(135deg, #2F8F54 0%, #144B2A 100%)',
@@ -128,6 +144,11 @@ export default function DashboardPage() {
       label: '7-day sales',
       value: moneyShort(weekRevenue),
       sub: `${money(weekRevenue, settings.currency)} this week`,
+      hero: money(weekRevenue, settings.currency),
+      right: `${weekCount} sale${weekCount === 1 ? '' : 's'}`,
+      meta: `Daily avg ${money(Math.round(weekRevenue / 7), settings.currency)}`,
+      badge: 'This week',
+      act: { label: 'New sale', to: '/sell', icon: Plus },
       icon: Banknote,
       bg: 'bg-[#FABF24]',
       grad: 'linear-gradient(135deg, #FABF24 0%, #7A5A02 100%)',
@@ -138,6 +159,11 @@ export default function DashboardPage() {
       label: 'Open jobs',
       value: String(jobs),
       sub: jobs === 0 ? 'Workshop is clear' : 'Service jobs in progress',
+      hero: String(jobs),
+      right: jobs > 0 ? 'In workshop' : 'All clear',
+      meta: jobs === 0 ? 'Workshop is clear' : 'Service jobs in progress',
+      badge: 'Workshop',
+      act: { label: 'New job', to: '/service?new=1', icon: Plus },
       icon: Wrench,
       bg: 'bg-[#E23C37]',
       grad: 'linear-gradient(135deg, #E23C37 0%, #6E1512 100%)',
@@ -259,32 +285,52 @@ export default function DashboardPage() {
               setCardSlide(Math.round(el.scrollLeft / pitch))
             }}
           >
-            {cards.map(({ label, value, sub, icon: Icon, bg, grad, strip, to }) => (
-              <Link
+            {cards.map(({ label, value, sub, hero, right, meta, badge, act, icon: Icon, bg, grad, strip, to }) => (
+              <div
                 key={label}
-                to={to}
-                aria-label={`${label}: ${value}. Open details.`}
-                className={`group relative min-w-full shrink-0 snap-start overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] sm:min-w-0 ${bg}`}
+                className={`group relative min-w-full shrink-0 snap-start overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.98] sm:min-w-0 ${bg}`}
               >
                 <div className="pointer-events-none absolute inset-0 sm:hidden" style={{ background: grad }} />
-                {/* Mobile: one card per slide */}
-                <div className="relative flex flex-col gap-3 p-4 sm:hidden">
-                  <div>
-                    <div className="text-[11px] font-medium opacity-85">{label}</div>
-                    <div className="mt-1 flex items-end justify-between gap-2">
-                      <div className="min-w-0 truncate text-2xl font-bold leading-none">{value}</div>
-                      <Icon size={34} className="shrink-0 text-black/40 transition duration-150 group-hover:scale-110" />
+                {/* Decorative arcs, top-right (mobile) */}
+                <span className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full border border-white/15 sm:hidden" />
+                <span className="pointer-events-none absolute -right-4 -top-24 h-40 w-40 rounded-full border border-white/10 sm:hidden" />
+                {/* Mobile: reference-style card */}
+                <div className="relative flex flex-col gap-3.5 p-4 sm:hidden">
+                  <Link to={to} aria-label={`${label}: ${value}. Open details.`} className="block min-w-0">
+                    <div className="text-[11px] font-medium opacity-80">{label}</div>
+                    <div className="mt-1.5 flex items-end justify-between gap-3">
+                      <span className="min-w-0 truncate text-[26px] font-bold leading-none">{hero}</span>
+                      <span className="shrink-0 pb-0.5 text-sm font-semibold opacity-90">{right}</span>
                     </div>
+                  </Link>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <Link
+                      to={to}
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-white/70 bg-white/5 px-3 py-2.5 text-[13px] font-semibold transition hover:bg-white/15"
+                    >
+                      <FileText size={14} />
+                      Details
+                    </Link>
+                    <Link
+                      to={act.to}
+                      aria-label={act.label}
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-white/70 bg-white/5 px-3 py-2.5 text-[13px] font-semibold transition hover:bg-white/15"
+                    >
+                      <act.icon size={14} />
+                      {act.label}
+                    </Link>
                   </div>
                   <div className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="truncate opacity-90">{sub}</span>
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/20">
-                      <ArrowRight size={11} />
-                    </span>
+                    <span className="min-w-0 truncate opacity-90">{meta}</span>
+                    <span className="shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold">{badge}</span>
                   </div>
                 </div>
                 {/* Desktop: original layout */}
-                <div className="hidden sm:block">
+                <Link
+                  to={to}
+                  aria-label={`${label}: ${value}. Open details.`}
+                  className="hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 sm:block"
+                >
                   <div className="p-4 pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 truncate text-3xl font-extrabold leading-tight">{value}</div>
@@ -299,8 +345,8 @@ export default function DashboardPage() {
                     More info
                     <ArrowRight size={14} className="transition duration-150 group-hover:translate-x-1" />
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
             ))}
           </div>
 

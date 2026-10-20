@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useNavigate, type NavigateFunction } from 'react-router-dom'
+import { useNavigate, useSearchParams, type NavigateFunction } from 'react-router-dom'
 import { CheckCircle2, ClipboardList, PackageSearch, Plus, ShoppingCart, Trash2, Truck, UserRound, Wrench } from 'lucide-react'
 import { db } from '../db/db'
 import { nextNumber, useSettings } from '../db/settings'
@@ -53,9 +53,17 @@ async function billJob(rec: ServiceJob, navigate: NavigateFunction): Promise<voi
 
 export default function ServicePage() {
   const [open, setOpen] = useState<ServiceJob | 'new' | null>(null)
+  const [params, setParams] = useSearchParams()
   const settings = useSettings()
   const navigate = useNavigate()
   const toast = useToast()
+
+  useEffect(() => {
+    if (params.get('new') === '1') {
+      setOpen('new')
+      setParams({}, { replace: true })
+    }
+  }, [params, setParams])
 
   const allJobs = useLiveQuery(() => db.jobs.toArray(), [], [] as ServiceJob[])
   const jobs = useMemo(
