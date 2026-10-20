@@ -46,8 +46,8 @@ export function Modal({
             <X size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto p-5 text-ink-body">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-hairline bg-mist px-5 py-3.5">{footer}</div>}
+        <div className="overflow-y-auto bg-mist p-5 text-ink-body">{children}</div>
+        {footer && <div className="flex justify-end gap-2 border-t border-hairline bg-white px-5 py-3.5">{footer}</div>}
       </div>
     </div>
   )
@@ -113,7 +113,7 @@ export function ListPanel({
   footer?: ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-hairline bg-white shadow-card">
+    <div className="overflow-hidden rounded-none border border-hairline bg-white shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2 bg-ink px-4 py-3">
         <h2 className="text-sm font-bold uppercase tracking-wider text-white">{title}</h2>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -145,14 +145,14 @@ export function Segmented<T extends string>({
 }) {
   return (
     <div
-      className={`inline-flex rounded-lg p-0.5 ${dark ? 'bg-ink ring-1 ring-white/10' : 'border border-hairline bg-white'}`}
+      className={`inline-flex rounded-none p-0.5 ${dark ? 'bg-ink ring-1 ring-white/10' : 'border border-hairline bg-white'}`}
     >
       {(Object.keys(options) as T[]).map((k) => (
         <button
           key={k}
           type="button"
           onClick={() => onChange(k)}
-          className={`rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition duration-150 ${
+          className={`rounded-none px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition duration-150 ${
             value === k
               ? dark
                 ? 'bg-white text-navy-900 shadow'
@@ -185,7 +185,7 @@ export function TablePager({
     return <span className="text-xs text-slate-500">{total} row{total === 1 ? '' : 's'}</span>
   }
   const btn =
-    'flex h-7 w-7 items-center justify-center rounded-md border border-hairline bg-white text-ink-muted transition duration-150 hover:bg-secondary hover:text-ink disabled:opacity-40 disabled:hover:bg-white'
+    'flex h-7 w-7 items-center justify-center rounded-none border border-hairline bg-white text-ink-muted transition duration-150 hover:bg-secondary hover:text-ink disabled:opacity-40 disabled:hover:bg-white'
   return (
     <div className="flex items-center gap-1.5">
       <button type="button" className={btn} disabled={page <= 1} onClick={() => onPage(1)} aria-label="First page">
