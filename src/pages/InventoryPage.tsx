@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Upload } from 'lucide-react'
+import { Bike, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Tag, Upload } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { adjustStock } from '../db/sales'
@@ -229,6 +230,32 @@ export default function InventoryPage() {
   )
 }
 
+/** Panel used to group the part form — mirrors the ListPanel chrome exactly. */
+function Section({
+  icon: Icon,
+  title,
+  hint,
+  children,
+}: {
+  icon: ComponentType<{ size?: number; className?: string }>
+  title: string
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <section className="overflow-hidden rounded-none border border-hairline bg-white shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-ink px-4 py-3">
+        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-white">
+          <Icon size={16} className="shrink-0 text-brand-400" />
+          {title}
+        </h3>
+        {hint && <span className="text-xs font-semibold text-white/60">{hint}</span>}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  )
+}
+
 function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose: () => void }) {
   const settings = useSettings()
   const toast = useToast()
@@ -314,94 +341,108 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
         </>
       }
     >
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="md:col-span-2">
-          <label className="label">Name *</label>
-          <input className="input" value={p.name ?? ''} onChange={(e) => set('name', e.target.value)} autoFocus />
-        </div>
-        <div>
-          <label className="label">SKU *</label>
-          <input className="input font-mono uppercase" value={p.sku ?? ''} onChange={(e) => set('sku', e.target.value.toUpperCase())} />
-        </div>
-        <div className="md:col-span-1">
-          <label className="label">Product photo</label>
-          <input
-            ref={imageRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => onImage(e.target.files?.[0])}
-          />
-          <div className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2">
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
-              {p.image ? (
-                <img src={p.image} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-300">
-                  <Package size={20} />
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-1">
-              <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => imageRef.current?.click()}>
-                Upload image
-              </button>
-              {p.image && (
-                <button type="button" className="px-2 py-1 text-xs text-red-600 hover:underline" onClick={() => set('image', undefined)}>
-                  Remove
+      <Section icon={Package} title="Part details" hint={isNew ? 'New part' : 'Editing'}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <label className="label">Name *</label>
+            <input className="input" value={p.name ?? ''} onChange={(e) => set('name', e.target.value)} autoFocus />
+          </div>
+          <div>
+            <label className="label">SKU *</label>
+            <input className="input font-mono uppercase" value={p.sku ?? ''} onChange={(e) => set('sku', e.target.value.toUpperCase())} />
+          </div>
+          <div>
+            <label className="label">Barcode</label>
+            <input className="input font-mono" data-scan="allow" placeholder="Scan the box" value={p.barcode ?? ''} onChange={(e) => set('barcode', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">OEM / part number</label>
+            <input className="input font-mono" value={p.partNumber ?? ''} onChange={(e) => set('partNumber', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Brand</label>
+            <input className="input" value={p.brand ?? ''} onChange={(e) => set('brand', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Category</label>
+            <select className="input" value={p.categoryId ?? ''} onChange={(e) => set('categoryId', e.target.value ? Number(e.target.value) : undefined)}>
+              <option value="">—</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <input className="input mt-1" placeholder="…or new category" value={newCat} onChange={(e) => setNewCat(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Supplier</label>
+            <select className="input" value={p.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value ? Number(e.target.value) : undefined)}>
+              <option value="">—</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Bin / shelf location</label>
+            <input className="input" value={p.location ?? ''} onChange={(e) => set('location', e.target.value)} placeholder="e.g. A3-02" />
+          </div>
+          <div className="md:col-span-3">
+            <label className="label">Product photo</label>
+            <input
+              ref={imageRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onImage(e.target.files?.[0])}
+            />
+            <div className="flex items-center gap-3 rounded-lg border border-dashed border-hairline bg-mist p-3 transition hover:border-brand-400">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-hairline bg-white">
+                {p.image ? (
+                  <img src={p.image} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-slate-300">
+                    <Package size={20} />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => imageRef.current?.click()}>
+                  Upload image
                 </button>
-              )}
+                {p.image && (
+                  <button
+                    type="button"
+                    className="px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:text-red-700"
+                    onClick={() => set('image', undefined)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <span className="ml-auto hidden text-[11px] font-medium text-ink-faint sm:block">JPG or PNG · under 1.5 MB</span>
             </div>
           </div>
         </div>
-        <div>
-          <label className="label">Barcode</label>
-          <input className="input font-mono" data-scan="allow" placeholder="Scan the box" value={p.barcode ?? ''} onChange={(e) => set('barcode', e.target.value)} />
-        </div>
-        <div>
-          <label className="label">OEM / part number</label>
-          <input className="input font-mono" value={p.partNumber ?? ''} onChange={(e) => set('partNumber', e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Brand</label>
-          <input className="input" value={p.brand ?? ''} onChange={(e) => set('brand', e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Category</label>
-          <select className="input" value={p.categoryId ?? ''} onChange={(e) => set('categoryId', e.target.value ? Number(e.target.value) : undefined)}>
-            <option value="">—</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <input className="input mt-1" placeholder="…or new category" value={newCat} onChange={(e) => setNewCat(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Supplier</label>
-          <select className="input" value={p.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value ? Number(e.target.value) : undefined)}>
-            <option value="">—</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Bin / shelf location</label>
-          <input className="input" value={p.location ?? ''} onChange={(e) => set('location', e.target.value)} placeholder="e.g. A3-02" />
-        </div>
-        <div>
-          <label className="label">Cost price (KES)</label>
-          <input className="input" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Selling price (KES{settings.pricesIncludeVat ? ', incl. VAT' : ''})</label>
-          <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+      </Section>
+
+      <Section
+        icon={Tag}
+        title="Pricing & stock"
+        hint={settings.pricesIncludeVat ? 'KES · selling price incl. VAT' : 'KES'}
+      >
+        <div className="grid gap-3 md:grid-cols-4">
+          <div>
+            <label className="label">Cost price</label>
+            <input className="input" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Selling price</label>
+            <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
+          </div>
           <div>
             <label className="label">{isNew ? 'Opening stock' : 'Stock'}</label>
             <input
@@ -418,37 +459,50 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
             <input className="input" type="number" min={0} value={p.reorderLevel ?? 0} onChange={(e) => set('reorderLevel', Number(e.target.value))} />
           </div>
         </div>
-      </div>
+      </Section>
 
-      <div className="mt-4">
-        <label className="label">Fits bike models (leave empty for universal parts)</label>
+      <Section icon={Bike} title="Bike fitment" hint="Leave empty for universal parts">
         <div className="flex flex-wrap gap-2">
           {settings.bikeModels.map((m) => (
             <button
               key={m}
+              type="button"
               onClick={() => toggleFit(m)}
-              className={`rounded-full border px-3 py-1 text-sm ${p.fitment!.includes(m) ? 'border-brand-500 bg-brand-50 font-semibold text-brand-700' : 'border-slate-300'}`}
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition duration-150 ${
+                p.fitment!.includes(m)
+                  ? 'border-brand-500 bg-brand-500 text-white shadow-[0_4px_10px_-4px_rgba(44,130,134,0.6)]'
+                  : 'border-hairline bg-white text-slate-600 hover:border-brand-500/60 hover:text-brand-600'
+              }`}
             >
               {m}
             </button>
           ))}
+          {settings.bikeModels.length === 0 && (
+            <span className="text-sm text-ink-faint">No bike models configured yet — add them in Settings.</span>
+          )}
         </div>
-      </div>
+      </Section>
 
-      <div className="mt-4 flex flex-wrap gap-5 text-sm">
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={p.taxable} onChange={(e) => set('taxable', e.target.checked)} /> VAT applies
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={p.trackStock} onChange={(e) => set('trackStock', e.target.checked)} /> Track stock
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={p.serialized} onChange={(e) => set('serialized', e.target.checked)} /> Ask for serial no. (batteries, controllers, motors)
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={p.active} onChange={(e) => set('active', e.target.checked)} /> Active (shown on Sell screen)
-        </label>
-      </div>
+      <Section icon={SlidersHorizontal} title="Options">
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {(
+            [
+              ['taxable', 'VAT applies'],
+              ['trackStock', 'Track stock'],
+              ['serialized', 'Ask for serial no. (batteries, controllers, motors)'],
+              ['active', 'Active (shown on Sell screen)'],
+            ] as const
+          ).map(([k, label]) => (
+            <label
+              key={k}
+              className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-hairline bg-white px-3 py-2.5 transition duration-150 hover:border-brand-400 hover:bg-brand-50/50"
+            >
+              <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-cta" checked={p[k]} onChange={(e) => set(k, e.target.checked)} />
+              <span className="text-sm font-medium leading-snug text-ink-body">{label}</span>
+            </label>
+          ))}
+        </div>
+      </Section>
     </Modal>
   )
 }
