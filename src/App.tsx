@@ -187,7 +187,7 @@ export default function App() {
                 ? `Shift · ${new Date(shift.openedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`
                 : 'No shift'}
             </NavLink>
-            <NavLink to="/notifications" className="relative rounded-lg p-2 text-white/80 hover:bg-white/15 hover:text-white" title="Notifications">
+            <NavLink to="/notifications" className="relative hidden rounded-lg p-2 text-white/80 transition hover:bg-white/15 hover:text-white sm:block" title="Notifications">
               <Bell size={18} />
             </NavLink>
             <NavLink to="/messages" className="hidden rounded-lg p-2 text-white/80 hover:bg-white/15 hover:text-white sm:block" title="Messages">

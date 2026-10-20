@@ -52,10 +52,10 @@ export default function LoginPage() {
   })
 
   return (
-    <div className="relative flex h-full items-stretch overflow-hidden bg-ink md:items-center md:justify-center md:bg-mist md:p-4 lg:p-6">
-      {/* Mobile: the hero image fills the screen and sits behind everything */}
+    <div className="relative flex h-full items-stretch overflow-hidden bg-white md:items-center md:justify-center md:bg-mist md:p-4 lg:p-6">
+      {/* Mobile: white page with the hero image filling the screen behind the form */}
       <img src="login.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center md:hidden" />
-      <div className="pointer-events-none absolute inset-0 bg-ink/75 md:hidden" />
+      <div className="pointer-events-none absolute inset-0 bg-white/50 md:hidden" />
 
       {/* ===================================================== Auth card */}
       <div className="relative grid h-full w-full grid-cols-1 overflow-visible md:max-h-[780px] md:max-w-7xl md:shadow-[0_35px_90px_-20px_rgba(15,39,44,0.45)] md:grid-cols-[45fr_55fr]">
@@ -77,49 +77,45 @@ export default function LoginPage() {
 
         {/* ------------------------------------------------- Right: sign in */}
         <main className="relative flex flex-col overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8 md:bg-ink">
-          <div className="relative m-auto w-[460px] max-w-full py-2">
-            <p className="text-center text-sm text-white/70">Enter your staff PIN to continue</p>
+          <div className="relative m-auto w-[420px] max-w-full py-2">
+            <p className="text-center text-xs lowercase tracking-wide text-ink/70 md:text-white/60">enter your pin to continue</p>
 
-            {/* PIN field */}
-            <div className="mt-7 sm:mt-10">
-              <div className="flex items-baseline justify-between">
-                <label htmlFor="pin-input" className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">
-                  Staff PIN
-                </label>
-                <button type="button" onClick={() => setHelp((h) => !h)} className="text-sm font-medium text-brand-300 transition hover:text-white">
-                  Forgot PIN?
-                </button>
-              </div>
-              <div className="flex items-center border-b border-white/20 transition focus-within:border-brand-300">
-                <input
-                  id="pin-input"
-                  type={show ? 'text' : 'password'}
-                  inputMode="none"
-                  autoFocus
-                  value={pin}
-                  onChange={(e) => {
-                    setError(false)
-                    setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))
-                  }}
-                  placeholder="••••"
-                  className={`w-full bg-transparent py-2.5 text-sm tracking-[0.4em] text-white placeholder:text-white/45 focus:outline-none ${
-                    show ? 'font-mono tracking-[0.3em]' : ''
-                  }`}
-                />
-                <button type="button" onClick={() => setShow((s) => !s)} className="p-1 text-white/55 transition hover:text-white/90" aria-label={show ? 'Hide PIN' : 'Show PIN'}>
-                  {show ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-              </div>
-              {error ? (
-                <p className="mt-2 text-sm font-medium text-red-400">Wrong PIN, try again</p>
-              ) : help ? (
-                <p className="mt-2 text-xs leading-relaxed text-brand-200/80">
-                  First run: owner <b className="text-white">1234</b>, cashier <b className="text-white">0000</b>. Change them in Staff.
-                </p>
-              ) : (
-                <p className="mt-2 text-xs text-white/55">Enter your {PIN_LENGTH}-digit PIN</p>
-              )}
+            {/* PIN bar */}
+            <div className="mt-6 flex items-center gap-2 rounded-2xl bg-white/90 px-4 py-3.5 shadow-[0_6px_20px_rgba(15,39,44,0.14)] ring-1 ring-ink/10 backdrop-blur-[2px] transition focus-within:ring-brand-500/60 md:bg-white/10 md:shadow-none md:ring-white/15 md:backdrop-blur-none md:focus-within:ring-brand-300/60">
+              <input
+                id="pin-input"
+                type={show ? 'text' : 'password'}
+                inputMode="none"
+                autoFocus
+                value={pin}
+                onChange={(e) => {
+                  setError(false)
+                  setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))
+                }}
+                placeholder="••••"
+                className={`w-full bg-transparent py-1 text-sm tracking-[0.4em] text-ink placeholder:text-ink/35 focus:outline-none md:text-white md:placeholder:text-white/45 ${
+                  show ? 'font-mono tracking-[0.3em]' : ''
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShow((s) => !s)}
+                className="shrink-0 p-1 text-ink/45 transition hover:text-ink/90 md:text-white/55 md:hover:text-white/90"
+                aria-label={show ? 'Hide PIN' : 'Show PIN'}
+              >
+                {show ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
+
+            {error ? (
+              <p className="mt-2 text-xs font-medium lowercase text-red-600 md:text-red-400">wrong pin, try again</p>
+            ) : help ? (
+              <p className="mt-2 text-xs leading-relaxed lowercase text-brand-700 md:text-brand-200/80">
+                first run: owner <b className="text-ink md:text-white">1234</b>, cashier <b className="text-ink md:text-white">0000</b>. change them in staff.
+              </p>
+            ) : (
+              <p className="mt-2 text-xs lowercase text-ink/60 md:text-white/55">enter your {PIN_LENGTH}-digit pin</p>
+            )}
 
             {/* On-screen keypad — phones and tablets have no reliable keyboard to tap into */}
             <div className="mt-5 grid grid-cols-3 gap-2 lg:hidden">
@@ -128,33 +124,35 @@ export default function LoginPage() {
                   key={k}
                   type="button"
                   onClick={() => press(k)}
-                  className={`h-14 rounded-xl border border-white/10 text-sm font-semibold transition active:scale-95 ${
-                    k === 'C' || k === '⌫' ? 'bg-white/[0.07] text-white/70' : 'bg-white/[0.04] text-white'
-                  }`}
+                  className="h-14 rounded-2xl bg-white/85 text-sm font-semibold text-ink shadow-[0_3px_10px_rgba(15,39,44,0.10)] ring-1 ring-ink/10 transition active:scale-95 hover:bg-white md:bg-white/10 md:text-white md:ring-white/15 md:hover:bg-white/15"
                 >
                   {k}
                 </button>
               ))}
             </div>
 
-            {/* SIGN IN */}
+            {/* Login */}
             <button
               type="button"
               onClick={submit}
               disabled={pin.length !== PIN_LENGTH || busy}
-              className="mt-6 w-full rounded-xl bg-cta py-4 text-sm font-bold uppercase tracking-[0.25em] text-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] transition duration-150 hover:bg-cta-hover active:scale-[0.99] disabled:opacity-40 disabled:shadow-none sm:mt-8 sm:py-3.5"
+              className="mt-6 w-full rounded-2xl bg-white/90 py-3.5 text-sm font-bold lowercase tracking-[0.18em] text-ink shadow-[0_6px_20px_rgba(15,39,44,0.16)] ring-1 ring-ink/10 transition duration-150 hover:bg-white active:scale-[0.99] disabled:opacity-40 disabled:shadow-none md:ring-white/15"
             >
-              Login
+              login
             </button>
 
-            {/* OR */}
-            <div className="my-4 flex items-center gap-3 sm:my-5">
-              <div className="h-px flex-1 bg-white/15" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/60">or</span>
-              <div className="h-px flex-1 bg-white/15" />
+            {/* Forgot PIN — under the login button */}
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={() => setHelp((h) => !h)}
+                className="text-sm font-medium lowercase text-brand-600 transition hover:text-brand-700 md:text-brand-300 md:hover:text-white"
+              >
+                forgot pin?
+              </button>
             </div>
 
-            {/* secondary — switch staff (same slot as “Continue with Google”) */}
+            {/* secondary — switch staff */}
             <button
               type="button"
               onClick={() => {
@@ -163,15 +161,10 @@ export default function LoginPage() {
                 setHelp(false)
                 document.getElementById('pin-input')?.focus()
               }}
-              className="w-full rounded border border-white/20 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06] active:bg-white/10"
+              className="mt-6 w-full rounded-2xl bg-white/75 py-3 text-sm font-medium lowercase text-ink/75 shadow-[0_3px_10px_rgba(15,39,44,0.10)] ring-1 ring-ink/10 transition hover:bg-white/90 active:bg-white md:bg-white/10 md:text-white/85 md:shadow-none md:ring-white/20 md:hover:bg-white/15"
             >
-              Use another staff PIN
+              use another staff pin
             </button>
-
-            {/* footer */}
-            <p className="mt-5 text-center text-sm text-white/60 sm:mt-6">
-              First run? <span className="font-bold text-cta">OWNER 1234</span>
-            </p>
           </div>
         </main>
       </div>
