@@ -17,7 +17,6 @@ import {
   Users,
   Wallet,
   Wrench,
-  Zap,
 } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
@@ -241,47 +240,73 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4">
             {cards.map(({ label, value, sub, icon: Icon, bg, strip, to }) => (
               <Link
                 key={label}
                 to={to}
                 aria-label={`${label}: ${value}. Open details.`}
-                className={`group relative overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${bg}`}
+                className={`group relative min-w-[78%] shrink-0 snap-start overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] sm:min-w-0 ${bg}`}
               >
-                <div className="p-3 pb-2 sm:p-4 sm:pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 truncate text-base font-bold leading-tight sm:text-3xl">{value}</div>
-                    <Icon size={44} className="h-8 w-8 shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30 sm:h-11 sm:w-11" />
+                {/* Mobile: swipeable reference-style card */}
+                <div className="flex flex-col gap-3 p-4 sm:hidden">
+                  <div>
+                    <div className="text-[11px] font-medium opacity-85">{label}</div>
+                    <div className="mt-1 flex items-end justify-between gap-2">
+                      <div className="min-w-0 truncate text-2xl font-bold leading-none">{value}</div>
+                      <Icon size={34} className="shrink-0 opacity-25 transition duration-150 group-hover:scale-110" />
+                    </div>
                   </div>
-                  <div className="mt-1 text-sm font-semibold sm:text-base">{label}</div>
-                  <div className="mt-0.5 text-[11px] opacity-90 sm:text-sm">{sub}</div>
+                  <span className="flex items-center justify-center gap-1.5 rounded-full border border-white/70 px-4 py-2 text-xs font-semibold text-white transition group-hover:bg-white/10">
+                    More info
+                    <ArrowRight size={13} className="transition group-hover:translate-x-0.5" />
+                  </span>
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="truncate opacity-90">{sub}</span>
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/20">
+                      <ArrowRight size={11} />
+                    </span>
+                  </div>
                 </div>
-                <div
-                  className={`flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold normal-case tracking-wide transition duration-150 sm:px-4 sm:py-2 sm:text-sm sm:uppercase ${strip}`}
-                >
-                  More info
-                  <ArrowRight size={14} className="transition duration-150 group-hover:translate-x-1" />
+                {/* Desktop: original layout */}
+                <div className="hidden sm:block">
+                  <div className="p-4 pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 truncate text-3xl font-extrabold leading-tight">{value}</div>
+                      <Icon size={44} className="shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30" />
+                    </div>
+                    <div className="mt-1 text-base font-semibold">{label}</div>
+                    <div className="mt-0.5 text-sm opacity-90">{sub}</div>
+                  </div>
+                  <div
+                    className={`flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold uppercase tracking-wide transition duration-150 ${strip}`}
+                  >
+                    More info
+                    <ArrowRight size={14} className="transition duration-150 group-hover:translate-x-1" />
+                  </div>
                 </div>
               </Link>
             ))}
           </div>
 
-          {/* Mobile: quick actions — icon + name only */}
-          <div className="sm:hidden">
-            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-slate-600">
-              <Zap size={14} className="text-amber-500" />
-              Quick actions
+          {/* Mobile: quick actions panel — circle icons with labels + Manage pill */}
+          <div className="rounded-xl bg-ink p-4 shadow-card sm:hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-white">Quick Actions</span>
+              <Link
+                to="/settings"
+                className="rounded-full border border-white/40 px-3.5 py-1 text-xs font-semibold text-white/90 transition hover:bg-white/10"
+              >
+                Manage
+              </Link>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="mt-4 grid grid-cols-4 gap-x-2 gap-y-4">
               {panels.map(({ title, to, icon: Icon }) => (
-                <Link
-                  key={title}
-                  to={to}
-                  className="flex flex-col items-center gap-1.5 rounded-xl bg-white px-1.5 py-3 text-center shadow-sm ring-1 ring-hairline transition active:scale-95 active:bg-brand-50"
-                >
-                  <Icon size={18} className="text-brand-600" />
-                  <span className="text-sm font-medium leading-tight text-slate-700">{title}</span>
+                <Link key={title} to={to} className="flex flex-col items-center gap-2 transition active:scale-95">
+                  <span className="grid h-14 w-14 place-items-center rounded-full bg-white/10">
+                    <Icon size={20} className="text-white" />
+                  </span>
+                  <span className="text-center text-[11px] font-medium leading-tight text-white/75">{title}</span>
                 </Link>
               ))}
             </div>

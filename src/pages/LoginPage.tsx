@@ -94,7 +94,7 @@ export default function LoginPage() {
                     <span
                       key={i}
                       className={`grid h-14 w-14 place-items-center rounded-2xl text-2xl font-bold text-white ring-1 transition ${
-                        active ? 'ring-cta ring-2' : filled ? 'ring-white/60' : 'ring-white/35'
+                        active ? 'ring-white ring-2' : filled ? 'ring-white/60' : 'ring-white/35'
                       }`}
                     >
                       {filled ? '•' : ''}
@@ -121,7 +121,7 @@ export default function LoginPage() {
             {error ? (
               <p className="mt-3 text-center text-xs font-medium text-red-400">Wrong PIN, try again</p>
             ) : help ? (
-              <p className="mt-3 text-center text-xs leading-relaxed text-brand-200/80">
+              <p className="mt-3 text-center text-xs leading-relaxed text-white/70">
                 First run: owner <b className="text-white">1234</b>, cashier <b className="text-white">0000</b>. Change them in Staff.
               </p>
             ) : null}
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
             {/* forgot pin? · not you? */}
             <div className="mt-4 flex items-center justify-between pb-1 text-sm font-medium">
-              <button type="button" onClick={() => setHelp((h) => !h)} className="text-brand-300 transition hover:text-white">
+              <button type="button" onClick={() => setHelp((h) => !h)} className="text-white transition hover:text-white/70">
                 Forgot PIN?
               </button>
               <button
@@ -149,7 +149,7 @@ export default function LoginPage() {
                   setHelp(false)
                   focusInput()
                 }}
-                className="text-brand-300 transition hover:text-white"
+                className="text-white transition hover:text-white/70"
               >
                 Not you?
               </button>
