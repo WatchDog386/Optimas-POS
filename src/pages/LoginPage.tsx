@@ -3,8 +3,6 @@ import { Eye, EyeOff } from 'lucide-react'
 import { PIN_LENGTH, useSession } from '../session'
 import { useSettings } from '../db/settings'
 
-const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫']
-
 export default function LoginPage() {
   const { login } = useSession()
   const settings = useSettings()
@@ -13,6 +11,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false)
   const [show, setShow] = useState(false)
   const [help, setHelp] = useState(false)
+  const [focused, setFocused] = useState(true)
 
   const press = (k: string) => {
     setError(false)
@@ -82,58 +81,63 @@ export default function LoginPage() {
               enter your pin to continue
             </p>
 
-            {/* PIN bar */}
-            <div className="mt-8 flex items-center gap-2 rounded-2xl bg-white/[0.07] px-4 py-3.5 ring-1 ring-white/20 backdrop-blur-[2px] transition focus-within:ring-brand-300">
-              <input
-                id="pin-input"
-                type={show ? 'text' : 'password'}
-                inputMode="none"
-                autoFocus
-                value={pin}
-                onChange={(e) => {
-                  setError(false)
-                  setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))
-                }}
-                placeholder="••••"
-                className={`w-full bg-transparent py-1 text-sm tracking-[0.4em] text-white placeholder:text-white/45 focus:outline-none ${
-                  show ? 'font-mono tracking-[0.3em]' : ''
-                }`}
-              />
+            {/* OTP-style PIN boxes */}
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <div className="relative">
+                <div className="flex items-center gap-2.5">
+                  {Array.from({ length: PIN_LENGTH }, (_, i) => {
+                    const filled = i < pin.length
+                    const active = focused && i === pin.length
+                    return (
+                      <span
+                        key={i}
+                        className={`grid h-14 w-14 place-items-center rounded-2xl text-2xl font-bold text-white ring-1 transition sm:h-16 sm:w-16 ${
+                          active ? 'ring-cta ring-2' : filled ? 'ring-white/60' : 'ring-white/35'
+                        }`}
+                      >
+                        {show ? (pin[i] ?? '') : filled ? '•' : ''}
+                      </span>
+                    )
+                  })}
+                </div>
+                <input
+                  id="pin-input"
+                  type={show ? 'text' : 'password'}
+                  inputMode="numeric"
+                  autoFocus
+                  value={pin}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  onChange={(e) => {
+                    setError(false)
+                    setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))
+                  }}
+                  aria-label="Staff PIN"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </div>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setShow((s) => !s)}
-                className="shrink-0 p-1 text-white/55 transition hover:text-white/90"
+                className="shrink-0 p-2 text-brand-300 transition hover:text-white"
                 aria-label={show ? 'Hide PIN' : 'Show PIN'}
               >
-                {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                {show ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
 
             {error ? (
-              <p className="mt-2 text-xs font-medium lowercase text-red-400">wrong pin, try again</p>
+              <p className="mt-3 text-center text-xs font-medium lowercase text-red-400">wrong pin, try again</p>
             ) : help ? (
-              <p className="mt-2 text-xs leading-relaxed lowercase text-brand-200/80">
+              <p className="mx-auto mt-3 max-w-[20rem] text-center text-xs leading-relaxed lowercase text-brand-200/80">
                 first run: owner <b className="text-white">1234</b>, cashier <b className="text-white">0000</b>. change them in staff.
               </p>
             ) : (
-              <p className="mt-2 text-xs lowercase text-white/55">enter your {PIN_LENGTH}-digit pin</p>
+              <p className="mt-3 text-center text-xs lowercase text-white/55">enter your {PIN_LENGTH}-digit pin</p>
             )}
 
-            {/* On-screen keypad — phones and tablets have no reliable keyboard to tap into */}
-            <div className="mt-5 grid grid-cols-3 gap-2 lg:hidden">
-              {KEYPAD.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => press(k)}
-                  className="h-14 rounded-2xl bg-white/[0.06] text-sm font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/[0.10] active:scale-95"
-                >
-                  {k}
-                </button>
-              ))}
-            </div>
-
-            {/* Login — see-through */}
+            {/* Login — solid white */}
             <button
               type="button"
               onClick={submit}
@@ -143,30 +147,28 @@ export default function LoginPage() {
               login
             </button>
 
-            {/* Forgot PIN — under the login button */}
-            <div className="mt-3 text-center">
+            {/* forgot pin? · not you? */}
+            <div className="mt-4 flex items-center justify-between text-sm font-medium">
               <button
                 type="button"
                 onClick={() => setHelp((h) => !h)}
-                className="text-sm font-medium lowercase text-brand-300 transition hover:text-white"
+                className="lowercase text-brand-300 transition hover:text-white"
               >
                 forgot pin?
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPin('')
+                  setError(false)
+                  setHelp(false)
+                  document.getElementById('pin-input')?.focus()
+                }}
+                className="lowercase text-brand-300 transition hover:text-white"
+              >
+                not you?
+              </button>
             </div>
-
-            {/* secondary — switch staff */}
-            <button
-              type="button"
-              onClick={() => {
-                setPin('')
-                setError(false)
-                setHelp(false)
-                document.getElementById('pin-input')?.focus()
-              }}
-              className="mt-6 w-full rounded-2xl bg-cta py-3 text-sm font-semibold lowercase text-white shadow-[0_10px_24px_-12px_rgba(31,195,65,0.9)] transition hover:bg-cta-hover active:scale-[0.99]"
-            >
-              use another staff pin
-            </button>
           </div>
         </main>
       </div>
