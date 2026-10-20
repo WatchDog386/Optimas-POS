@@ -22,12 +22,9 @@
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-[#f5f8fc] text-slate-700 antialiased; font-family: var(--font-sans); font-size: 16px; }
 
-@keyframes loading {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(320%); }
-}
+@keyframes moon-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+body { @apply bg-[#f5f8fc] text-slate-700 antialiased; font-family: var(--font-sans); font-size: 16px; font-weight: 300; }
 
 /* Touch screens: no tap highlight, no accidental text selection on tiles. */
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
