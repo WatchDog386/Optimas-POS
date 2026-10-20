@@ -278,7 +278,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
           <div
-            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4"
+            className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4"
             onScroll={(e) => {
               const el = e.currentTarget
               const pitch = el.scrollWidth / cards.length
