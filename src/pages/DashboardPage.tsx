@@ -644,7 +644,7 @@ export default function DashboardPage() {
                 key={label}
                 to={to}
                 aria-label={`${label}: ${value}`}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 sm:gap-4 sm:px-4 sm:py-3 ${bg}`}
+                className={`${label === 'Avg sale' ? 'hidden sm:flex' : 'flex'} items-center gap-2.5 rounded-lg px-3 py-2.5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 sm:gap-4 sm:px-4 sm:py-3 ${bg}`}
               >
                 <Icon size={26} className={`shrink-0 ${fg}`} strokeWidth={2.25} />
                 <div className={`min-w-0 ${fg}`}>

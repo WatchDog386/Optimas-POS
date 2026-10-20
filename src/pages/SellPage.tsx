@@ -573,7 +573,7 @@ export default function SellPage() {
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t border-emerald-600 bg-cta px-4 py-3.5 text-white shadow-[0_-8px_24px_-12px_rgba(15,39,44,0.5)] transition hover:bg-cta-hover active:scale-[0.995] lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t border-[#24528f] bg-[#2f63a8] px-4 py-3.5 text-white shadow-[0_-8px_24px_-12px_rgba(15,39,44,0.5)] transition hover:bg-[#3a75c4] active:scale-[0.995] lg:hidden"
         >
           <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
             <ShoppingCart size={17} />
