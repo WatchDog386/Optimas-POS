@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Banknote,
   Boxes,
-  CalendarDays,
   Receipt,
   ScrollText,
   Settings as SettingsIcon,
@@ -180,6 +179,35 @@ export default function DashboardPage() {
   ]
 
   const methodTotal = Object.values(stats.byMethod).reduce((a, b) => a + b, 0) || 1
+
+  const tiles = [
+    { label: 'Customers', value: String(customers), icon: Users, bg: 'bg-[#FFC107]', fg: 'text-black', to: '/customers' },
+    {
+      label: 'Active parts',
+      value: String(products.filter((p) => p.active).length),
+      icon: Boxes,
+      bg: 'bg-[#2E9E4F]',
+      fg: 'text-white',
+      to: '/inventory',
+    },
+    { label: 'Low stock', value: String(lowStock.length), icon: Truck, bg: 'bg-[#E84545]', fg: 'text-white', to: '/inventory' },
+    {
+      label: 'Shift',
+      value: shift ? 'Open' : 'Closed',
+      icon: Wallet,
+      bg: 'bg-[#2BC4E8]',
+      fg: 'text-black',
+      to: '/shift',
+    },
+    {
+      label: 'Avg sale',
+      value: money(stats.avg, settings.currency),
+      icon: AlertTriangle,
+      bg: 'bg-[#7E57C2]',
+      fg: 'text-white',
+      to: '/reports',
+    },
+  ]
 
   return (
     <div className="p-4 lg:p-6">
@@ -400,42 +428,21 @@ export default function DashboardPage() {
             )}
           </ListPanel>
 
-          <div className="card p-4">
-            <div className="flex items-center gap-2 text-lg font-bold text-navy-900">
-              <CalendarDays size={18} className="text-brand-600" /> Shop at a glance
-            </div>
-            <dl className="mt-3 space-y-2.5 text-base">
-              <div className="flex justify-between gap-2">
-                <dt className="flex items-center gap-1.5 text-slate-500">
-                  <Users size={16} /> Customers
-                </dt>
-                <dd className="font-semibold text-slate-800">{customers}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="flex items-center gap-1.5 text-slate-500">
-                  <Boxes size={16} /> Active parts
-                </dt>
-                <dd className="font-semibold text-slate-800">{products.filter((p) => p.active).length}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="flex items-center gap-1.5 text-slate-500">
-                  <Truck size={16} /> Low stock
-                </dt>
-                <dd className="font-semibold text-slate-800">{lowStock.length}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="flex items-center gap-1.5 text-slate-500">
-                  <Wallet size={16} /> Shift
-                </dt>
-                <dd className={`font-semibold ${shift ? 'text-emerald-600' : 'text-red-600'}`}>{shift ? 'Open' : 'Closed'}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="flex items-center gap-1.5 text-slate-500">
-                  <AlertTriangle size={16} /> Avg sale
-                </dt>
-                <dd className="font-semibold text-slate-800">{money(stats.avg, settings.currency)}</dd>
-              </div>
-            </dl>
+          <div className="space-y-2.5">
+            {tiles.map(({ label, value, icon: Icon, bg, fg, to }) => (
+              <Link
+                key={label}
+                to={to}
+                aria-label={`${label}: ${value}`}
+                className={`flex items-center gap-4 rounded-lg px-4 py-3 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 ${bg}`}
+              >
+                <Icon size={26} className={`shrink-0 ${fg}`} strokeWidth={2.25} />
+                <div className={`min-w-0 ${fg}`}>
+                  <div className="text-[15px] font-normal leading-snug opacity-90">{label}</div>
+                  <div className="text-[15px] font-bold leading-snug">{value}</div>
+                </div>
+              </Link>
+            ))}
           </div>
 
           <Link to="/sell" className="btn-primary flex w-full py-3">
