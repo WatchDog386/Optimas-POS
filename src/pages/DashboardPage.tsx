@@ -232,7 +232,7 @@ export default function DashboardPage() {
     <div className="p-4 lg:p-6">
       <div className="mb-5">
         <div className="flex flex-wrap items-baseline gap-3">
-          <h1 className="text-sm font-light leading-none tracking-tight text-slate-700 sm:text-[34px]">Dashboard</h1>
+          <h1 className="text-[26px] font-light leading-none tracking-tight text-slate-700 sm:text-[34px]">Dashboard</h1>
           <p className="text-[11px] text-slate-500 sm:text-sm">
             {greeting} <span className="text-base">👋</span> {user?.name} · {dateLabel}
           </p>
@@ -251,14 +251,14 @@ export default function DashboardPage() {
               >
                 <div className="p-3 pb-2 sm:p-4 sm:pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 truncate text-2xl font-extrabold leading-tight sm:text-3xl">{value}</div>
+                    <div className="min-w-0 truncate text-base font-bold leading-tight sm:text-3xl">{value}</div>
                     <Icon size={44} className="h-8 w-8 shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30 sm:h-11 sm:w-11" />
                   </div>
                   <div className="mt-1 text-sm font-semibold sm:text-base">{label}</div>
                   <div className="mt-0.5 text-[11px] opacity-90 sm:text-sm">{sub}</div>
                 </div>
                 <div
-                  className={`flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition duration-150 sm:px-4 sm:py-2 sm:text-sm ${strip}`}
+                  className={`flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold normal-case tracking-wide transition duration-150 sm:px-4 sm:py-2 sm:text-sm sm:uppercase ${strip}`}
                 >
                   More info
                   <ArrowRight size={14} className="transition duration-150 group-hover:translate-x-1" />
@@ -280,10 +280,8 @@ export default function DashboardPage() {
                   to={to}
                   className="flex flex-col items-center gap-1.5 rounded-xl bg-white px-1.5 py-3 text-center shadow-sm ring-1 ring-hairline transition active:scale-95 active:bg-brand-50"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-50 text-brand-600">
-                    <Icon size={17} />
-                  </span>
-                  <span className="text-[11px] font-semibold leading-tight text-slate-700">{title}</span>
+                  <Icon size={18} className="text-brand-600" />
+                  <span className="text-sm font-medium leading-tight text-slate-700">{title}</span>
                 </Link>
               ))}
             </div>
@@ -305,8 +303,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Mobile: heading + status only */}
-          <div className="border border-hairline bg-white p-4 shadow-card sm:hidden">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ink">
+          <div className="card p-4 sm:hidden">
+            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
               <Receipt size={15} className="text-brand-500" />
               Today's sales
             </div>
@@ -382,6 +380,8 @@ export default function DashboardPage() {
           {isAdmin && (
             <ListPanel
               title="Admin"
+              barClassName="hidden sm:flex"
+              toolbarClassName="hidden sm:flex"
               actions={
                 <Link to="/logs" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
                   Activity log <ArrowRight size={15} />
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                     <tr>
                       <th>Event</th>
                       <th>Detail</th>
-                      <th>User</th>
+                      <th className="hidden sm:table-cell">User</th>
                       <th className="text-right">Time</th>
                     </tr>
                   </thead>
@@ -421,7 +421,7 @@ export default function DashboardPage() {
                       <tr key={`${l.at}-${i}`} className="table-row">
                         <td className="font-semibold">{l.action}</td>
                         <td className="text-xs">{l.detail ?? '—'}</td>
-                        <td className="text-xs">{l.userName ?? '—'}</td>
+                        <td className="hidden text-xs sm:table-cell">{l.userName ?? '—'}</td>
                         <td className="text-right text-xs">
                           {new Date(l.at).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
                         </td>
@@ -487,8 +487,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Mobile: heading + status only */}
-          <div className="border border-hairline bg-white p-4 shadow-card sm:hidden">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ink">
+          <div className="card p-4 sm:hidden">
+            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
               <Boxes size={15} className="text-amber-500" />
               Low stock
             </div>
@@ -552,7 +552,7 @@ export default function DashboardPage() {
               >
                 <Icon size={26} className={`shrink-0 ${fg}`} strokeWidth={2.25} />
                 <div className={`min-w-0 ${fg}`}>
-                  <div className="text-xs font-normal leading-snug opacity-90 sm:text-[15px]">{label}</div>
+                  <div className="text-sm font-normal leading-snug opacity-90 sm:text-[15px]">{label}</div>
                   <div className="truncate text-sm font-bold leading-snug sm:text-[15px]">{value}</div>
                 </div>
               </Link>
