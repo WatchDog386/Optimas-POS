@@ -81,7 +81,7 @@ export default function LoginPage() {
 
         {/* sign-in sheet */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-ink px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="mt-auto mb-10 w-full">
+          <div className="mt-auto mb-20 w-full">
             <p className="text-center text-sm text-white/70">Enter PIN</p>
 
             {/* OTP-style PIN boxes */}
