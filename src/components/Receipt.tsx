@@ -10,7 +10,7 @@ export function Receipt({ sale, settings, cashier, customer }: { sale: Sale; set
   return (
     <div className="mx-auto font-mono text-[12px] leading-snug text-black" style={{ width: settings.paperWidth === 58 ? '48mm' : '72mm' }}>
       <div className="text-center">
-        <div className="text-base font-bold">{settings.shopName}</div>
+        <div className="text-[16px] font-bold">{settings.shopName}</div>
         {settings.address && <div>{settings.address}</div>}
         {settings.phone && <div>Tel: {settings.phone}</div>}
         {settings.kraPin && <div>KRA PIN: {settings.kraPin}</div>}
@@ -44,7 +44,7 @@ export function Receipt({ sale, settings, cashier, customer }: { sale: Sale; set
       <Row k="Subtotal" v={money(sale.subtotal, c)} />
       {sale.discount !== 0 && <Row k="Discount" v={`−${money(sale.discount, c)}`} />}
       <Row k={`VAT ${settings.vatRate}%${settings.pricesIncludeVat ? ' (incl.)' : ''}`} v={money(sale.tax, c)} />
-      <div className="my-1 flex justify-between text-base font-bold">
+      <div className="my-1 flex justify-between text-[16px] font-bold">
         <span>TOTAL</span>
         <span>{money(sale.total, c)}</span>
       </div>

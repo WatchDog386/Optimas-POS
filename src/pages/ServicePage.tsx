@@ -296,7 +296,7 @@ export default function ServicePage() {
                     </span>
                   </div>
                   <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-[#2f63a8]" style={{ width: `${(v.count / maxLoad) * 100}%` }} />
+                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(v.count / maxLoad) * 100}%` }} />
                   </div>
                 </li>
               ))}

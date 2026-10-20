@@ -26,14 +26,14 @@ export function Modal({
       onMouseDown={onClose}
     >
       <div
-        className={`modal-card flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-12px_rgba(11,35,40,0.45)] ${
+        className={`modal-card flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl border border-hairline bg-white shadow-[0_24px_60px_-12px_rgb(9_42_54/0.45)] ${
           wide ? 'max-w-4xl' : 'max-w-lg'
         }`}
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
+        <div className="flex items-center justify-between gap-3 border-b border-hairline px-5 py-3.5">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="h-5 w-1 shrink-0 rounded-full bg-brand-500" />
             <h2 className="truncate text-[15px] font-bold tracking-tight text-navy-900">{title}</h2>
@@ -46,8 +46,8 @@ export function Modal({
             <X size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto p-5 text-slate-700">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-slate-200 bg-[#F7F9F9] px-5 py-3.5">{footer}</div>}
+        <div className="overflow-y-auto p-5 text-ink-body">{children}</div>
+        {footer && <div className="flex justify-end gap-2 border-t border-hairline bg-mist px-5 py-3.5">{footer}</div>}
       </div>
     </div>
   )
@@ -62,7 +62,7 @@ export function NumPad({ onKey, keys }: { onKey: (k: string) => void; keys?: str
           key={k}
           type="button"
           onClick={() => onKey(k)}
-          className="tile h-14 rounded-2xl bg-white text-xl font-semibold text-slate-800 shadow-[6px_6px_14px_rgba(15,39,44,0.12),-6px_-6px_14px_rgba(255,255,255,0.95)] transition active:shadow-[inset_5px_5px_10px_rgba(15,39,44,0.14),inset_-5px_-5px_10px_rgba(255,255,255,0.95)] active:text-brand-600"
+          className="tile h-14 rounded-xl border border-hairline bg-white text-xl font-semibold text-ink-body shadow-card transition duration-150 hover:border-brand-400 active:scale-[0.97] active:border-brand-500 active:bg-brand-50 active:text-brand-600"
         >
           {k}
         </button>
@@ -86,8 +86,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-[34px] font-light leading-tight tracking-tight text-slate-700">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+        <h1 className="text-[34px] font-medium leading-tight tracking-tight text-ink">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
@@ -113,17 +113,17 @@ export function ListPanel({
   footer?: ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-none border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-[#3d5160] px-4 py-3">
+    <div className="overflow-hidden rounded-lg border border-hairline bg-white shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-ink px-4 py-3">
         <h2 className="text-sm font-bold uppercase tracking-wider text-white">{title}</h2>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
       {toolbar && (
-        <div className="flex flex-wrap items-center justify-between gap-2 bg-[#4a5e6d] px-4 py-2.5">{toolbar}</div>
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-ink-raised px-4 py-2.5">{toolbar}</div>
       )}
       <div className="overflow-x-auto">{children}</div>
       {footer && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline bg-white px-4 py-2.5 text-sm text-ink-muted">
           {footer}
         </div>
       )}
@@ -145,14 +145,14 @@ export function Segmented<T extends string>({
 }) {
   return (
     <div
-      className={`inline-flex rounded-none p-0.5 ${dark ? 'bg-[#2f3f4c] ring-1 ring-white/10' : 'border border-slate-300 bg-white'}`}
+      className={`inline-flex rounded-lg p-0.5 ${dark ? 'bg-ink ring-1 ring-white/10' : 'border border-hairline bg-white'}`}
     >
       {(Object.keys(options) as T[]).map((k) => (
         <button
           key={k}
           type="button"
           onClick={() => onChange(k)}
-          className={`rounded-none px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+          className={`rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition duration-150 ${
             value === k
               ? dark
                 ? 'bg-white text-navy-900 shadow'
@@ -184,7 +184,8 @@ export function TablePager({
   if (pages <= 1) {
     return <span className="text-xs text-slate-500">{total} row{total === 1 ? '' : 's'}</span>
   }
-  const btn = 'flex h-7 w-7 items-center justify-center rounded-none border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40'
+  const btn =
+    'flex h-7 w-7 items-center justify-center rounded-md border border-hairline bg-white text-ink-muted transition duration-150 hover:bg-secondary hover:text-ink disabled:opacity-40 disabled:hover:bg-white'
   return (
     <div className="flex items-center gap-1.5">
       <button type="button" className={btn} disabled={page <= 1} onClick={() => onPage(1)} aria-label="First page">
@@ -225,7 +226,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg ${t.tone === 'error' ? 'bg-red-600' : 'bg-slate-900'}`}
+            className={`toast-in rounded-lg px-4 py-2 text-sm font-medium text-white shadow-pop ${
+              t.tone === 'error' ? 'bg-red-600' : 'bg-ink'
+            }`}
           >
             {t.text}
           </div>

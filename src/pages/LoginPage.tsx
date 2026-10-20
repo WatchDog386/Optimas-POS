@@ -50,14 +50,14 @@ export default function LoginPage() {
   })
 
   return (
-    <div className="flex h-full items-center justify-center overflow-hidden bg-[#ececec] p-4 sm:p-6">
+    <div className="flex h-full items-center justify-center overflow-hidden bg-mist p-4 sm:p-6">
       {/* ===================================================== Auth card */}
       <div className="grid h-full max-h-[780px] w-full max-w-7xl grid-cols-1 overflow-visible shadow-[0_35px_90px_-20px_rgba(15,39,44,0.45)] md:grid-cols-[45fr_55fr]">
         {/* ------------------------------------------------- Left: hero art */}
         <aside className="relative hidden items-center justify-center overflow-visible bg-white md:flex">
           {/* background text — sits behind the artwork */}
           <div className="pointer-events-none absolute left-0 top-0 p-6 text-left">
-            <span className="truncate text-2xl font-medium capitalize tracking-tight text-[#0f2557]">
+            <span className="truncate text-2xl font-medium capitalize tracking-tight text-ink">
               {settings.shopName}
             </span>
           </div>
@@ -70,13 +70,13 @@ export default function LoginPage() {
         </aside>
 
         {/* ------------------------------------------------- Right: sign in */}
-        <main className="relative flex items-center justify-center overflow-y-auto bg-[#0f2557] p-6 sm:p-8">
+        <main className="relative flex items-center justify-center overflow-y-auto bg-ink p-6 sm:p-8">
           <div className="relative w-[460px] max-w-full">
             {/* small-screen logo */}
             <div className="mb-6 flex justify-center md:hidden">
               <span className="flex items-center gap-2.5">
                 <img src="logo.png" alt="" className="h-8 w-8 object-contain" />
-                <span className="text-base font-bold text-white">{settings.shopName}</span>
+                <span className="text-[16px] font-bold text-white">{settings.shopName}</span>
               </span>
             </div>
 
@@ -86,14 +86,14 @@ export default function LoginPage() {
             {/* PIN field */}
             <div className="mt-10">
               <div className="flex items-baseline justify-between">
-                <label htmlFor="pin-input" className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">
+                <label htmlFor="pin-input" className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">
                   Staff PIN
                 </label>
-                <button type="button" onClick={() => setHelp((h) => !h)} className="text-[13px] font-medium text-[#5b8fd4] transition hover:text-[#7ea6e0]">
+                <button type="button" onClick={() => setHelp((h) => !h)} className="text-[13px] font-medium text-brand-300 transition hover:text-white">
                   Forgot PIN?
                 </button>
               </div>
-              <div className="flex items-center border-b border-white/20 transition focus-within:border-[#5b8fd4]">
+              <div className="flex items-center border-b border-white/20 transition focus-within:border-brand-300">
                 <input
                   id="pin-input"
                   type={show ? 'text' : 'password'}
@@ -105,22 +105,22 @@ export default function LoginPage() {
                     setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))
                   }}
                   placeholder="••••"
-                  className={`w-full bg-transparent py-2.5 text-lg tracking-[0.4em] text-white placeholder:text-white/25 focus:outline-none ${
+                  className={`w-full bg-transparent py-2.5 text-lg tracking-[0.4em] text-white placeholder:text-white/45 focus:outline-none ${
                     show ? 'font-mono tracking-[0.3em]' : ''
                   }`}
                 />
-                <button type="button" onClick={() => setShow((s) => !s)} className="p-1 text-white/40 transition hover:text-white/70" aria-label={show ? 'Hide PIN' : 'Show PIN'}>
+                <button type="button" onClick={() => setShow((s) => !s)} className="p-1 text-white/55 transition hover:text-white/90" aria-label={show ? 'Hide PIN' : 'Show PIN'}>
                   {show ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
               {error ? (
                 <p className="mt-2 text-sm font-medium text-red-400">Wrong PIN, try again</p>
               ) : help ? (
-                <p className="mt-2 text-xs leading-relaxed text-[#9fd8d0]/80">
+                <p className="mt-2 text-xs leading-relaxed text-brand-200/80">
                   First run: owner <b className="text-white">1234</b>, cashier <b className="text-white">0000</b>. Change them in Staff.
                 </p>
               ) : (
-                <p className="mt-2 text-xs text-white/35">Enter your {PIN_LENGTH}-digit PIN</p>
+                <p className="mt-2 text-xs text-white/55">Enter your {PIN_LENGTH}-digit PIN</p>
               )}
             </div>
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
               type="button"
               onClick={submit}
               disabled={pin.length !== PIN_LENGTH || busy}
-              className="mt-8 w-full rounded-xl bg-white py-3.5 text-[13px] font-bold uppercase tracking-[0.25em] text-[#0f2557] shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] transition hover:bg-white/90 disabled:opacity-40 disabled:shadow-none"
+              className="mt-8 w-full rounded-xl bg-cta py-3.5 text-[13px] font-bold uppercase tracking-[0.25em] text-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.6)] transition duration-150 hover:bg-cta-hover active:scale-[0.99] disabled:opacity-40 disabled:shadow-none"
             >
               Login
             </button>
@@ -137,7 +137,7 @@ export default function LoginPage() {
             {/* OR */}
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-white/15" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/45">or</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/60">or</span>
               <div className="h-px flex-1 bg-white/15" />
             </div>
 
@@ -156,8 +156,8 @@ export default function LoginPage() {
             </button>
 
             {/* footer */}
-            <p className="mt-6 text-center text-[13px] text-white/45">
-              First run? <span className="font-bold text-[#3aa355]">OWNER 1234</span>
+            <p className="mt-6 text-center text-[13px] text-white/60">
+              First run? <span className="font-bold text-cta">OWNER 1234</span>
             </p>
           </div>
         </main>

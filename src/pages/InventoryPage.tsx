@@ -123,7 +123,7 @@ export default function InventoryPage() {
       <ListPanel
         title="Parts inventory"
         actions={
-          <span className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+          <span className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
             {rows.length} / {products.length}
           </span>
         }

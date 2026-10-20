@@ -1,77 +1,319 @@
 @import "tailwindcss";
 
+/*
+ * Optimas POS — Paystack / TrioPay dashboard design system.
+ * Canvas #F8FAFA · white cards · deep teal-navy ink #092A36 · action green #1FC341
+ * teal #2C8286 for links, tabs, focus and icons · hairline #E1E7E6 · 8px radius
+ * Inter type on a 16px root.
+ * Never hardcode colours in components — use these tokens.
+ */
+
 @theme {
-  --color-brand-50: #f0f7f8;
-  --color-brand-100: #e0eff1;
-  --color-brand-200: #b5d5da;
-  --color-brand-400: #5a8a92;
-  --color-brand-500: #2a5259;
-  --color-brand-600: #1e3f46;
-  --color-brand-700: #163238;
-  --color-navy-50: #f0f7f8;
-  --color-navy-100: #e0eff1;
-  --color-navy-200: #b5d5da;
-  --color-navy-500: #3a6a72;
-  --color-navy-600: #2a5259;
-  --color-navy-700: #1e3f46;
-  --color-navy-800: #163238;
-  --color-navy-900: #0f272c;
-  --color-navy-950: #0b2328;
-  --font-sans: "Poppins", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Plus Jakarta Sans", "Poppins", "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* ── Type ────────────────────────────────────────────────────────────── */
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-display:
+    "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ── One green for every main action ─────────────────────────────────── */
+  --color-cta: #1fc341;
+  --color-cta-hover: #1aab39;
+  --color-cta-soft: #e8f9ed;
+
+  /* ── Deep teal-navy ink: header, rail, dark panels, headings ─────────── */
+  --color-ink: #092a36;
+  --color-ink-raised: #1d464f;
+  --color-ink-hover: #132f38;
+  --color-ink-line: #1d464f;
+
+  /* ── Light surfaces ──────────────────────────────────────────────────── */
+  --color-mist: #f8fafa;
+  --color-canvas: #eef1f0;
+  --color-hairline: #e1e7e6;
+  --color-hairline-soft: #eef1f0;
+
+  /* ── Ink type scale ──────────────────────────────────────────────────── */
+  --color-ink-body: #132f38;
+  --color-ink-muted: #4d6168;
+  --color-ink-faint: #74868b;
+
+  /* ── Teal: links, active states, focus, icons ────────────────────────── */
+  --color-teal: #2c8286;
+  --color-teal-hover: #1b6d71;
+  --color-teal-soft: #e4f0ef;
+
+  /* ── Semantic tokens (shadcn-style) ──────────────────────────────────── */
+  --color-background: #ffffff;
+  --color-foreground: #132f38;
+  --color-card: #ffffff;
+  --color-card-foreground: #132f38;
+  --color-primary: #1fc341;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #eef1f0;
+  --color-secondary-foreground: #132f38;
+  --color-muted: #f8fafa;
+  --color-muted-foreground: #4d6168;
+  --color-accent: #eef1f0;
+  --color-accent-foreground: #132f38;
+  --color-border: #e1e7e6;
+  --color-input: #cfd9d8;
+  --color-ring: rgb(44 130 134 / 0.45);
+
+  /* ── Teal brand ramp (links / active / focus) ────────────────────────── */
+  --color-brand-50: #e4f0ef;
+  --color-brand-100: #d0e6e4;
+  --color-brand-200: #a1cecd;
+  --color-brand-300: #7cc4c6;
+  --color-brand-400: #4f9ea2;
+  --color-brand-500: #2c8286;
+  --color-brand-600: #1b6d71;
+  --color-brand-700: #155860;
+  --color-brand-800: #104448;
+
+  /* ── Deep teal-navy ramp (dark surfaces + headings) ──────────────────── */
+  --color-navy-50: #eef1f0;
+  --color-navy-100: #dde5e4;
+  --color-navy-200: #bfd0cf;
+  --color-navy-500: #4a6a70;
+  --color-navy-600: #2f4d55;
+  --color-navy-700: #1d464f;
+  --color-navy-800: #132f38;
+  --color-navy-900: #092a36;
+  --color-navy-950: #061c23;
+
+  /* ── Elevation ───────────────────────────────────────────────────────── */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-pop: 0 4px 12px rgb(0 0 0 / 0.06);
+  --shadow-float: 0 2px 4px rgb(16 24 40 / 0.03), 0 14px 36px rgb(16 24 40 / 0.09);
 }
 
-html, body, #root { height: 100%; }
+html,
+body,
+#root {
+  height: 100%;
+}
 
-@keyframes moon-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
 
-@keyframes modal-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-mist);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+
+  button {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background: rgb(44 130 134 / 0.2);
+  }
+
+  /* One quiet focus ring for anything that didn't ask for its own. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Touch screens: no accidental text selection on tiles. */
+.tile {
+  user-select: none;
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+
+@keyframes moon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes modal-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes modal-card-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.985); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-.modal-overlay { animation: modal-overlay-in 0.15s ease-out; }
-.modal-card { animation: modal-card-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-body { @apply bg-[#f5f8fc] text-slate-700 antialiased; font-family: var(--font-sans); font-size: 16px; font-weight: 300; }
+.modal-overlay {
+  animation: modal-overlay-in 0.15s ease-out;
+}
+.modal-card {
+  animation: modal-card-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-/* Touch screens: no tap highlight, no accidental text selection on tiles. */
-button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.tile { user-select: none; }
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.toast-in {
+  animation: toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Thin, quiet scrollbars — the app scrolls inside panels, not the window. */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cfd9d8 transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cfd9d8;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a9b6b9;
+  background-clip: content-box;
+}
+
+/* ── Form + action primitives ──────────────────────────────────────────── */
 
 @utility input {
-  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+  @apply w-full rounded-lg border border-input bg-white px-3 py-2.5 text-base text-ink-body outline-none transition placeholder:text-ink-faint focus:border-brand-500 focus:ring-2 focus:ring-brand-500/45;
 }
-@utility label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500; }
-@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
-@utility btn-primary { @apply btn bg-brand-500 text-white hover:bg-brand-600; }
-@utility btn-dark { @apply btn bg-navy-900 text-white hover:bg-navy-800; }
-@utility btn-ghost { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
-@utility btn-danger { @apply btn bg-red-600 text-white hover:bg-red-500; }
-@utility card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+@utility label {
+  @apply mb-1.5 block text-xs font-semibold uppercase tracking-[0.07em] text-ink-muted;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold leading-none transition duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+}
+@utility btn-primary {
+  @apply btn bg-cta text-white shadow-card hover:bg-cta-hover;
+}
+@utility btn-dark {
+  @apply btn bg-ink text-white hover:bg-ink-raised;
+}
+@utility btn-ghost {
+  @apply btn border border-hairline bg-white text-ink-body hover:border-input hover:bg-secondary;
+}
+@utility btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+@utility card {
+  @apply rounded-lg border border-hairline bg-white shadow-card transition duration-150;
+}
 
-/* List / table chrome — muted teal headers, striped rows (reference design). */
+/* ── List / table chrome ────────────────────────────────────────────────
+   Ink ramp: title bar #092A36 → toolbar #1D464F → head #2F4D55, then soft
+   zebra rows on the off-white canvas with a teal hover tint. */
 @utility table-head {
   & th {
-    @apply border-r border-white/20 bg-[#7a9e9e] px-3.5 py-3 text-left text-xs font-semibold uppercase tracking-[0.08em] text-white;
-    &:last-child { @apply border-r-0; }
-    &.text-right { @apply text-right; }
+    @apply border-r border-white/10 bg-navy-600 px-3.5 py-3 text-left text-xs font-semibold uppercase tracking-[0.08em] text-white;
+    &:last-child {
+      @apply border-r-0;
+    }
+    &.text-right {
+      @apply text-right;
+    }
   }
 }
 @utility table-row {
   & td {
-    @apply border-b border-r border-slate-200 px-3.5 py-3 text-[15px] text-slate-700;
-    &:last-child { @apply border-r-0; }
+    @apply border-b border-r border-hairline px-3.5 py-3 text-[15px] text-ink-body;
+    &:last-child {
+      @apply border-r-0;
+    }
   }
-  &:nth-child(even) { @apply bg-[#f4f6f7]; }
-  &:nth-child(odd) { @apply bg-white; }
-  &:hover { @apply bg-navy-50/70; }
+  &:nth-child(even) {
+    @apply bg-canvas;
+  }
+  &:nth-child(odd) {
+    @apply bg-white;
+  }
+  &:hover {
+    @apply bg-brand-50/70;
+  }
 }
 
-/* Browser-print receipt (fallback when no raw printer is connected). */
-#print-root { display: none; }
+/* ── Browser-print receipt (fallback when no raw printer is connected) ── */
+#print-root {
+  display: none;
+}
 @media print {
-  @page { margin: 0; }
-  body * { visibility: hidden; }
-  #print-root, #print-root * { visibility: visible; }
-  #print-root { display: block; position: absolute; left: 0; top: 0; }
+  @page {
+    margin: 0;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #print-root,
+  #print-root * {
+    visibility: visible;
+  }
+  #print-root {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
+
+/* ── Reduced motion: the whole UI settles instantly ───────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

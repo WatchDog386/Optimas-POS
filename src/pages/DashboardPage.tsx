@@ -327,17 +327,17 @@ export default function DashboardPage() {
               toolbar={
                 <>
                   <div className="flex flex-wrap gap-2">
-                    <Link to="/staff" className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-[#25333e]">
+                    <Link to="/staff" className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/20">
                       <UserCog size={13} className="mr-1 inline -translate-y-px" /> Staff
                     </Link>
-                    <Link to="/logs" className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-[#25333e]">
+                    <Link to="/logs" className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/20">
                       <ScrollText size={13} className="mr-1 inline -translate-y-px" /> Logs
                     </Link>
-                    <Link to="/settings" className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-[#25333e]">
+                    <Link to="/settings" className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/20">
                       <SettingsIcon size={13} className="mr-1 inline -translate-y-px" /> Settings
                     </Link>
                   </div>
-                  <span className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">Last {recentLogs.length} events</span>
+                  <span className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">Last {recentLogs.length} events</span>
                 </>
               }
             >

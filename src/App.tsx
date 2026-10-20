@@ -139,9 +139,9 @@ export default function App() {
   return (
     <div className="flex h-full flex-col">
       {/* Status bar — white shop-name block, blue remainder */}
-      <header className="relative flex h-16 shrink-0 items-stretch bg-[#2f63a8]">
-        <div className="flex shrink-0 items-center border-r border-white/20 bg-white px-4 sm:w-56 lg:w-60">
-          <span className="truncate text-lg font-bold tracking-tight text-slate-900">{settings.shopName}</span>
+      <header className="relative flex h-16 shrink-0 items-stretch bg-ink">
+        <div className="flex shrink-0 items-center border-r border-white/15 bg-white px-4 sm:w-56 lg:w-60">
+          <span className="truncate text-lg font-bold tracking-tight text-ink">{settings.shopName}</span>
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-1 px-2">
@@ -152,7 +152,7 @@ export default function App() {
                 to={tab.to}
                 className={({ isActive }) =>
                   `flex shrink-0 items-center rounded-md px-3.5 text-sm font-semibold transition my-2 sm:px-4 ${
-                    isActive ? 'bg-[#4a83c9] text-white shadow-sm' : 'text-white/85 hover:bg-white/15 hover:text-white'
+                    isActive ? 'bg-ink-raised text-white shadow-sm' : 'text-white/75 hover:bg-white/10 hover:text-white'
                   }`
                 }
               >
@@ -242,11 +242,11 @@ export default function App() {
 
       <div className="flex min-h-0 flex-1">
         {/* Dark sidebar with grouped menu */}
-        <aside className="hidden w-56 shrink-0 flex-col bg-[#2e353b] sm:flex lg:w-60">
-          <nav className="min-h-0 flex-1 overflow-y-auto py-2">
+        <aside className="hidden w-56 shrink-0 flex-col bg-ink sm:flex lg:w-60">
+          <nav className="custom-scrollbar min-h-0 flex-1 overflow-y-auto py-2">
             {visibleGroups.map((group) => (
               <div key={group.label} className="mb-1">
-                <div className="bg-black/25 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                <div className="bg-white/5 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">
                   {group.label}
                 </div>
                 {group.items.map(({ to, label, icon: Icon, iconClass }) => (
@@ -255,7 +255,7 @@ export default function App() {
                     to={to}
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition ${
-                        isActive ? 'bg-[#3c454d] text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                        isActive ? 'bg-ink-raised text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
                       }`
                     }
                   >
@@ -268,7 +268,7 @@ export default function App() {
           </nav>
         </aside>
 
-        <main className="min-h-0 flex-1 overflow-auto bg-[#f5f8fc]">
+        <main className="custom-scrollbar min-h-0 flex-1 overflow-auto bg-mist">
           <Routes>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/sell" element={<SellPage />} />

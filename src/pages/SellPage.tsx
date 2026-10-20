@@ -186,14 +186,14 @@ export default function SellPage() {
   return (
     <div className="flex h-full">
       {/* Catalogue */}
-      <section className="flex min-w-0 flex-1 flex-col bg-[#f5f5f5] p-4">
+      <section className="flex min-w-0 flex-1 flex-col bg-mist p-4">
         <div className="mb-3 flex gap-2">
           <div className="relative flex-1">
             <Search size={18} className="absolute left-3 top-3 text-slate-400" />
             <input
               ref={searchRef}
               data-scan="allow"
-              className="input h-11 rounded-md border-[#e5e5e5] bg-white pl-10 pr-14 text-base shadow-none focus:border-[#00A94F] focus:ring-[#00A94F]/25"
+              className="input h-11 rounded-md border-hairline bg-white pl-10 pr-14 text-base shadow-none focus:border-brand-500 focus:ring-brand-500/45"
               placeholder="Search name, SKU, part number — or scan a barcode (F2)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -214,7 +214,7 @@ export default function SellPage() {
             <button
               type="button"
               aria-label="Search"
-              className="absolute right-1.5 top-1.5 grid h-8 w-10 place-items-center rounded bg-[#00A94F] text-white transition hover:bg-[#008F43]"
+              className="absolute right-1.5 top-1.5 grid h-8 w-10 place-items-center rounded bg-cta text-white transition hover:bg-cta-hover"
               onClick={() => {
                 const p = findExact(query) ?? (visible.length === 1 ? visible[0] : undefined)
                 if (p) {
@@ -229,7 +229,7 @@ export default function SellPage() {
           <div className="relative">
             <Bike size={18} className="pointer-events-none absolute left-3 top-3 text-slate-500" />
             <select
-              className="input h-11 w-48 rounded-md border-[#e5e5e5] bg-white pl-10 shadow-none focus:border-[#00A94F] focus:ring-[#00A94F]/25"
+              className="input h-11 w-48 rounded-md border-hairline bg-white pl-10 shadow-none focus:border-brand-500 focus:ring-brand-500/45"
               value={bike}
               onChange={(e) => setBike(e.target.value)}
               title="Show parts that fit this bike"
@@ -260,7 +260,7 @@ export default function SellPage() {
               </CategoryChip>
             ))}
           </div>
-          <span className="shrink-0 rounded-md bg-white px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 ring-1 ring-[#e8e8e8]">
+          <span className="shrink-0 rounded-md bg-white px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 ring-1 ring-hairline">
             {visible.length} shown
           </span>
         </div>
@@ -272,9 +272,9 @@ export default function SellPage() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="tile group flex flex-col overflow-hidden rounded-xl border border-[#e8e8e8] bg-white text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition duration-150 hover:-translate-y-1 hover:border-[#00A94F]/50 hover:shadow-lg active:scale-[0.98]"
+                className="tile group flex flex-col overflow-hidden rounded-xl border border-hairline bg-white text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition duration-150 hover:-translate-y-1 hover:border-brand-500/50 hover:shadow-lg active:scale-[0.98]"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[#f1f1f1] bg-[#FAFAFA]">
+                <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-hairline bg-mist">
                   {p.image ? (
                     <img src={p.image} alt={p.name} className="h-full w-full object-cover transition duration-200 group-hover:scale-105" draggable={false} />
                   ) : (
@@ -298,7 +298,7 @@ export default function SellPage() {
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
-                          p.stock <= 0 ? 'bg-red-500' : low ? 'bg-amber-400' : 'bg-[#00A94F]'
+                          p.stock <= 0 ? 'bg-red-500' : low ? 'bg-amber-400' : 'bg-cta'
                         }`}
                       />
                       {p.stock <= 0 ? 'Out of stock' : `${p.stock} left`}
@@ -306,7 +306,7 @@ export default function SellPage() {
                   )}
                 </div>
                 <div className="flex flex-1 flex-col p-3">
-                  <div className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-slate-800 transition group-hover:text-[#008F43]">
+                  <div className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-slate-800 transition group-hover:text-brand-600">
                     {p.name}
                   </div>
                   <div className="mt-1 font-mono text-[11px] text-slate-400">{p.sku}</div>
@@ -327,7 +327,7 @@ export default function SellPage() {
                   </div>
                   <span
                     className={`mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition ${
-                      addedId === p.id ? 'bg-[#008F43]' : 'bg-[#00A94F] group-hover:bg-[#008F43]'
+                      addedId === p.id ? 'bg-cta-hover' : 'bg-cta group-hover:bg-cta-hover'
                     }`}
                   >
                     {addedId === p.id ? (
@@ -354,11 +354,11 @@ export default function SellPage() {
       </section>
 
       {/* Cart / ticket */}
-      <aside className="flex w-[380px] shrink-0 flex-col border-l border-[#e0e0e0] bg-[#EFF0EF] xl:w-[420px]">
-        <div className="border-b border-[#e5e5e5] bg-white p-3.5">
+      <aside className="flex w-[380px] shrink-0 flex-col border-l border-hairline bg-canvas xl:w-[420px]">
+        <div className="border-b border-hairline bg-white p-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#00A94F]/10 text-[#00A94F]">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500/10 text-brand-500">
                 <ShoppingCart size={17} />
               </span>
               <div>
@@ -370,19 +370,19 @@ export default function SellPage() {
             </div>
             <div className="flex items-center gap-1.5">
               <button
-                className="relative grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-slate-500 transition hover:border-[#00A94F]/60 hover:text-[#008F43]"
+                className="relative grid h-9 w-9 place-items-center rounded-lg border border-hairline bg-white text-slate-500 transition hover:border-brand-500/60 hover:text-brand-600"
                 onClick={() => setDialog('parked')}
                 title="Parked sales"
               >
                 <PauseCircle size={16} />
                 {parkedCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#00A94F] text-[9px] font-bold text-white">
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-cta text-[9px] font-bold text-white">
                     {parkedCount}
                   </span>
                 )}
               </button>
               <button
-                className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-slate-500 transition hover:border-red-300 hover:text-red-500 disabled:opacity-40"
+                className="grid h-9 w-9 place-items-center rounded-lg border border-hairline bg-white text-slate-500 transition hover:border-red-300 hover:text-red-500 disabled:opacity-40"
                 onClick={clear}
                 disabled={!cart.lines.length}
                 title="Clear sale"
@@ -392,7 +392,7 @@ export default function SellPage() {
             </div>
           </div>
           <button
-            className="mt-3 flex w-full items-center gap-2 rounded-lg border border-[#e8e8e8] bg-[#F6F7F6] px-3 py-2 text-left text-sm transition hover:border-[#00A94F]/60"
+            className="mt-3 flex w-full items-center gap-2 rounded-lg border border-hairline bg-mist px-3 py-2 text-left text-sm transition hover:border-brand-500/60"
             onClick={() => setDialog('customer')}
           >
             <UserRound size={15} className="shrink-0 text-slate-400" />
@@ -406,15 +406,15 @@ export default function SellPage() {
                 'Walk-in customer'
               )}
             </span>
-            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#00A94F]">{customer ? 'Change' : 'Add · F4'}</span>
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-brand-500">{customer ? 'Change' : 'Add · F4'}</span>
           </button>
         </div>
 
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
           {cart.lines.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-400">
-              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-[#e8e8e8]">
-                <ShoppingCart size={24} className="text-[#00A94F]" />
+              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-hairline">
+                <ShoppingCart size={24} className="text-brand-500" />
               </span>
               <p className="text-sm font-medium text-slate-500">Tap a part or scan a barcode</p>
               <p className="text-[11px] text-slate-400">Items you add will appear here</p>
@@ -423,8 +423,8 @@ export default function SellPage() {
             cart.lines.map((l, i) => {
               const img = products.find((x) => x.id === l.productId)?.image
               return (
-                <div key={i} className="flex items-start gap-2.5 rounded-xl border border-[#e8e8e8] bg-white p-2.5 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#ececec] bg-[#FAFAFA]">
+                <div key={i} className="flex items-start gap-2.5 rounded-xl border border-hairline bg-white p-2.5 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-hairline bg-mist">
                     {img ? (
                       <img src={img} alt="" className="h-full w-full object-cover" draggable={false} />
                     ) : (
@@ -446,9 +446,9 @@ export default function SellPage() {
                       <div className="shrink-0 text-sm font-extrabold text-slate-900">{money(lineTotal(l), '')}</div>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
-                      <div className="inline-flex items-center gap-0.5 rounded-full bg-[#F2F4F2] p-0.5">
+                      <div className="inline-flex items-center gap-0.5 rounded-full bg-canvas p-0.5">
                         <button
-                          className="grid h-7 w-7 place-items-center rounded-full text-[#00A94F] transition hover:bg-white hover:shadow-sm"
+                          className="grid h-7 w-7 place-items-center rounded-full text-brand-500 transition hover:bg-white hover:shadow-sm"
                           onClick={() => setQty(i, l.qty - 1)}
                           aria-label="Decrease"
                         >
@@ -456,7 +456,7 @@ export default function SellPage() {
                         </button>
                         <span className="min-w-[1.5rem] text-center text-sm font-bold">{l.qty}</span>
                         <button
-                          className="grid h-7 w-7 place-items-center rounded-full text-[#00A94F] transition hover:bg-white hover:shadow-sm disabled:opacity-40"
+                          className="grid h-7 w-7 place-items-center rounded-full text-brand-500 transition hover:bg-white hover:shadow-sm disabled:opacity-40"
                           onClick={() => setQty(i, l.qty + 1)}
                           disabled={!!l.serial}
                           aria-label="Increase"
@@ -464,7 +464,7 @@ export default function SellPage() {
                           <Plus size={13} />
                         </button>
                       </div>
-                      <button className="text-[11px] font-semibold text-slate-400 transition hover:text-[#008F43]" onClick={() => setDialog({ line: i })}>
+                      <button className="text-[11px] font-semibold text-slate-400 transition hover:text-brand-600" onClick={() => setDialog({ line: i })}>
                         Edit
                       </button>
                     </div>
@@ -475,30 +475,30 @@ export default function SellPage() {
           )}
         </div>
 
-        <div className="border-t border-[#e0e0e0] bg-[#EFF0EF] p-3.5">
+        <div className="border-t border-hairline bg-canvas p-3.5">
           <div className="mb-3 grid grid-cols-3 gap-2">
             <button
-              className="flex flex-col items-center gap-1 rounded-xl border border-[#e5e5e5] bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-[#00A94F]/60 hover:text-[#008F43]"
+              className="flex flex-col items-center gap-1 rounded-xl border border-hairline bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-brand-500/60 hover:text-brand-600"
               onClick={() => setDialog('custom')}
             >
               <Wrench size={16} /> Custom
             </button>
             <button
-              className="flex flex-col items-center gap-1 rounded-xl border border-[#e5e5e5] bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-[#00A94F]/60 hover:text-[#008F43] disabled:opacity-40"
+              className="flex flex-col items-center gap-1 rounded-xl border border-hairline bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-brand-500/60 hover:text-brand-600 disabled:opacity-40"
               onClick={() => setDialog('discount')}
               disabled={!cart.lines.length || !can('discount')}
             >
               <Percent size={16} /> Discount
             </button>
             <button
-              className="flex flex-col items-center gap-1 rounded-xl border border-[#e5e5e5] bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-[#00A94F]/60 hover:text-[#008F43] disabled:opacity-40"
+              className="flex flex-col items-center gap-1 rounded-xl border border-hairline bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-brand-500/60 hover:text-brand-600 disabled:opacity-40"
               onClick={park}
               disabled={!cart.lines.length}
             >
               <PauseCircle size={16} /> Park
             </button>
           </div>
-          <div className="rounded-xl border border-[#e5e5e5] bg-white p-3 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
+          <div className="rounded-xl border border-hairline bg-white p-3 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
             <dl className="space-y-1 text-sm">
               <div className="flex justify-between text-slate-500">
                 <dt>Subtotal</dt>
@@ -516,14 +516,14 @@ export default function SellPage() {
                 </dt>
                 <dd className="font-medium text-slate-700">{money(totals.tax, settings.currency)}</dd>
               </div>
-              <div className="mt-2 flex items-center justify-between border-t border-dashed border-[#dcdcdc] pt-2">
+              <div className="mt-2 flex items-center justify-between border-t border-dashed border-hairline pt-2">
                 <span className="text-sm font-bold text-slate-700">Total · {totals.itemCount} items</span>
                 <span className="text-xl font-extrabold tracking-tight text-slate-900">{money(totals.total, settings.currency)}</span>
               </div>
             </dl>
           </div>
           <button
-            className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#00A94F] text-base font-bold uppercase tracking-wide text-white shadow-[0_8px_18px_-8px_rgba(0,169,79,0.8)] transition hover:bg-[#008F43] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-cta text-base font-bold uppercase tracking-wide text-white shadow-[0_8px_18px_-8px_rgba(31,195,65,0.8)] transition hover:bg-cta-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             onClick={charge}
             disabled={!cart.lines.length}
           >
@@ -539,7 +539,7 @@ export default function SellPage() {
               ] as const
             ).map(([key, what]) => (
               <span key={key} className="flex items-center gap-1">
-                <kbd className="rounded border border-[#e0e0e0] bg-white px-1 py-0.5 text-[10px] font-bold text-slate-500">{key}</kbd>
+                <kbd className="rounded border border-hairline bg-white px-1 py-0.5 text-[10px] font-bold text-slate-500">{key}</kbd>
                 {what}
               </span>
             ))}
@@ -647,15 +647,15 @@ function CategoryChip({
       onClick={onClick}
       className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition ${
         active
-          ? 'border-[#00A94F] bg-[#00A94F] text-white shadow-[0_4px_10px_-4px_rgba(0,169,79,0.6)]'
-          : 'border-[#e5e5e5] bg-white text-slate-600 hover:border-[#00A94F]/60 hover:text-[#008F43]'
+          ? 'border-brand-500 bg-brand-500 text-white shadow-[0_4px_10px_-4px_rgba(44,130,134,0.6)]'
+          : 'border-hairline bg-white text-slate-600 hover:border-brand-500/60 hover:text-brand-600'
       }`}
     >
       {children}
       {count !== undefined && (
         <span
           className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-            active ? 'bg-white/20 text-white' : 'bg-[#F1F3F1] text-slate-500'
+            active ? 'bg-white/20 text-white' : 'bg-canvas text-slate-500'
           }`}
         >
           {count}

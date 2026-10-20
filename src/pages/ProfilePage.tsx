@@ -131,7 +131,7 @@ export default function ProfilePage() {
         {/* Left section nav */}
         <nav className="border-b border-slate-100 bg-slate-50/70 p-4 md:border-b-0 md:border-r">
           <div className="mb-4 flex items-center gap-3 px-1">
-            <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2f63a8] text-lg font-bold text-white shadow ring-4 ring-white">
+            <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-500 text-lg font-bold text-white shadow ring-4 ring-white">
               <span>{initials}</span>
               <img
                 src="avatar.svg"
@@ -156,7 +156,7 @@ export default function ProfilePage() {
                 key={id}
                 onClick={() => setSection(id)}
                 className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition ${
-                  section === id ? 'bg-[#2f63a8] text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                  section === id ? 'bg-brand-500 text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
               >
                 <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${section === id ? 'bg-white/20 text-white' : iconClass}`}>

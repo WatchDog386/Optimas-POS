@@ -174,7 +174,7 @@ export default function NotificationsPage() {
                     </span>
                     <span className="flex shrink-0 items-center gap-2 pt-0.5 text-xs text-slate-400">
                       {timeAgo(n.at)}
-                      {!isRead && <span className="h-2 w-2 rounded-full bg-[#2f63a8]" />}
+                      {!isRead && <span className="h-2 w-2 rounded-full bg-brand-500" />}
                     </span>
                   </button>
                 </li>

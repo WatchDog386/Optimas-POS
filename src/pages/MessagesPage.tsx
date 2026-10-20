@@ -196,7 +196,7 @@ export default function MessagesPage() {
                         type="button"
                         onClick={() => select(m.id)}
                         className={`w-full px-4 py-3 text-left transition hover:bg-slate-50 ${
-                          isActive ? 'border-l-[3px] border-[#2f63a8] bg-[#2f63a8]/5 pl-[13px]' : 'border-l-[3px] border-transparent pl-[13px]'
+                          isActive ? 'border-l-[3px] border-brand-500 bg-brand-500/5 pl-[13px]' : 'border-l-[3px] border-transparent pl-[13px]'
                         }`}
                       >
                         <span className="flex items-center justify-between gap-2">

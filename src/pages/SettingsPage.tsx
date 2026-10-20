@@ -75,7 +75,7 @@ export default function SettingsPage() {
                       type="button"
                       onClick={() => setTab(item.id)}
                       className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-semibold transition ${
-                        on ? 'bg-[#2f63a8] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        on ? 'bg-brand-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
                       <span
