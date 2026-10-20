@@ -7,6 +7,12 @@ import { seedIfEmpty, backfillSampleImages } from './db/seed'
 import { SessionProvider } from './session'
 import { ToastProvider } from './components/ui'
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
 seedIfEmpty()
   .then(() => backfillSampleImages())
   .finally(() => {
