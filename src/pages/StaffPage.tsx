@@ -53,7 +53,7 @@ export default function StaffPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Staff"
         subtitle={`${users.length} user${users.length === 1 ? '' : 's'} · ${active} active`}

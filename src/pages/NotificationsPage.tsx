@@ -122,7 +122,7 @@ export default function NotificationsPage() {
   const unread = items.filter((i) => !read.has(i.id))
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Notifications"
         subtitle={`${unread.length} unread · stock, credit, service jobs and shift alerts — choose groups in Settings → Notifications`}

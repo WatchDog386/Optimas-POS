@@ -1,9 +1,15 @@
 {
   "name": "Optimas POS",
   "short_name": "Optimas",
+  "description": "Point of sale for spare parts, service jobs and sales.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "background_color": "#092a36",
+  "theme_color": "#092a36",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
 }

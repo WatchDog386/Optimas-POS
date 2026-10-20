@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bike, Check, CreditCard, Image as ImageIcon, Minus, PauseCircle, Package, Percent, Plus, Search, ShoppingCart, Trash2, UserRound, Wrench, X } from 'lucide-react'
+import { Bike, Check, ChevronRight, CreditCard, Image as ImageIcon, Minus, PauseCircle, Package, Percent, Plus, Search, ShoppingCart, Trash2, UserRound, Wrench, X } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { completeSale } from '../db/sales'
@@ -64,6 +64,7 @@ export default function SellPage() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [receipt, setReceipt] = useState<Sale | null>(null)
   const [addedId, setAddedId] = useState<number | null>(null)
+  const [cartOpen, setCartOpen] = useState(false)
   const addedTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
@@ -186,7 +187,7 @@ export default function SellPage() {
   return (
     <div className="flex h-full">
       {/* Catalogue */}
-      <section className="flex min-w-0 flex-1 flex-col bg-mist p-4">
+      <section className="flex min-w-0 flex-1 flex-col bg-mist p-4 pb-24 lg:pb-4">
         <div className="mb-3 flex gap-2">
           <div className="relative flex-1">
             <Search size={18} className="absolute left-3 top-3 text-slate-400" />
@@ -353,8 +354,20 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* Cart / ticket */}
-      <aside className="flex w-[380px] shrink-0 flex-col border-l border-hairline bg-canvas xl:w-[420px]">
+      {/* Cart / ticket — side rail from lg up, full-screen sheet on phones */}
+      {cartOpen && (
+        <button
+          type="button"
+          aria-label="Close cart"
+          onClick={() => setCartOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] lg:hidden"
+        />
+      )}
+      <aside
+        className={`fixed inset-0 z-40 flex flex-col border-l border-hairline bg-canvas transition-transform duration-200 lg:static lg:z-auto lg:w-[380px] lg:shrink-0 lg:translate-x-0 xl:w-[420px] ${
+          cartOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
         <div className="border-b border-hairline bg-white p-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -369,6 +382,14 @@ export default function SellPage() {
               </div>
             </div>
             <div className="flex items-center gap-1.5">
+              <button
+                className="grid h-9 w-9 place-items-center rounded-lg border border-hairline bg-white text-slate-500 transition hover:border-brand-500/60 hover:text-brand-600 lg:hidden"
+                onClick={() => setCartOpen(false)}
+                title="Back to parts"
+                aria-label="Back to parts"
+              >
+                <X size={16} />
+              </button>
               <button
                 className="relative grid h-9 w-9 place-items-center rounded-lg border border-hairline bg-white text-slate-500 transition hover:border-brand-500/60 hover:text-brand-600"
                 onClick={() => setDialog('parked')}
@@ -529,7 +550,7 @@ export default function SellPage() {
           >
             <CreditCard size={18} /> Charge {money(totals.total, settings.currency)}
           </button>
-          <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+          <p className="mt-2 hidden flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-slate-400 lg:flex">
             {(
               [
                 ['F2', 'search'],
@@ -546,6 +567,26 @@ export default function SellPage() {
           </p>
         </div>
       </aside>
+
+      {/* Phone: sticky bar replaces the side rail */}
+      {cart.lines.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setCartOpen(true)}
+          className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t border-emerald-600 bg-cta px-4 py-3.5 text-white shadow-[0_-8px_24px_-12px_rgba(15,39,44,0.5)] transition hover:bg-cta-hover active:scale-[0.995] lg:hidden"
+        >
+          <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+            <ShoppingCart size={17} />
+            {totals.itemCount} item{totals.itemCount === 1 ? '' : 's'}
+          </span>
+          <span className="flex items-center gap-2 text-sm font-extrabold">
+            {money(totals.total, settings.currency)}
+            <span className="flex items-center gap-0.5 rounded-md bg-black/15 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide">
+              View cart <ChevronRight size={13} />
+            </span>
+          </span>
+        </button>
+      )}
 
       {dialog === 'pay' && (
         <PaymentModal total={totals.total} settings={settings} customer={customer} onClose={() => setDialog(null)} onComplete={onPaid} />

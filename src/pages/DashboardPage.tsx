@@ -213,7 +213,7 @@ export default function DashboardPage() {
     <div className="p-4 lg:p-6">
       <div className="mb-5">
         <div className="flex flex-wrap items-baseline gap-3">
-          <h1 className="text-[34px] font-light leading-none tracking-tight text-slate-700">Dashboard</h1>
+          <h1 className="text-[26px] font-light leading-none tracking-tight text-slate-700 sm:text-[34px]">Dashboard</h1>
           <p className="text-sm text-slate-500">
             {greeting} <span className="text-base">👋</span> {user?.name} · {dateLabel}
           </p>

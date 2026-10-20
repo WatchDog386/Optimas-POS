@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Menu,
   Receipt,
   ScrollText,
   Settings as SettingsIcon,
@@ -17,6 +18,7 @@ import {
   UserRound,
   Wallet,
   Wrench,
+  X,
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSession, type Permission } from './session'
@@ -119,6 +121,7 @@ export default function App() {
   const online = useOnline()
   const [booting, setBooting] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
 
   // Brief loading screen after a successful login, before the dashboard shell.
   useEffect(() => {
@@ -140,8 +143,18 @@ export default function App() {
     <div className="flex h-full flex-col">
       {/* Status bar — white shop-name block, blue remainder */}
       <header className="relative flex h-16 shrink-0 items-stretch bg-[#2f63a8]">
-        <div className="flex shrink-0 items-center border-r border-white/20 bg-white px-4 sm:w-56 lg:w-60">
-          <span className="truncate text-lg font-bold tracking-tight text-slate-900">{settings.shopName}</span>
+        <div className="flex shrink-0 items-center gap-2 border-r border-white/20 bg-white px-3 sm:w-56 sm:gap-0 sm:px-4 lg:w-60">
+          <button
+            type="button"
+            onClick={() => setNavOpen((v) => !v)}
+            aria-label="Open menu"
+            className="-ml-1 shrink-0 rounded-md p-1.5 text-slate-700 transition hover:bg-slate-100 active:scale-95 sm:hidden"
+          >
+            <Menu size={20} />
+          </button>
+          <span className="max-w-[38vw] truncate text-lg font-bold tracking-tight text-slate-900 sm:max-w-none">
+            {settings.shopName}
+          </span>
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-1 px-2">
@@ -181,7 +194,11 @@ export default function App() {
               <Mail size={18} />
             </NavLink>
             {can('settings') && (
-              <NavLink to="/settings" className="rounded-lg p-2 text-white/80 hover:bg-white/15 hover:text-white" title="Settings">
+              <NavLink
+                to="/settings"
+                className="hidden rounded-lg p-2 text-white/80 transition hover:bg-white/15 hover:text-white sm:block"
+                title="Settings"
+              >
                 <SettingsIcon size={18} />
               </NavLink>
             )}
@@ -240,9 +257,33 @@ export default function App() {
         </div>
       </header>
 
+      {navOpen && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={() => setNavOpen(false)}
+          className="fixed inset-0 z-30 bg-slate-950/50 backdrop-blur-[2px] sm:hidden"
+        />
+      )}
+
       <div className="flex min-h-0 flex-1">
-        {/* Dark sidebar with grouped menu */}
-        <aside className="hidden w-56 shrink-0 flex-col bg-[#2e353b] sm:flex lg:w-60">
+        {/* Dark sidebar — static rail on desktop, slide-in drawer on phones */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-[#2e353b] shadow-2xl transition-transform duration-200 sm:static sm:z-auto sm:w-56 sm:translate-x-0 sm:shadow-none lg:w-60 ${
+            navOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3 sm:hidden">
+            <span className="truncate text-sm font-bold text-white">{settings.shopName}</span>
+            <button
+              type="button"
+              onClick={() => setNavOpen(false)}
+              aria-label="Close menu"
+              className="-mr-1 shrink-0 rounded-md p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
+            >
+              <X size={18} />
+            </button>
+          </div>
           <nav className="custom-scrollbar min-h-0 flex-1 overflow-y-auto py-2">
             {visibleGroups.map((group) => (
               <div key={group.label} className="mb-1">
@@ -253,6 +294,7 @@ export default function App() {
                   <NavLink
                     key={to}
                     to={to}
+                    onClick={() => setNavOpen(false)}
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition ${
                         isActive ? 'bg-[#3c454d] text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'

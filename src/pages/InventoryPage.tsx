@@ -102,7 +102,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Inventory"
         subtitle={`${products.length} parts · stock value ${money(stockValue, settings.currency)} at cost · ${lowCount} low on stock`}

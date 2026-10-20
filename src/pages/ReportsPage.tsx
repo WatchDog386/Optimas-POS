@@ -148,7 +148,7 @@ export default function ReportsPage() {
   const maxHour = Math.max(1, ...visibleHours.map((x) => x.total))
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Reports"
         subtitle="Sales, profit, VAT and stock health"

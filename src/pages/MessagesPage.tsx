@@ -97,7 +97,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>(SEED)
   const [folder, setFolder] = useState<'inbox' | 'sent'>('inbox')
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<number | null>(SEED[0].id)
+  const [selected, setSelected] = useState<number | null>(null)
   const [compose, setCompose] = useState(false)
   const [draft, setDraft] = useState({ to: '', subject: '', body: '' })
 
@@ -144,7 +144,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Messages"
         subtitle="Shop inbox — supplier orders, customer enquiries and account notices"
@@ -156,8 +156,12 @@ export default function MessagesPage() {
       />
 
       <div className="flex h-[min(70vh,640px)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        {/* List pane */}
-        <div className="flex w-full shrink-0 flex-col border-r border-slate-200 lg:w-[340px]">
+        {/* List pane — full screen on phones until a message is opened */}
+        <div
+          className={`min-w-0 flex-col border-r border-slate-200 lg:w-[340px] lg:shrink-0 lg:flex ${
+            selected === null ? 'flex w-full' : 'hidden'
+          }`}
+        >
           <div className="space-y-2.5 border-b border-slate-200 p-3">
             <Segmented
               options={{
@@ -217,7 +221,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Reading pane */}
-        <div className="hidden min-w-0 flex-1 flex-col lg:flex">
+        <div className={`min-w-0 flex-1 flex-col lg:flex ${selected === null ? 'hidden lg:flex' : 'flex'}`}>
           {!open ? (
             <div className="grid flex-1 place-items-center text-sm text-slate-500">
               <span className="flex items-center gap-2">

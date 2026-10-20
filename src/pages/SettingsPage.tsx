@@ -48,7 +48,7 @@ export default function SettingsPage() {
   const active = ALL_ITEMS.find((i) => i.id === tab)!
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Settings"
         subtitle="Everything the till remembers — shop profile, money, hardware and data"

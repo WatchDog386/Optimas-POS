@@ -35,7 +35,7 @@ export default function PurchasingPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Purchasing"
         subtitle="Reorder from suppliers and receive deliveries into stock"

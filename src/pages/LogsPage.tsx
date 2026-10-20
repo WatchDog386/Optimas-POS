@@ -111,7 +111,7 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader title="Activity log" subtitle="Sign-ins, sales, stock changes, shift and settings events on this device" />
       <ListPanel
         title="Events"

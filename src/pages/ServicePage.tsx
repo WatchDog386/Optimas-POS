@@ -166,7 +166,7 @@ export default function ServicePage() {
   const maxLoad = Math.max(1, ...workload.map(([, v]) => v.count))
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full flex-col p-4 lg:p-6">
       <PageHeader
         title="Service & fitting jobs"
         subtitle="Track bikes in the workshop, the parts used and labour, then bill at the till"

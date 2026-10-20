@@ -22,7 +22,7 @@ export default function CustomersPage() {
   const owed = customers.reduce((s, c) => s + Math.max(0, c.balance), 0)
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Customers"
         subtitle={`${customers.length} customers · ${money(owed, settings.currency)} owed on account`}

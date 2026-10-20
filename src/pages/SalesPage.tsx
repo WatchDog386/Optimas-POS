@@ -56,7 +56,7 @@ export default function SalesPage() {
   const total = rows.reduce((s, r) => s + r.total, 0)
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Sales history"
         subtitle={`${rows.length} transactions · net ${money(total, settings.currency)}`}

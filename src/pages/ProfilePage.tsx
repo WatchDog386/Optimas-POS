@@ -124,7 +124,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader title="Profile" subtitle="Your account on this till — what shows on receipts and the activity log" />
 
       <div className="card grid max-w-5xl overflow-hidden md:grid-cols-[250px_1fr]">

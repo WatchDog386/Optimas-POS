@@ -34,7 +34,7 @@ export default function ShiftPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <PageHeader
         title="Shift & cash drawer"
         subtitle="Open with a float, record cash in/out, and cash up at the end of the day"
