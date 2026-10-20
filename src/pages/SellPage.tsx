@@ -266,7 +266,7 @@ export default function SellPage() {
           </span>
         </div>
 
-        <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto pb-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pb-4 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4 2xl:grid-cols-5">
           {visible.map((p) => {
             const low = p.trackStock && p.stock <= p.reorderLevel
             return (
@@ -275,7 +275,7 @@ export default function SellPage() {
                 onClick={() => addProduct(p)}
                 className="tile group flex flex-col overflow-hidden rounded-xl border border-hairline bg-white text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition duration-150 hover:-translate-y-1 hover:border-brand-500/50 hover:shadow-lg active:scale-[0.98]"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-hairline bg-mist">
+                <div className="relative aspect-[3/2] w-full overflow-hidden border-b border-hairline bg-mist sm:aspect-[4/3]">
                   {p.image ? (
                     <img src={p.image} alt={p.name} className="h-full w-full object-cover transition duration-200 group-hover:scale-105" draggable={false} />
                   ) : (
@@ -306,15 +306,15 @@ export default function SellPage() {
                     </span>
                   )}
                 </div>
-                <div className="flex flex-1 flex-col p-3">
-                  <div className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-slate-800 transition group-hover:text-brand-600">
+                <div className="flex flex-1 flex-col p-2 sm:p-3">
+                  <div className="line-clamp-1 min-h-0 text-[13px] font-medium leading-snug text-slate-800 transition group-hover:text-brand-600 sm:line-clamp-2 sm:min-h-[2.5rem] sm:text-sm">
                     {p.name}
                   </div>
-                  <div className="mt-1 font-mono text-[11px] text-slate-400">{p.sku}</div>
-                  <div className="mt-auto flex items-end justify-between pt-2">
+                  <div className="mt-0.5 font-mono text-[10px] text-slate-400 sm:mt-1 sm:text-[11px]">{p.sku}</div>
+                  <div className="mt-auto flex items-end justify-between pt-1.5 sm:pt-2">
                     <div>
-                      <div className="text-[17px] font-extrabold leading-none tracking-tight text-slate-900">{moneyShort(p.price)}</div>
-                      <div className="mt-1 text-[10px] text-slate-400">
+                      <div className="text-[15px] font-extrabold leading-none tracking-tight text-slate-900 sm:text-[17px]">{moneyShort(p.price)}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-400 sm:mt-1">
                         {p.trackStock
                           ? low
                             ? 'Reorder soon'
@@ -327,7 +327,7 @@ export default function SellPage() {
                     {!p.trackStock && <Badge tone="blue">service</Badge>}
                   </div>
                   <span
-                    className={`mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition ${
+                    className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition sm:mt-2.5 sm:py-2 sm:text-xs ${
                       addedId === p.id ? 'bg-cta-hover' : 'bg-cta group-hover:bg-cta-hover'
                     }`}
                   >

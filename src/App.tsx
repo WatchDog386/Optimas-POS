@@ -141,24 +141,23 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Status bar — white shop-name block, blue remainder */}
+      {/* Status bar — mobile: menu · shop name · profile on one blue bar */}
       <header className="relative flex h-16 shrink-0 items-stretch bg-[#2f63a8]">
-        <div className="flex shrink-0 items-center gap-2 border-r border-white/20 bg-white px-3 sm:w-56 sm:gap-0 sm:px-4 lg:w-60">
-          <button
-            type="button"
-            onClick={() => setNavOpen((v) => !v)}
-            aria-label="Open menu"
-            className="-ml-1 shrink-0 rounded-md p-1.5 text-slate-700 transition hover:bg-slate-100 active:scale-95 sm:hidden"
-          >
-            <Menu size={20} />
-          </button>
-          <span className="max-w-[38vw] truncate text-lg font-bold tracking-tight text-slate-900 sm:max-w-none">
-            {settings.shopName}
-          </span>
+        <button
+          type="button"
+          onClick={() => setNavOpen((v) => !v)}
+          aria-label="Open menu"
+          className="flex shrink-0 items-center px-2 text-white/90 transition hover:bg-white/15 active:scale-95 sm:hidden"
+        >
+          <Menu size={22} />
+        </button>
+
+        <div className="hidden shrink-0 items-center border-r border-white/20 bg-white px-4 sm:flex sm:w-56 lg:w-60">
+          <span className="truncate text-lg font-bold tracking-tight text-slate-900">{settings.shopName}</span>
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-1 px-2">
-          <nav className="flex h-full min-w-0 flex-1 items-stretch overflow-x-auto">
+          <nav className="hidden h-full min-w-0 flex-1 items-stretch overflow-x-auto sm:flex">
             {TOP_TABS.filter((t) => !t.perm || can(t.perm)).map((tab) => (
               <NavLink
                 key={tab.to}
@@ -173,6 +172,10 @@ export default function App() {
               </NavLink>
             ))}
           </nav>
+
+          <span className="min-w-0 flex-1 truncate text-center text-base font-bold tracking-tight text-white sm:hidden">
+            {settings.shopName}
+          </span>
 
           <div className="flex shrink-0 items-center gap-1">
             <span className="mr-1 hidden items-center gap-1.5 text-sm text-white/80 sm:flex">
@@ -204,7 +207,7 @@ export default function App() {
             )}
 
             {/* User account dropdown */}
-            <div className="ml-1 flex items-center border-l border-white/25 pl-3">
+            <div className="ml-1 flex items-center sm:border-l sm:border-white/25 sm:pl-3">
               <button
                 type="button"
                 onClick={() => setMenuOpen((m) => !m)}

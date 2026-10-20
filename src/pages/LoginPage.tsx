@@ -138,7 +138,7 @@ export default function LoginPage() {
               type="button"
               onClick={submit}
               disabled={pin.length !== PIN_LENGTH || busy}
-              className="mt-6 w-full rounded-2xl bg-white/[0.10] py-3.5 text-sm font-bold lowercase tracking-[0.18em] text-white ring-1 ring-white/25 transition duration-150 hover:bg-white/[0.16] active:scale-[0.99] disabled:opacity-40"
+              className="mt-6 w-full rounded-2xl bg-white py-3.5 text-sm font-bold lowercase tracking-[0.18em] text-ink shadow-[0_10px_24px_-12px_rgba(0,0,0,0.45)] transition duration-150 hover:bg-white/95 active:scale-[0.99] disabled:opacity-40"
             >
               login
             </button>
