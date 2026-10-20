@@ -132,7 +132,7 @@ export default function App() {
   }, [user])
 
   if (!user) return <LoginPage />
-    if (booting) return <LoadingScreen />
+  if (booting) return <LoadingScreen />
 
   const visibleGroups = NAV_GROUPS.map((g) => ({
     ...g,
