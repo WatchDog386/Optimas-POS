@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import {
@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const { user, shift, can } = useSession()
   const settings = useSettings()
   const todayStart = useMemo(() => startOfDay(), [])
+  const [cardSlide, setCardSlide] = useState(0)
   const isAdmin = can('users')
 
   const sales = useLiveQuery(() => db.sales.where('createdAt').aboveOrEqual(todayStart).toArray(), [todayStart], [] as Sale[])
@@ -109,6 +110,7 @@ export default function DashboardPage() {
       sub: `${money(stats.revenue, settings.currency)} collected`,
       icon: Receipt,
       bg: 'bg-[#2480E8]',
+      grad: 'linear-gradient(135deg, #2480E8 0%, #0B3F78 100%)',
       strip: 'bg-[#1565C0] group-hover:bg-[#0F4F9A]',
       to: '/sales',
     },
@@ -118,6 +120,7 @@ export default function DashboardPage() {
       sub: stats.refunds > 0 ? `${money(stats.refunds, settings.currency)} in refunds` : 'No refunds today',
       icon: TrendingUp,
       bg: 'bg-[#2F8F54]',
+      grad: 'linear-gradient(135deg, #2F8F54 0%, #144B2A 100%)',
       strip: 'bg-[#1F6B3C] group-hover:bg-[#15522C]',
       to: '/reports',
     },
@@ -127,6 +130,7 @@ export default function DashboardPage() {
       sub: `${money(weekRevenue, settings.currency)} this week`,
       icon: Banknote,
       bg: 'bg-[#FABF24]',
+      grad: 'linear-gradient(135deg, #FABF24 0%, #7A5A02 100%)',
       strip: 'bg-[#D19E00] group-hover:bg-[#B38600]',
       to: '/reports',
     },
@@ -136,6 +140,7 @@ export default function DashboardPage() {
       sub: jobs === 0 ? 'Workshop is clear' : 'Service jobs in progress',
       icon: Wrench,
       bg: 'bg-[#E23C37]',
+      grad: 'linear-gradient(135deg, #E23C37 0%, #6E1512 100%)',
       strip: 'bg-[#B32420] group-hover:bg-[#8F1B18]',
       to: '/service',
     },
@@ -229,38 +234,48 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 lg:p-6">
-      <div className="mb-5">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-baseline gap-3">
           <h1 className="text-[26px] font-light leading-none tracking-tight text-slate-700 sm:text-[34px]">Dashboard</h1>
           <p className="text-[11px] text-slate-500 sm:text-sm">
             {greeting} <span className="text-base">👋</span> {user?.name} · {dateLabel}
           </p>
         </div>
+        <Link
+          to="/sell"
+          className="rounded-full border border-brand-500 px-3.5 py-1 text-xs font-semibold text-brand-600 transition hover:bg-brand-50 sm:hidden"
+        >
+          Start a new sale
+        </Link>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
-          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4">
-            {cards.map(({ label, value, sub, icon: Icon, bg, strip, to }) => (
+          <div
+            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4"
+            onScroll={(e) => {
+              const el = e.currentTarget
+              const pitch = el.scrollWidth / cards.length
+              setCardSlide(Math.round(el.scrollLeft / pitch))
+            }}
+          >
+            {cards.map(({ label, value, sub, icon: Icon, bg, grad, strip, to }) => (
               <Link
                 key={label}
                 to={to}
                 aria-label={`${label}: ${value}. Open details.`}
-                className={`group relative min-w-[78%] shrink-0 snap-start overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] sm:min-w-0 ${bg}`}
+                className={`group relative min-w-full shrink-0 snap-start overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] sm:min-w-0 ${bg}`}
               >
-                {/* Mobile: swipeable reference-style card */}
-                <div className="flex flex-col gap-3 p-4 sm:hidden">
+                <div className="pointer-events-none absolute inset-0 sm:hidden" style={{ background: grad }} />
+                {/* Mobile: one card per slide */}
+                <div className="relative flex flex-col gap-3 p-4 sm:hidden">
                   <div>
                     <div className="text-[11px] font-medium opacity-85">{label}</div>
                     <div className="mt-1 flex items-end justify-between gap-2">
                       <div className="min-w-0 truncate text-2xl font-bold leading-none">{value}</div>
-                      <Icon size={34} className="shrink-0 opacity-25 transition duration-150 group-hover:scale-110" />
+                      <Icon size={34} className="shrink-0 text-black/40 transition duration-150 group-hover:scale-110" />
                     </div>
                   </div>
-                  <span className="flex items-center justify-center gap-1.5 rounded-full border border-white/70 px-4 py-2 text-xs font-semibold text-white transition group-hover:bg-white/10">
-                    More info
-                    <ArrowRight size={13} className="transition group-hover:translate-x-0.5" />
-                  </span>
                   <div className="flex items-center justify-between gap-2 text-[11px]">
                     <span className="truncate opacity-90">{sub}</span>
                     <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/20">
@@ -289,13 +304,23 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Mobile: quick actions panel — circle icons with labels + Manage pill */}
-          <div className="rounded-xl bg-ink p-4 shadow-card sm:hidden">
+          {/* Carousel dots */}
+          <div className="mt-1 flex justify-center gap-1.5 sm:hidden">
+            {cards.map((c, i) => (
+              <span
+                key={c.label}
+                className={`h-1.5 w-1.5 rounded-full transition ${i === cardSlide ? 'bg-slate-700' : 'bg-slate-300'}`}
+              />
+            ))}
+          </div>
+
+          {/* Mobile: quick actions — circles only, no panel wrap */}
+          <div className="sm:hidden">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-white">Quick Actions</span>
+              <span className="text-sm font-semibold text-slate-800">Quick Actions</span>
               <Link
                 to="/settings"
-                className="rounded-full border border-white/40 px-3.5 py-1 text-xs font-semibold text-white/90 transition hover:bg-white/10"
+                className="rounded-full border border-slate-400 px-3.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-brand-500 hover:text-brand-600"
               >
                 Manage
               </Link>
@@ -303,10 +328,10 @@ export default function DashboardPage() {
             <div className="mt-4 grid grid-cols-4 gap-x-2 gap-y-4">
               {panels.map(({ title, to, icon: Icon }) => (
                 <Link key={title} to={to} className="flex flex-col items-center gap-2 transition active:scale-95">
-                  <span className="grid h-14 w-14 place-items-center rounded-full bg-white/10">
+                  <span className="grid h-14 w-14 place-items-center rounded-full bg-ink">
                     <Icon size={20} className="text-white" />
                   </span>
-                  <span className="text-center text-[11px] font-medium leading-tight text-white/75">{title}</span>
+                  <span className="text-center text-[11px] font-medium leading-tight text-slate-600">{title}</span>
                 </Link>
               ))}
             </div>
@@ -584,7 +609,7 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <Link to="/sell" className="btn-primary flex w-full py-3">
+          <Link to="/sell" className="btn-primary hidden w-full py-3 sm:flex">
             Start a new sale
           </Link>
         </div>

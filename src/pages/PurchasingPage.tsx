@@ -66,7 +66,7 @@ export default function PurchasingPage() {
       </div>
 
       {tab === 'orders' ? (
-        <ListPanel title="Purchase orders" footer={<span>{orders.length} order{orders.length === 1 ? '' : 's'}</span>}>
+        <ListPanel title="Purchase orders" barClassName="hidden sm:flex" footer={<span>{orders.length} order{orders.length === 1 ? '' : 's'}</span>}>
           <table className="w-full">
             <thead className="table-head">
               <tr>
@@ -96,7 +96,7 @@ export default function PurchasingPage() {
           {orders.length === 0 && <Empty>No purchase orders yet. Try “Auto-reorder low stock”.</Empty>}
         </ListPanel>
       ) : (
-        <ListPanel title="Suppliers" footer={<span>{suppliers.length} supplier{suppliers.length === 1 ? '' : 's'}</span>}>
+        <ListPanel title="Suppliers" barClassName="hidden sm:flex" footer={<span>{suppliers.length} supplier{suppliers.length === 1 ? '' : 's'}</span>}>
           <table className="w-full">
             <thead className="table-head">
               <tr>

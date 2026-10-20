@@ -121,8 +121,36 @@ export default function InventoryPage() {
           </>
         }
       />
+      {/* Mobile: search + category dropdown + low-stock toggle (replaces the dark bar and toolbar) */}
+      <div className="mb-3 flex items-center gap-2 sm:hidden">
+        <input
+          className="input h-9 min-w-0 flex-1 text-sm"
+          data-scan="allow"
+          placeholder="Search name, SKU…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select
+          className="input h-9 w-32 shrink-0 border-0 bg-slate-100 text-sm text-slate-600 shadow-none"
+          value={cat === 'all' ? 'all' : String(cat)}
+          onChange={(e) => setCat(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          aria-label="Category"
+        >
+          <option value="all">All categories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <label className="flex shrink-0 items-center gap-1 text-xs text-slate-600">
+          <input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} /> Low
+        </label>
+      </div>
       <ListPanel
         title="Parts inventory"
+        barClassName="hidden sm:flex"
+        toolbarClassName="hidden sm:flex"
         actions={
           <span className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
             {rows.length} / {products.length}

@@ -64,8 +64,20 @@ export default function StaffPage() {
         }
       />
 
+      {/* Mobile: search (replaces the dark toolbar) */}
+      <div className="mb-3 sm:hidden">
+        <input
+          className="input h-9 w-full text-sm"
+          placeholder="Search name…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
+
       <ListPanel
         title="Team"
+        barClassName="hidden sm:flex"
+        toolbarClassName="hidden sm:flex"
         toolbar={
           <input
             className="input h-8 w-56 border-0 bg-white py-1 text-sm"
@@ -129,7 +141,7 @@ export default function StaffPage() {
       </ListPanel>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <ListPanel title="Role permissions">
+        <ListPanel title="Role permissions" barClassName="hidden sm:flex">
           <table className="w-full text-sm">
             <thead className="table-head">
               <tr>

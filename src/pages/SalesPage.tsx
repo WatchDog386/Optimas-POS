@@ -61,8 +61,31 @@ export default function SalesPage() {
         title="Sales history"
         subtitle={`${rows.length} transactions · net ${money(total, settings.currency)}`}
       />
+      {/* Mobile: search + range dropdown (replaces the dark bar and pills) */}
+      <div className="mb-3 flex items-center gap-2 sm:hidden">
+        <input
+          className="input h-9 min-w-0 flex-1 text-sm"
+          placeholder="Search receipt, customer…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select
+          className="input h-9 w-32 shrink-0 border-0 bg-slate-100 text-sm text-slate-600 shadow-none"
+          value={range}
+          onChange={(e) => setRange(e.target.value as Range)}
+          aria-label="Date range"
+        >
+          {Object.entries(RANGES).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+      </div>
       <ListPanel
         title="Sales history"
+        barClassName="hidden sm:flex"
+        toolbarClassName="hidden sm:flex"
         actions={
           <Segmented dark options={RANGES} value={range} onChange={setRange} />
         }

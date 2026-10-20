@@ -123,7 +123,7 @@ export default function LogsPage() {
           onChange={(e) => setQ(e.target.value)}
         />
         <select
-          className="input h-9 w-32 shrink-0 text-sm"
+          className="input h-9 w-32 shrink-0 border-0 bg-slate-100 text-sm text-slate-600 shadow-none"
           value={kind}
           onChange={(e) => setKind(e.target.value as KindFilter)}
           aria-label="Filter events"

@@ -72,17 +72,17 @@ export default function LoginPage() {
       {/* ============================================================
           MOBILE — hero image in frame at the top, sign-in sheet below.
           ============================================================ */}
-      <div className="relative flex h-full flex-col overflow-hidden bg-white md:hidden">
+      <div className="relative flex h-full flex-col overflow-hidden bg-ink md:hidden">
         {/* hero image, held in the top of the frame */}
         <div className="relative h-[52%] shrink-0">
           <img src="login.png" alt="" className="h-full w-full object-cover object-top" />
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/70 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-ink via-ink/60 to-transparent" />
         </div>
 
         {/* sign-in sheet */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-ink px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="mt-auto mb-20 w-full">
-            <p className="text-center text-sm text-slate-500">Enter PIN</p>
+            <p className="text-center text-sm text-white/70">Enter PIN</p>
 
             {/* OTP-style PIN boxes */}
             <div className="relative mt-5">
@@ -93,8 +93,8 @@ export default function LoginPage() {
                   return (
                     <span
                       key={i}
-                      className={`grid h-14 w-14 place-items-center rounded-2xl text-2xl font-bold text-slate-800 ring-1 transition ${
-                        active ? 'ring-cta ring-2' : filled ? 'ring-slate-400' : 'ring-slate-300'
+                      className={`grid h-14 w-14 place-items-center rounded-2xl text-2xl font-bold text-white ring-1 transition ${
+                        active ? 'ring-cta ring-2' : filled ? 'ring-white/60' : 'ring-white/35'
                       }`}
                     >
                       {filled ? '•' : ''}
@@ -119,10 +119,10 @@ export default function LoginPage() {
             </div>
 
             {error ? (
-              <p className="mt-3 text-center text-xs font-medium text-red-600">Wrong PIN, try again</p>
+              <p className="mt-3 text-center text-xs font-medium text-red-400">Wrong PIN, try again</p>
             ) : help ? (
-              <p className="mt-3 text-center text-xs leading-relaxed text-brand-500">
-                First run: owner <b className="text-ink">1234</b>, cashier <b className="text-ink">0000</b>. Change them in Staff.
+              <p className="mt-3 text-center text-xs leading-relaxed text-brand-200/80">
+                First run: owner <b className="text-white">1234</b>, cashier <b className="text-white">0000</b>. Change them in Staff.
               </p>
             ) : null}
 
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
             {/* forgot pin? · not you? */}
             <div className="mt-4 flex items-center justify-between pb-1 text-sm font-medium">
-              <button type="button" onClick={() => setHelp((h) => !h)} className="text-brand-300 transition hover:text-brand-500">
+              <button type="button" onClick={() => setHelp((h) => !h)} className="text-brand-300 transition hover:text-white">
                 Forgot PIN?
               </button>
               <button
@@ -149,7 +149,7 @@ export default function LoginPage() {
                   setHelp(false)
                   focusInput()
                 }}
-                className="text-brand-300 transition hover:text-brand-500"
+                className="text-brand-300 transition hover:text-white"
               >
                 Not you?
               </button>

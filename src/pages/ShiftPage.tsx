@@ -92,7 +92,7 @@ export default function ShiftPage() {
       )}
 
       <div className="mt-8">
-        <ListPanel title="Recent shifts" footer={<span>{history.length} shift{history.length === 1 ? '' : 's'}</span>}>
+        <ListPanel title="Recent shifts" barClassName="hidden sm:flex" footer={<span>{history.length} shift{history.length === 1 ? '' : 's'}</span>}>
           <table className="w-full">
             <thead className="table-head">
               <tr>

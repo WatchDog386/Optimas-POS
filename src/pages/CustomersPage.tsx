@@ -32,8 +32,19 @@ export default function CustomersPage() {
           </button>
         }
       />
+      {/* Mobile: search (replaces the dark toolbar) */}
+      <div className="mb-3 sm:hidden">
+        <input
+          className="input h-9 w-full text-sm"
+          placeholder="Search name, phone, plate…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
       <ListPanel
         title="Customers"
+        barClassName="hidden sm:flex"
+        toolbarClassName="hidden sm:flex"
         toolbar={
           <>
             <span className="text-xs font-medium text-slate-200">
