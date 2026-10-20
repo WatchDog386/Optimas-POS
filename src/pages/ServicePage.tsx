@@ -277,7 +277,7 @@ export default function ServicePage() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <div className="card p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-navy-900">Mechanic load</h2>
+            <h2 className="text-sm font-bold text-navy-900 sm:text-lg">Mechanic load</h2>
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Active jobs</span>
           </div>
           {workload.length === 0 ? (
@@ -312,7 +312,7 @@ export default function ServicePage() {
 
         <div className="card p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-navy-900">Waiting on parts</h2>
+            <h2 className="text-sm font-bold text-navy-900 sm:text-lg">Waiting on parts</h2>
             <PackageSearch size={17} className="text-amber-500" />
           </div>
           {waitingList.length === 0 ? (
@@ -347,7 +347,7 @@ export default function ServicePage() {
 
         <div className="card p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-navy-900">Recent updates</h2>
+            <h2 className="text-sm font-bold text-navy-900 sm:text-lg">Recent updates</h2>
             <ClockDots />
           </div>
           {recent.length === 0 ? (

@@ -127,7 +127,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     setBooting(true)
-    const t = setTimeout(() => setBooting(false), 1500)
+    const t = setTimeout(() => setBooting(false), 5000)
     return () => clearTimeout(t)
   }, [user])
 

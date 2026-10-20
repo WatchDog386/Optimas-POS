@@ -213,8 +213,8 @@ export default function DashboardPage() {
     <div className="p-4 lg:p-6">
       <div className="mb-5">
         <div className="flex flex-wrap items-baseline gap-3">
-          <h1 className="text-[26px] font-light leading-none tracking-tight text-slate-700 sm:text-[34px]">Dashboard</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-sm font-light leading-none tracking-tight text-slate-700 sm:text-[34px]">Dashboard</h1>
+          <p className="text-[11px] text-slate-500 sm:text-sm">
             {greeting} <span className="text-base">👋</span> {user?.name} · {dateLabel}
           </p>
         </div>
@@ -235,8 +235,8 @@ export default function DashboardPage() {
                     <div className="text-3xl font-extrabold leading-tight">{value}</div>
                     <Icon size={44} className="shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30" />
                   </div>
-                  <div className="mt-1 text-base font-semibold">{label}</div>
-                  <div className="mt-0.5 text-sm opacity-90">{sub}</div>
+                  <div className="mt-1 text-sm font-semibold sm:text-base">{label}</div>
+                  <div className="mt-0.5 text-[11px] opacity-90 sm:text-sm">{sub}</div>
                 </div>
                 <div
                   className={`flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold uppercase tracking-wide transition duration-150 ${strip}`}
@@ -251,8 +251,8 @@ export default function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {panels.map(({ title, body, action, to, btn }) => (
               <div key={title} className="card flex flex-col p-4">
-                <h2 className="text-lg font-bold text-navy-900">{title}</h2>
-                <p className="mt-1 flex-1 text-base text-slate-600">{body}</p>
+                <h2 className="text-sm font-bold text-navy-900 sm:text-lg">{title}</h2>
+                <p className="mt-1 flex-1 text-xs text-slate-600 sm:text-base">{body}</p>
                 <div className="mt-3">
                   <Link to={to} className={`${btn} mt-auto self-start`}>
                     {action}
@@ -373,7 +373,7 @@ export default function DashboardPage() {
 
         <div className="space-y-4">
           <div className="card p-4">
-            <h2 className="text-lg font-bold text-navy-900">Payment mix today</h2>
+            <h2 className="text-sm font-bold text-navy-900 sm:text-lg">Payment mix today</h2>
             <ul className="mt-3 space-y-3">
               {(Object.keys(stats.byMethod) as PaymentMethod[]).map((m) => {
                 const amount = stats.byMethod[m]
@@ -438,7 +438,7 @@ export default function DashboardPage() {
               >
                 <Icon size={26} className={`shrink-0 ${fg}`} strokeWidth={2.25} />
                 <div className={`min-w-0 ${fg}`}>
-                  <div className="text-[15px] font-normal leading-snug opacity-90">{label}</div>
+                  <div className="text-xs font-normal leading-snug opacity-90 sm:text-[15px]">{label}</div>
                   <div className="text-[15px] font-bold leading-snug">{value}</div>
                 </div>
               </Link>

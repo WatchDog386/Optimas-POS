@@ -176,7 +176,7 @@ export default function ProfilePage() {
         <div className="min-w-0 p-6">
           {section === 'personal' && (
             <>
-              <h2 className="text-xl font-bold text-slate-900">Personal information</h2>
+              <h2 className="text-sm font-bold text-slate-900 sm:text-xl">Personal information</h2>
 
               <h3 className="mt-5 text-sm font-bold text-slate-800">Profile</h3>
               <p className="mt-0.5 text-xs text-slate-500">This name is printed on receipts you handle and shown in the activity log.</p>
@@ -234,7 +234,7 @@ export default function ProfilePage() {
 
           {section === 'security' && (
             <>
-              <h2 className="text-xl font-bold text-slate-900">Security</h2>
+              <h2 className="text-sm font-bold text-slate-900 sm:text-xl">Security</h2>
               <div className="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <ShieldCheck size={20} className="mt-0.5 shrink-0 text-brand-600" />
                 <div className="text-sm text-slate-600">
@@ -248,7 +248,7 @@ export default function ProfilePage() {
 
           {section === 'activity' && (
             <>
-              <h2 className="text-xl font-bold text-slate-900">My activity</h2>
+              <h2 className="text-sm font-bold text-slate-900 sm:text-xl">My activity</h2>
               <p className="mt-1 text-sm text-slate-500">Your latest {logs.length} recorded events on this device.</p>
               <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
                 {logs.length === 0 ? (

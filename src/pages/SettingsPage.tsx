@@ -99,7 +99,7 @@ export default function SettingsPage() {
               <active.icon size={19} />
             </span>
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">{tab}</h2>
+              <h2 className="text-sm font-bold tracking-tight text-slate-900 sm:text-xl">{tab}</h2>
               <p className="text-sm text-slate-500">{DESCS[tab]}</p>
             </div>
           </div>
