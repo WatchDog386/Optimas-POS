@@ -1,14 +1,39 @@
 # M-Pesa setup
 
-The POS supports two M-Pesa modes (*Settings → Payments*).
+The POS supports two M-Pesa modes (*Settings → Payments*): manual code entry and STK push (prompt on the customer's phone).
 
-## 1. Manual (default, no setup)
+## 0. PinnovaTech pay gateway (production default)
+
+When `PAY_ENDPOINT` is set in `.env` (the shipped default is the shop's gateway), STK prompting goes through it instead of Daraja:
+
+```bash
+PAY_ENDPOINT=https://optimus.pinnovatech.co.ke/optimus/pay
+PAY_STATUS_ENDPOINT=          # defaults to PAY_ENDPOINT
+PAY_STATUS_METHOD=POST        # or GET
+PAY_AUTH_TOKEN=               # optional Bearer token
+```
+
+- `POST <PAY_ENDPOINT>` with `{ phone, amount, reference }` → prompts the customer's phone.
+- The till polls `/api/mpesa/status/:id`; the server asks the gateway for the outcome (transaction ids and statuses are read from the usual field names — `transactionId`, `id`, `status`, `ResultCode`, …) and stores it in SQLite.
+- Every prompt is persisted in `mpesa_transactions` (see below) with the raw request/response JSON for auditing.
+
+Check it is live: `curl https://pos.optimaswifi.co.ke/api/health` → `"mpesa":"pinnovatech pay gateway"`.
+
+## Server database (SQLite)
+
+The server keeps a durable copy of **M-Pesa payments, staff users and shop settings** in `data/optimas.db` (path: `DB_PATH`). Sales and inventory stay in the till browser's IndexedDB.
+
+- Migrations live in `server/migrations/*.sql` and run automatically on boot; run them by hand with `npm run db:migrate`.
+- API: `GET/PUT /api/users` (PINs are accepted on PUT but never returned by GET), `POST /api/users` (single upsert), `GET/PUT /api/settings`, `GET /api/mpesa/status/:id`.
+- The file is git-ignored (`data/`, `*.db`); back it up with the VM.
+
+## 1. Manual (no setup)
 
 The customer pays to the shop's **Till / Paybill**. The cashier checks the confirmation SMS on the shop phone and types the 10-character code (for example `SJK7AB12CD`) into the payment screen. The code is stored on the sale and printed on the receipt, and you can search for it in *Sales history*.
 
 This works offline and costs nothing extra. Most shops start here.
 
-## 2. STK Push (Lipa Na M-Pesa Online)
+## 2. STK Push via Safaricom Daraja (fallback)
 
 The cashier enters the customer's phone number. A PIN prompt pops up on that phone, and the sale completes automatically when the customer pays.
 

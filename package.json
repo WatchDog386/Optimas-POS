@@ -11,9 +11,11 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "server": "tsx watch server/index.ts",
-    "server:start": "tsx server/index.ts"
+    "server:start": "tsx server/index.ts",
+    "db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
     "lucide-react": "^1.59.0",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",

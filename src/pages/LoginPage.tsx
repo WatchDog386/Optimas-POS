@@ -30,12 +30,20 @@ export default function LoginPage() {
     }
   }
 
-  // Physical keyboard support.
+  // Physical keyboard support. When the PIN field itself has focus, the input
+  // handles digits/backspace natively — appending here as well would double them.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      const inField = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        void submit()
+        return
+      }
+      if (inField) return
       if (/^\d$/.test(e.key)) press(e.key)
       else if (e.key === 'Backspace') press('⌫')
-      else if (e.key === 'Enter') void submit()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

@@ -11,6 +11,8 @@ import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createDaraja, type StkCallbackBody } from './daraja'
+import { dbPath, migrate, sql } from './db'
+import * as pinpay from './pinpay'
 
 try {
   process.loadEnvFile()
@@ -36,21 +38,58 @@ setInterval(() => {
 }, 10 * 60 * 1000).unref()
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, mpesa: daraja.configured ? daraja.env : 'not configured' })
+  res.json({
+    ok: true,
+    mpesa: pinpay.payConfigured() ? 'pinnovatech pay gateway' : daraja.configured ? daraja.env : 'not configured',
+    db: dbPath,
+  })
 })
 
 app.post('/api/mpesa/stkpush', async (req, res) => {
-  if (!daraja.configured) {
-    res.status(503).json({ error: 'M-Pesa is not configured on the server (.env). Use manual code entry.' })
-    return
-  }
   const { phone, amount, reference } = req.body ?? {}
   if (!/^254[17]\d{8}$/.test(String(phone)) || !Number.isInteger(amount) || amount < 1) {
     res.status(400).json({ error: 'phone must be 2547XXXXXXXX and amount a whole number of shillings' })
     return
   }
+  const ref = String(reference ?? 'POS')
+
+  // 1) PinnovaTech pay gateway — prompts the phone, records the txn in SQLite.
+  if (pinpay.payConfigured()) {
+    try {
+      const r = await pinpay.promptPayment(String(phone), amount, ref)
+      const now = Date.now()
+      sql.prepare(
+        `INSERT INTO mpesa_transactions (id, gateway_id, reference, phone, amount, status, request_json, response_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+      ).run(
+        r.transactionId,
+        r.transactionId,
+        ref,
+        String(phone),
+        amount,
+        JSON.stringify({ phone, amount, reference: ref }),
+        JSON.stringify(r.raw),
+        now,
+        now,
+      )
+      res.json({
+        checkoutRequestId: r.transactionId,
+        customerMessage: r.customerMessage ?? 'Prompt sent. Ask the customer to enter their M-Pesa PIN…',
+      })
+      return
+    } catch (e) {
+      res.status(502).json({ error: e instanceof Error ? e.message : String(e) })
+      return
+    }
+  }
+
+  // 2) Fallback: direct Safaricom Daraja (MPESA_* credentials in .env).
+  if (!daraja.configured) {
+    res.status(503).json({ error: 'M-Pesa is not configured on the server (.env). Use manual code entry.' })
+    return
+  }
   try {
-    const r = await daraja.stkPush(String(phone), amount, String(reference ?? 'POS'))
+    const r = await daraja.stkPush(String(phone), amount, ref)
     stk.set(r.CheckoutRequestID, { status: 'pending', at: Date.now() })
     res.json({ checkoutRequestId: r.CheckoutRequestID, customerMessage: r.CustomerMessage })
   } catch (e) {
@@ -73,8 +112,56 @@ app.post('/api/mpesa/callback', (req, res) => {
   res.json({ ResultCode: 0, ResultDesc: 'Accepted' })
 })
 
+type TxnRow = {
+  id: string
+  gateway_id: string | null
+  reference: string | null
+  phone: string
+  amount: number
+  status: 'pending' | 'success' | 'failed'
+  receipt: string | null
+  message: string | null
+  created_at: number
+}
+
 app.get('/api/mpesa/status/:id', async (req, res) => {
   const id = req.params.id
+
+  // --- PinnovaTech gateway txns (SQLite) ----------------------------------
+  const row = sql.prepare('SELECT * FROM mpesa_transactions WHERE id = ? OR gateway_id = ?').get(id, id) as TxnRow | undefined
+  if (row) {
+    if (row.status !== 'pending') {
+      res.json({ status: row.status, receipt: row.receipt ?? undefined, message: row.message ?? undefined })
+      return
+    }
+    // Let the prompt settle before asking the gateway (till polls every 3s).
+    if (Date.now() - row.created_at > 2_500) {
+      try {
+        const q = await pinpay.queryPayment({
+          id: row.id,
+          gatewayId: row.gateway_id,
+          reference: row.reference,
+          phone: row.phone,
+          amount: row.amount,
+        })
+        const now = Date.now()
+        if (q.status !== 'pending') {
+          sql.prepare(
+            'UPDATE mpesa_transactions SET status = ?, receipt = ?, message = ?, response_json = ?, updated_at = ? WHERE id = ?',
+          ).run(q.status, q.receipt ?? null, q.message ?? null, JSON.stringify(q.raw), now, row.id)
+          res.json({ status: q.status, receipt: q.receipt ?? undefined, message: q.message ?? undefined })
+          return
+        }
+        sql.prepare('UPDATE mpesa_transactions SET response_json = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(q.raw), now, row.id)
+      } catch {
+        // Gateway unreachable — keep the pending state, the till keeps polling.
+      }
+    }
+    res.json({ status: 'pending' })
+    return
+  }
+
+  // --- Safaricom Daraja txns (in-memory) ----------------------------------
   const known = stk.get(id)
   if (known && known.status !== 'pending') {
     res.json(known)
@@ -98,6 +185,95 @@ app.get('/api/mpesa/status/:id', async (req, res) => {
     }
   }
   res.json(known ?? { status: 'pending' })
+})
+
+// --- Staff & settings (server copy in SQLite) -------------------------------
+// The till is still the source of truth for day-to-day use (IndexedDB); these
+// endpoints keep a durable server-side copy and let the till push changes.
+
+type UserRow = {
+  id: number
+  name: string
+  pin: string
+  role: string
+  active: number
+  email: string | null
+  phone: string | null
+  about: string | null
+}
+
+app.get('/api/users', (_req, res) => {
+  // PINs are deliberately not returned — they can be pushed (PUT/POST) but not read back.
+  const rows = sql.prepare('SELECT id, name, role, active, email, phone, about FROM users ORDER BY id').all() as Omit<UserRow, 'pin'>[]
+  res.json(rows.map((r) => ({ ...r, active: !!r.active })))
+})
+
+function upsertUser(u: Record<string, unknown>) {
+  const name = String(u.name ?? '').trim()
+  const pin = String(u.pin ?? '').trim()
+  const role = String(u.role ?? 'cashier')
+  if (!name || !/^\d{4}$/.test(pin)) throw new Error('each user needs a name and a 4-digit PIN')
+  if (!['owner', 'manager', 'cashier'].includes(role)) throw new Error(`unknown role "${role}"`)
+  sql.prepare(
+    `INSERT INTO users (id, name, pin, role, active, email, phone, about, updated_at)
+     VALUES (@id, @name, @pin, @role, @active, @email, @phone, @about, @updated_at)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name, pin = excluded.pin, role = excluded.role, active = excluded.active,
+       email = excluded.email, phone = excluded.phone, about = excluded.about, updated_at = excluded.updated_at`,
+  ).run({
+    id: typeof u.id === 'number' ? u.id : null,
+    name,
+    pin,
+    role,
+    active: u.active === false ? 0 : 1,
+    email: u.email == null ? null : String(u.email),
+    phone: u.phone == null ? null : String(u.phone),
+    about: u.about == null ? null : String(u.about),
+    updated_at: Date.now(),
+  })
+}
+
+app.put('/api/users', (req, res) => {
+  const list = req.body
+  if (!Array.isArray(list)) {
+    res.status(400).json({ error: 'expected an array of users' })
+    return
+  }
+  try {
+    sql.transaction(() => {
+      for (const u of list) upsertUser(u as Record<string, unknown>)
+    })()
+    res.json({ ok: true, count: list.length })
+  } catch (e) {
+    res.status(400).json({ error: e instanceof Error ? e.message : String(e) })
+  }
+})
+
+app.post('/api/users', (req, res) => {
+  try {
+    upsertUser((req.body ?? {}) as Record<string, unknown>)
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(400).json({ error: e instanceof Error ? e.message : String(e) })
+  }
+})
+
+app.get('/api/settings', (_req, res) => {
+  const row = sql.prepare('SELECT json, updated_at FROM settings WHERE id = 1').get() as { json: string; updated_at: number } | undefined
+  res.json(row ? { ...JSON.parse(row.json), updatedAt: row.updated_at } : {})
+})
+
+app.put('/api/settings', (req, res) => {
+  const body = req.body
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    res.status(400).json({ error: 'expected a settings object' })
+    return
+  }
+  sql.prepare(
+    `INSERT INTO settings (id, json, updated_at) VALUES (1, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at`,
+  ).run(JSON.stringify(body), Date.now())
+  res.json({ ok: true })
 })
 
 // --- Network printer relay -----------------------------------------------
@@ -138,8 +314,20 @@ if (existsSync(dist)) {
   app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')))
 }
 
+const migrated = migrate()
+if (migrated.length) console.log(`DB migrations applied: ${migrated.join(', ')}`)
+
 app.listen(PORT, () => {
   console.log(`Optimas POS server on http://localhost:${PORT}`)
-  console.log(`M-Pesa: ${daraja.configured ? `${daraja.env} (${process.env.MPESA_SHORTCODE})` : 'not configured — manual code entry only'}`)
+  console.log(`Database: ${dbPath}`)
+  console.log(
+    `M-Pesa: ${
+      pinpay.payConfigured()
+        ? `pay gateway (${pinpay.payEndpoint()})`
+        : daraja.configured
+          ? `${daraja.env} (${process.env.MPESA_SHORTCODE})`
+          : 'not configured — manual code entry only'
+    }`,
+  )
   if (!existsSync(dist)) console.log('dist/ not built yet: run "npm run build" to serve the app from here, or use "npm run dev".')
 })

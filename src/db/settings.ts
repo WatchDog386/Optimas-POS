@@ -13,7 +13,7 @@ export const DEFAULT_SETTINGS: Settings = {
   receiptFooter: 'Goods once sold are not returnable without a receipt. Thank you!',
   currency: 'KES',
   mpesaTill: '',
-  mpesaMode: 'manual',
+  mpesaMode: 'stk',
   apiUrl: '/api',
   bikeModels: ['Ekon 450', 'Ekon 500', 'Commando', 'Universal / other e-bike'],
   paperWidth: 80,
