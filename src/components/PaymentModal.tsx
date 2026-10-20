@@ -141,8 +141,8 @@ export default function PaymentModal({
       <div className="grid gap-5 md:grid-cols-[1fr_1.3fr]">
         {/* Summary */}
         <div className="flex flex-col">
-          <div className="rounded-xl bg-slate-950 p-4 text-white">
-            <div className="text-xs uppercase tracking-wide text-slate-400">{done ? 'Paid' : 'Amount due'}</div>
+          <div className="rounded-xl bg-navy-900 p-4 text-white ring-1 ring-black/10">
+            <div className="text-xs uppercase tracking-wide text-brand-400">{done ? 'Paid' : 'Amount due'}</div>
             <div className="text-3xl font-black">{money(done ? total : remaining, c)}</div>
             {payments.length > 0 && !done && <div className="mt-1 text-sm text-slate-400">of {money(total, c)}</div>}
             {change > 0 && <div className="mt-2 text-xl font-bold text-brand-400">Change {money(change, c)}</div>}

@@ -21,21 +21,33 @@ export function Modal({
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 p-4" onMouseDown={onClose}>
+    <div
+      className="modal-overlay fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[3px]"
+      onMouseDown={onClose}
+    >
       <div
-        className={`flex max-h-[92vh] w-full flex-col rounded-2xl bg-white shadow-2xl ${wide ? 'max-w-4xl' : 'max-w-lg'}`}
+        className={`modal-card flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-12px_rgba(11,35,40,0.45)] ${
+          wide ? 'max-w-4xl' : 'max-w-lg'
+        }`}
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h2 className="text-lg font-bold">{title}</h2>
-          <button className="rounded-lg p-1 text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Close">
-            <X size={20} />
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="h-5 w-1 shrink-0 rounded-full bg-brand-500" />
+            <h2 className="truncate text-[15px] font-bold tracking-tight text-navy-900">{title}</h2>
+          </div>
+          <button
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto p-5">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">{footer}</div>}
+        <div className="overflow-y-auto p-5 text-slate-700">{children}</div>
+        {footer && <div className="flex justify-end gap-2 border-t border-slate-200 bg-[#F7F9F9] px-5 py-3.5">{footer}</div>}
       </div>
     </div>
   )
