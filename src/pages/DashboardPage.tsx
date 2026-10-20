@@ -8,8 +8,11 @@ import {
   Boxes,
   CalendarDays,
   Receipt,
+  ScrollText,
+  Settings as SettingsIcon,
   TrendingUp,
   Truck,
+  UserCog,
   Users,
   Wallet,
   Wrench,
@@ -17,8 +20,9 @@ import {
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { useSession } from '../session'
-import type { PaymentMethod, Sale } from '../db/types'
+import type { LogEntry, PaymentMethod, Sale } from '../db/types'
 import { money, moneyShort } from '../lib/money'
+import { Badge, Empty, ListPanel } from '../components/ui'
 
 const METHOD_LABEL: Record<PaymentMethod, string> = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', account: 'On account' }
 
@@ -29,9 +33,10 @@ function startOfDay(d = new Date()): number {
 }
 
 export default function DashboardPage() {
-  const { user, shift } = useSession()
+  const { user, shift, can } = useSession()
   const settings = useSettings()
   const todayStart = useMemo(() => startOfDay(), [])
+  const isAdmin = can('users')
 
   const sales = useLiveQuery(() => db.sales.where('createdAt').aboveOrEqual(todayStart).toArray(), [todayStart], [] as Sale[])
   const products = useLiveQuery(() => db.products.toArray(), [], [])
@@ -41,6 +46,11 @@ export default function DashboardPage() {
     () => db.sales.where('createdAt').aboveOrEqual(todayStart).reverse().limit(8).sortBy('createdAt'),
     [todayStart],
     [] as Sale[],
+  )
+  const recentLogs = useLiveQuery(
+    () => (isAdmin ? db.logs.orderBy('at').reverse().limit(5).toArray() : Promise.resolve<LogEntry[]>([])),
+    [isAdmin],
+    [] as LogEntry[],
   )
 
   const stats = useMemo(() => {
@@ -96,7 +106,8 @@ export default function DashboardPage() {
       value: String(stats.count),
       sub: `${money(stats.revenue, settings.currency)} collected`,
       icon: Receipt,
-      bg: 'bg-[#2196F3]',
+      bg: 'bg-[#2480E8]',
+      strip: 'bg-[#1565C0] group-hover:bg-[#0F4F9A]',
       to: '/sales',
     },
     {
@@ -104,7 +115,8 @@ export default function DashboardPage() {
       value: money(stats.profit, settings.currency),
       sub: stats.refunds > 0 ? `${money(stats.refunds, settings.currency)} in refunds` : 'No refunds today',
       icon: TrendingUp,
-      bg: 'bg-[#1e3f46]',
+      bg: 'bg-[#2F8F54]',
+      strip: 'bg-[#1F6B3C] group-hover:bg-[#15522C]',
       to: '/reports',
     },
     {
@@ -112,7 +124,8 @@ export default function DashboardPage() {
       value: moneyShort(weekRevenue),
       sub: `${money(weekRevenue, settings.currency)} this week`,
       icon: Banknote,
-      bg: 'bg-[#FDD835] text-slate-900',
+      bg: 'bg-[#FABF24]',
+      strip: 'bg-[#D19E00] group-hover:bg-[#B38600]',
       to: '/reports',
     },
     {
@@ -120,7 +133,8 @@ export default function DashboardPage() {
       value: String(jobs),
       sub: jobs === 0 ? 'Workshop is clear' : 'Service jobs in progress',
       icon: Wrench,
-      bg: 'bg-[#E53935]',
+      bg: 'bg-[#E23C37]',
+      strip: 'bg-[#B32420] group-hover:bg-[#8F1B18]',
       to: '/service',
     },
   ]
@@ -181,21 +195,27 @@ export default function DashboardPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {cards.map(({ label, value, sub, icon: Icon, bg, to }) => (
+            {cards.map(({ label, value, sub, icon: Icon, bg, strip, to }) => (
               <Link
                 key={label}
                 to={to}
-                className={`group relative overflow-hidden rounded-2xl p-4 text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg ${bg}`}
+                aria-label={`${label}: ${value}. Open details.`}
+                className={`group relative overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${bg}`}
               >
-                <div className="flex items-start justify-between gap-2">
-                <div className="text-3xl font-extrabold leading-tight">{value}</div>
-                <Icon size={28} className="shrink-0 opacity-80" />
-              </div>
-              <div className="mt-2 text-base font-bold">{label}</div>
-              <div className="mt-1 text-sm opacity-90">{sub}</div>
-              <div className="mt-3 flex items-center gap-1 text-sm font-bold">
-                More info <ArrowRight size={15} className="transition group-hover:translate-x-0.5" />
-              </div>
+                <div className="p-4 pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-3xl font-extrabold leading-tight">{value}</div>
+                    <Icon size={44} className="shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30" />
+                  </div>
+                  <div className="mt-1 text-base font-semibold">{label}</div>
+                  <div className="mt-0.5 text-sm opacity-90">{sub}</div>
+                </div>
+                <div
+                  className={`flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold uppercase tracking-wide transition duration-150 ${strip}`}
+                >
+                  More info
+                  <ArrowRight size={14} className="transition duration-150 group-hover:translate-x-1" />
+                </div>
               </Link>
             ))}
           </div>
@@ -214,42 +234,113 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between bg-[#3d5160] px-4 py-3">
-              <h2 className="text-lg font-bold uppercase tracking-wider text-white">Today's sales</h2>
-              <Link to="/sales" className="flex items-center gap-1 text-base font-semibold text-white/80 hover:text-white">
+          <ListPanel
+            title="Today's sales"
+            actions={
+              <Link to="/sales" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
                 All sales <ArrowRight size={15} />
               </Link>
-            </div>
+            }
+            footer={
+              <>
+                <span>
+                  <strong>{stats.count}</strong> sale{stats.count === 1 ? '' : 's'} today
+                </span>
+                <span className="text-xs text-slate-500">{money(stats.revenue, settings.currency)} collected</span>
+              </>
+            }
+          >
             {recentSales.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-slate-500">No sales yet today. Head to Sell when the first customer walks in.</p>
+              <Empty>No sales yet today. Head to Sell when the first customer walks in.</Empty>
             ) : (
-              <ul className="divide-y divide-slate-200">
-                {recentSales
-                  .slice()
-                  .reverse()
-                  .map((s) => (
-                    <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-base font-bold text-slate-800">{s.receiptNo}</div>
-                        <div className="text-sm text-slate-500">
-                          {new Date(s.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
-                          {' · '}
-                          {s.lines.reduce((n, l) => n + l.qty, 0)} item
-                          {s.lines.reduce((n, l) => n + l.qty, 0) === 1 ? '' : 's'}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-base font-bold ${s.total < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                          {money(s.total, settings.currency)}
-                        </div>
-                        <div className="text-sm text-slate-500">{s.payments.map((p) => METHOD_LABEL[p.method]).join(', ') || '—'}</div>
-                      </div>
-                    </li>
-                  ))}
-              </ul>
+              <table className="w-full">
+                <thead className="table-head">
+                  <tr>
+                    <th>Receipt</th>
+                    <th>Time</th>
+                    <th>Items</th>
+                    <th>Method</th>
+                    <th className="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentSales
+                    .slice()
+                    .reverse()
+                    .map((s) => {
+                      const items = s.lines.reduce((n, l) => n + l.qty, 0)
+                      return (
+                        <tr key={s.id} className="table-row">
+                          <td className="font-semibold">{s.receiptNo}</td>
+                          <td className="text-xs">
+                            {new Date(s.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="text-xs">
+                            {items} item{items === 1 ? '' : 's'}
+                          </td>
+                          <td className="text-xs">{s.payments.map((p) => METHOD_LABEL[p.method]).join(', ') || '—'}</td>
+                          <td className={`text-right font-semibold ${s.total < 0 ? 'text-red-600' : ''}`}>{money(s.total, settings.currency)}</td>
+                        </tr>
+                      )
+                    })}
+                </tbody>
+              </table>
             )}
-          </div>
+          </ListPanel>
+
+          {isAdmin && (
+            <ListPanel
+              title="Admin"
+              actions={
+                <Link to="/logs" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
+                  Activity log <ArrowRight size={15} />
+                </Link>
+              }
+              toolbar={
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    <Link to="/staff" className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-[#25333e]">
+                      <UserCog size={13} className="mr-1 inline -translate-y-px" /> Staff
+                    </Link>
+                    <Link to="/logs" className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-[#25333e]">
+                      <ScrollText size={13} className="mr-1 inline -translate-y-px" /> Logs
+                    </Link>
+                    <Link to="/settings" className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-[#25333e]">
+                      <SettingsIcon size={13} className="mr-1 inline -translate-y-px" /> Settings
+                    </Link>
+                  </div>
+                  <span className="rounded-md bg-[#2f3f4c] px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">Last {recentLogs.length} events</span>
+                </>
+              }
+            >
+              {recentLogs.length === 0 ? (
+                <Empty>No activity recorded yet.</Empty>
+              ) : (
+                <table className="w-full">
+                  <thead className="table-head">
+                    <tr>
+                      <th>Event</th>
+                      <th>Detail</th>
+                      <th>User</th>
+                      <th className="text-right">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentLogs.map((l, i) => (
+                      <tr key={`${l.at}-${i}`} className="table-row">
+                        <td className="font-semibold">{l.action}</td>
+                        <td className="text-xs">{l.detail ?? '—'}</td>
+                        <td className="text-xs">{l.userName ?? '—'}</td>
+                        <td className="text-right text-xs">
+                          {new Date(l.at).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </ListPanel>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -274,31 +365,40 @@ export default function DashboardPage() {
             </ul>
           </div>
 
-          <div className="card p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-navy-900">Low stock</h2>
-              <Link to="/inventory" className="text-base font-semibold text-brand-600 hover:text-brand-700">
-                Inventory
+          <ListPanel
+            title="Low stock"
+            actions={
+              <Link to="/inventory" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
+                Inventory <ArrowRight size={14} />
               </Link>
-            </div>
+            }
+          >
             {lowStock.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-500">Nothing needs reordering.</p>
+              <p className="px-4 py-8 text-center text-sm text-slate-500">Nothing needs reordering.</p>
             ) : (
-              <ul className="mt-2 divide-y divide-slate-100">
-                {lowStock.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-2 py-2.5">
-                    <div className="min-w-0">
-                      <div className="truncate text-base font-semibold text-slate-800">{p.name}</div>
-                      <div className="text-sm text-slate-500">{p.sku}</div>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold ${p.stock === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
-                      {p.stock} left
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <table className="w-full">
+                <thead className="table-head">
+                  <tr>
+                    <th>Part</th>
+                    <th className="text-right">Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lowStock.map((p) => (
+                    <tr key={p.id} className="table-row">
+                      <td>
+                        <div className="font-semibold">{p.name}</div>
+                        <div className="font-mono text-xs text-slate-500">{p.sku}</div>
+                      </td>
+                      <td className="text-right">
+                        <Badge tone={p.stock <= 0 ? 'red' : 'amber'}>{p.stock}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-          </div>
+          </ListPanel>
 
           <div className="card p-4">
             <div className="flex items-center gap-2 text-lg font-bold text-navy-900">

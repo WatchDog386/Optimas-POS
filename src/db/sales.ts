@@ -1,6 +1,8 @@
 import { db } from './db'
 import { getSettings, nextNumber } from './settings'
+import { logActivity, userName } from './logs'
 import { changeDue, computeTotals, paidAmount } from '../lib/cart'
+import { money } from '../lib/money'
 import type { Payment, Sale, SaleLine } from './types'
 
 export class SaleError extends Error {}
@@ -74,6 +76,14 @@ export async function completeSale(input: CheckoutInput): Promise<Sale> {
       })
     }
     return sale
+  }).then(async (sale) => {
+    const methods = [...new Set(input.payments.map((p) => p.method))].join(', ')
+    await logActivity('sale', `Sale ${sale.receiptNo}`, {
+      detail: `${money(totals.total, settings.currency)} · ${methods}`,
+      userId: input.userId,
+      userName: await userName(input.userId),
+    })
+    return sale
   })
 }
 
@@ -90,7 +100,7 @@ export interface RefundRequest {
 /** Refund some or all lines of a sale. Creates a negative sale record for reporting. */
 export async function refundSale(saleId: number, req: RefundRequest): Promise<Sale> {
   const settings = await getSettings()
-  return db.transaction('rw', [db.sales, db.products, db.movements, db.customers, db.kv], async () => {
+  const refund = await db.transaction('rw', [db.sales, db.products, db.movements, db.customers, db.kv], async () => {
     const original = await db.sales.get(saleId)
     if (!original) throw new SaleError('Sale not found')
     if (original.refundOf) throw new SaleError('Cannot refund a refund')
@@ -157,6 +167,13 @@ export async function refundSale(saleId: number, req: RefundRequest): Promise<Sa
     }
     return refund
   })
+  const original = refund.refundOf ? await db.sales.get(refund.refundOf) : undefined
+  await logActivity('sale', `Refund ${refund.receiptNo}`, {
+    detail: `${money(-refund.total, settings.currency)}${original ? ` of ${original.receiptNo}` : ''}`,
+    userId: req.userId,
+    userName: await userName(req.userId),
+  })
+  return refund
 }
 
 export async function adjustStock(

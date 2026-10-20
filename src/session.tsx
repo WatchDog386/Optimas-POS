@@ -1,42 +1,66 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db/db'
+import { logActivity } from './db/logs'
 import type { Role, Shift, User } from './db/types'
 
 interface SessionValue {
   user: User | null
   shift: Shift | undefined
   login: (pin: string) => Promise<boolean>
-  logout: () => void
+  /** Lock the till: signs the user out and returns to the sign-in page. */
+  lock: () => void
   can: (action: Permission) => boolean
 }
 
-export type Permission = 'refund' | 'discount' | 'inventory' | 'reports' | 'settings' | 'purchasing'
+export type Permission = 'refund' | 'discount' | 'inventory' | 'reports' | 'settings' | 'purchasing' | 'users' | 'logs'
 
-const PERMS: Record<Role, Permission[]> = {
-  owner: ['refund', 'discount', 'inventory', 'reports', 'settings', 'purchasing'],
-  manager: ['refund', 'discount', 'inventory', 'reports', 'purchasing'],
+export const PERMS: Record<Role, Permission[]> = {
+  owner: ['refund', 'discount', 'inventory', 'reports', 'settings', 'purchasing', 'users', 'logs'],
+  manager: ['refund', 'discount', 'inventory', 'reports', 'purchasing', 'logs'],
   cashier: ['discount'],
 }
 
 export const PIN_LENGTH = 4
 
 const SessionContext = createContext<SessionValue | null>(null)
-
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const shift = useLiveQuery(() => db.shifts.filter((s) => !s.closedAt).last(), [])
 
   const login = useCallback(async (pin: string) => {
     const u = await db.users.where('pin').equals(pin).filter((x) => x.active).first()
-    if (u) setUser(u)
+    if (u) {
+      setUser(u)
+      await logActivity('auth', 'Signed in', { userId: u.id, userName: u.name })
+    }
     return !!u
   }, [])
 
-  const logout = useCallback(() => setUser(null), [])
+  const lock = useCallback(() => {
+    if (!user) return
+    void logActivity('auth', 'Till locked', { userId: user.id, userName: user.name })
+    setUser(null)
+  }, [user])
   const can = useCallback((a: Permission) => !!user && PERMS[user.role].includes(a), [user])
 
-  return <SessionContext.Provider value={{ user, shift, login, logout, can }}>{children}</SessionContext.Provider>
+  // Auto-lock after 15 minutes without any interaction.
+  useEffect(() => {
+    if (!user) return
+    let timer = window.setTimeout(() => lock(), 15 * 60_000)
+    const reset = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => lock(), 15 * 60_000)
+    }
+    const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'wheel']
+    for (const e of events) window.addEventListener(e, reset, { passive: true })
+    return () => {
+      window.clearTimeout(timer)
+      for (const e of events) window.removeEventListener(e, reset)
+    }
+  }, [user, lock])
+
+  return <SessionContext.Provider value={{ user, shift, login, lock, can }}>{children}</SessionContext.Provider>
 }
 
 export function useSession(): SessionValue {

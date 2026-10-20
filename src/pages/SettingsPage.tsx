@@ -1,37 +1,119 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { AlertTriangle, Banknote, Bell, Bike, CreditCard, Database, Download, Info, Loader2, PackageSearch, Percent, Printer, Save, ShieldCheck, Smartphone, Store, Trash2, UserRound } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Plus, Save, Trash2 } from 'lucide-react'
 import { db } from '../db/db'
 import { saveSettings, useSettings } from '../db/settings'
-import type { Role, Settings, User } from '../db/types'
+import type { PaymentMethod, Settings } from '../db/types'
 import { loadPrinterConfig, pairPrinter, savePrinterConfig, sendRaw, supports, type PrinterConfig } from '../lib/printer'
 import { drawerKickBytes, testPageBytes } from '../lib/escpos'
 import { download } from '../lib/csv'
-import { PIN_LENGTH, useSession } from '../session'
-import { ListPanel, Modal, PageHeader, errorText, useToast } from '../components/ui'
+import { money, toCents } from '../lib/money'
+import { useSession } from '../session'
+import { PageHeader, errorText, useToast } from '../components/ui'
+import ChangePinForm from '../components/ChangePinForm'
 
-const TABS = ['Shop & receipt', 'Payments', 'Hardware', 'Users', 'Bike models', 'Backup'] as const
+const TABS = ['Shop & receipt', 'Taxes', 'Payments', 'Hardware', 'Bike models', 'Notifications', 'Security', 'Backup', 'About'] as const
 type Tab = (typeof TABS)[number]
+
+const APP_VERSION = '0.1.0'
+
+const SECTIONS: { group: string; items: { id: Tab; icon: typeof Store; tint: string; desc: string }[] }[] = [
+  {
+    group: 'Store',
+    items: [
+      { id: 'Shop & receipt', icon: Store, tint: 'bg-sky-100 text-sky-600', desc: 'Identity printed on every receipt, plus your returns policy line.' },
+      { id: 'Taxes', icon: Percent, tint: 'bg-blue-100 text-blue-600', desc: 'VAT rate and whether shelf prices include tax.' },
+      { id: 'Payments', icon: Banknote, tint: 'bg-violet-100 text-violet-600', desc: 'Currency, accepted tenders, M-Pesa and the local server.' },
+      { id: 'Hardware', icon: Printer, tint: 'bg-slate-200 text-slate-600', desc: 'Receipt printers, cash drawer and barcode scanners.' },
+      { id: 'Bike models', icon: Bike, tint: 'bg-amber-100 text-amber-600', desc: 'Models used for part fitment and the Fits filter.' },
+    ],
+  },
+  {
+    group: 'System',
+    items: [
+      { id: 'Notifications', icon: Bell, tint: 'bg-rose-100 text-rose-600', desc: 'Choose which alert groups appear on the Notifications page.' },
+      { id: 'Security', icon: ShieldCheck, tint: 'bg-indigo-100 text-indigo-600', desc: 'Your PIN and how this till locks.' },
+      { id: 'Backup', icon: Download, tint: 'bg-teal-100 text-teal-600', desc: 'Download, restore and protect your data.' },
+      { id: 'About', icon: Info, tint: 'bg-cyan-100 text-cyan-700', desc: 'Version, storage usage and factory reset.' },
+    ],
+  },
+]
+
+const ALL_ITEMS = SECTIONS.flatMap((s) => s.items)
+const DESCS = Object.fromEntries(ALL_ITEMS.map((i) => [i.id, i.desc])) as Record<Tab, string>
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('Shop & receipt')
+  const active = ALL_ITEMS.find((i) => i.id === tab)!
+
   return (
     <div className="p-6">
-      <PageHeader title="Settings" />
-      <div className="mb-4 flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button key={t} className={tab === t ? 'btn-dark' : 'btn-ghost'} onClick={() => setTab(t)}>
-            {t}
-          </button>
-        ))}
-      </div>
-      <div className="card max-w-3xl p-5">
-        {tab === 'Shop & receipt' && <ShopSettings />}
-        {tab === 'Payments' && <PaymentSettings />}
-        {tab === 'Hardware' && <HardwareSettings />}
-        {tab === 'Users' && <UserSettings />}
-        {tab === 'Bike models' && <BikeSettings />}
-        {tab === 'Backup' && <BackupSettings />}
+      <PageHeader
+        title="Settings"
+        subtitle="Everything the till remembers — shop profile, money, hardware and data"
+        actions={
+          <Link to="/staff" className="btn-ghost">
+            Manage staff
+          </Link>
+        }
+      />
+
+      <div className="grid max-w-6xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:grid-cols-[270px_1fr]">
+        {/* Left section nav */}
+        <nav className="border-b border-slate-100 bg-slate-50/70 p-3 md:border-b-0 md:border-r">
+          {SECTIONS.map((group) => (
+            <div key={group.group} className="mb-4 last:mb-1">
+              <div className="mb-1.5 px-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">{group.group}</div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const on = tab === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setTab(item.id)}
+                      className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-semibold transition ${
+                        on ? 'bg-[#2f63a8] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      <span
+                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${on ? 'bg-white/20 text-white' : item.tint}`}
+                      >
+                        <Icon size={15} />
+                      </span>
+                      <span className="truncate">{item.id}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Right content pane */}
+        <div className="min-w-0 p-6 lg:p-8">
+          <div className="mb-5 flex items-start gap-3">
+            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${active.tint}`}>
+              <active.icon size={19} />
+            </span>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">{tab}</h2>
+              <p className="text-sm text-slate-500">{DESCS[tab]}</p>
+            </div>
+          </div>
+
+          {tab === 'Shop & receipt' && <ShopSettings />}
+          {tab === 'Taxes' && <TaxSettings />}
+          {tab === 'Payments' && <PaymentsSettings />}
+          {tab === 'Hardware' && <HardwareSettings />}
+          {tab === 'Bike models' && <BikeSettings />}
+          {tab === 'Notifications' && <NotifySettings />}
+          {tab === 'Security' && <SecuritySettings />}
+          {tab === 'Backup' && <BackupSettings />}
+          {tab === 'About' && <AboutSettings />}
+        </div>
       </div>
     </div>
   )
@@ -60,15 +142,33 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
-function SaveBar({ onSave }: { onSave: () => void }) {
+function SaveBar({ onSave, label }: { onSave: () => void; label?: string }) {
   return (
     <div className="mt-5 flex justify-end">
       <button className="btn-primary" onClick={onSave}>
-        <Save size={16} /> Save
+        <Save size={16} /> {label ?? 'Save'}
       </button>
     </div>
   )
 }
+
+function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-6 border-t border-slate-100 pt-5 first:border-0 first:pt-0">
+      <h3 className="text-sm font-bold uppercase tracking-wide text-slate-600">{title}</h3>
+      {desc && <p className="mt-0.5 text-xs text-slate-500">{desc}</p>}
+      <div className="mt-3">{children}</div>
+    </section>
+  )
+}
+
+/** VAT split for a worked example / receipt preview. */
+function taxSplit(amount: number, rate: number, incl: boolean) {
+  const vat = incl ? Math.round((amount * rate) / (100 + rate)) : Math.round((amount * rate) / 100)
+  return incl ? { net: amount - vat, vat, total: amount } : { net: amount, vat, total: amount + vat }
+}
+
+// ---------------------------------------------------------------- Shop & receipt
 
 function ShopSettings() {
   const { draft, set, save } = useDraft()
@@ -87,19 +187,24 @@ function ShopSettings() {
         <Field label="KRA PIN" hint="Printed on receipts.">
           <input className="input uppercase" value={draft.kraPin} onChange={(e) => set('kraPin', e.target.value.toUpperCase())} />
         </Field>
-        <Field label="VAT rate %">
-          <input className="input" type="number" min={0} value={draft.vatRate} onChange={(e) => set('vatRate', Number(e.target.value))} />
-        </Field>
-        <Field label="Prices">
-          <select className="input" value={draft.pricesIncludeVat ? 'incl' : 'excl'} onChange={(e) => set('pricesIncludeVat', e.target.value === 'incl')}>
-            <option value="incl">Shelf prices include VAT</option>
-            <option value="excl">VAT added at checkout</option>
-          </select>
-        </Field>
         <div className="md:col-span-2">
-          <Field label="Receipt footer">
+          <Field label="Receipt footer" hint="Thank-you line, returns policy, warranty wording…">
             <textarea className="input" rows={2} value={draft.receiptFooter} onChange={(e) => set('receiptFooter', e.target.value)} />
           </Field>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div>
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">Receipt preview</h3>
+          <ReceiptPreview s={draft} />
+        </div>
+        <div className="text-sm leading-relaxed text-slate-600">
+          <p>
+            This header and footer print at the top and bottom of every receipt. VAT lines use the rates from the{' '}
+            <b>Taxes</b> tab and the logo/paper size live under <b>Hardware</b>.
+          </p>
+          <p className="mt-2 text-xs text-slate-500">Preview shows an 80&nbsp;mm layout with a sample line.</p>
         </div>
       </div>
       <SaveBar onSave={save} />
@@ -107,33 +212,236 @@ function ShopSettings() {
   )
 }
 
-function PaymentSettings() {
+function ReceiptPreview({ s }: { s: Settings }) {
+  const ex = taxSplit(125000, s.vatRate, s.pricesIncludeVat)
+  return (
+    <div className="rounded-lg border border-dashed border-slate-300 bg-white p-3 shadow-sm">
+      <div className="mx-auto max-w-[260px] font-mono text-[11px] leading-relaxed text-slate-700">
+        <div className="text-center">
+          <div className="text-sm font-bold uppercase tracking-wide">{s.shopName || 'Shop name'}</div>
+          <div>{s.address}</div>
+          {s.phone && <div>{s.phone}</div>}
+          {s.kraPin && <div>PIN {s.kraPin}</div>}
+        </div>
+        <div className="my-2 border-t border-dashed border-slate-300" />
+        <div className="flex justify-between">
+          <span>1 × Sample part</span>
+          <span>{money(ex.net, '')}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Subtotal</span>
+          <span>{money(ex.net, '')}</span>
+        </div>
+        {s.vatRate > 0 && (
+          <div className="flex justify-between">
+            <span>VAT {s.vatRate}%</span>
+            <span>{money(ex.vat, '')}</span>
+          </div>
+        )}
+        <div className="flex justify-between font-bold">
+          <span>TOTAL {s.currency}</span>
+          <span>{money(ex.total, '')}</span>
+        </div>
+        <div className="my-2 border-t border-dashed border-slate-300" />
+        <div className="text-center">{s.receiptFooter}</div>
+        <div className="mt-2 text-center text-[9px] uppercase tracking-widest text-slate-400">{s.paperWidth} mm preview</div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- Taxes
+
+function TaxSettings() {
   const { draft, set, save } = useDraft()
+  const [sample, setSample] = useState('1000')
+  const cents = toCents(sample)
+  const ex = taxSplit(cents, draft.vatRate, draft.pricesIncludeVat)
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="M-Pesa Till / Paybill number" hint="Shown on the payment screen and receipt.">
-          <input className="input" value={draft.mpesaTill} onChange={(e) => set('mpesaTill', e.target.value)} />
+        <Field label="VAT rate %" hint="Kenya standard rate is 16. Set 0 if you are not registered.">
+          <input className="input" type="number" min={0} max={100} value={draft.vatRate} onChange={(e) => set('vatRate', Number(e.target.value))} />
         </Field>
-        <Field label="M-Pesa mode">
-          <select className="input" value={draft.mpesaMode} onChange={(e) => set('mpesaMode', e.target.value as Settings['mpesaMode'])}>
-            <option value="manual">Manual — cashier types the confirmation code</option>
-            <option value="stk">STK Push — prompt sent to the customer's phone</option>
+        <Field label="Shelf prices">
+          <select className="input" value={draft.pricesIncludeVat ? 'incl' : 'excl'} onChange={(e) => set('pricesIncludeVat', e.target.value === 'incl')}>
+            <option value="incl">Include VAT in shelf prices</option>
+            <option value="excl">Add VAT at checkout</option>
           </select>
         </Field>
-        <div className="md:col-span-2">
-          <Field label="Local server URL" hint="Runs server/index.ts. Handles M-Pesa STK Push (Daraja) and network printers. Default /api works when the app is served by that server.">
-            <input className="input font-mono" value={draft.apiUrl} onChange={(e) => set('apiUrl', e.target.value)} />
-          </Field>
-        </div>
       </div>
-      <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-        STK Push needs Safaricom Daraja credentials in the server's <code>.env</code> file. See <code>docs/MPESA.md</code>. Manual mode works with no setup and no internet.
-      </p>
+
+      <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-wide text-slate-600">Worked example</h4>
+            <p className="text-xs text-slate-500">
+              {draft.pricesIncludeVat ? 'Customer pays the shelf price; VAT is inside it.' : 'VAT is added on top at the till.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-500">{draft.currency}</span>
+            <input className="input w-28 text-right" inputMode="decimal" value={sample} onChange={(e) => setSample(e.target.value)} />
+          </div>
+        </div>
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+          <div className="rounded-lg bg-white px-3 py-2">
+            <dt className="text-xs text-slate-500">Net (before VAT)</dt>
+            <dd className="font-bold text-slate-800">{money(ex.net, draft.currency)}</dd>
+          </div>
+          <div className="rounded-lg bg-white px-3 py-2">
+            <dt className="text-xs text-slate-500">VAT at {draft.vatRate}%</dt>
+            <dd className="font-bold text-slate-800">{money(ex.vat, draft.currency)}</dd>
+          </div>
+          <div className="rounded-lg bg-white px-3 py-2">
+            <dt className="text-xs text-slate-500">Customer pays</dt>
+            <dd className="font-bold text-brand-700">{money(ex.total, draft.currency)}</dd>
+          </div>
+        </dl>
+      </div>
       <SaveBar onSave={save} />
     </>
   )
 }
+
+// ---------------------------------------------------------------- Payments (currency + methods + M-Pesa + API)
+
+const CURRENCIES = ['KES', 'UGX', 'TZS', 'RWF', 'BIF', 'USD', 'EUR', 'GBP', 'GHS', 'NGN', 'ZAR', 'INR']
+
+const METHOD_META: { id: PaymentMethod; label: string; desc: string; icon: typeof Banknote }[] = [
+  { id: 'cash', label: 'Cash', desc: 'Notes and coins at the counter', icon: Banknote },
+  { id: 'mpesa', label: 'M-Pesa', desc: 'Confirmation code or STK push', icon: Smartphone },
+  { id: 'card', label: 'Card', desc: 'Debit / credit card terminal', icon: CreditCard },
+  { id: 'account', label: 'On account', desc: "Post to a customer's credit balance", icon: UserRound },
+]
+
+function PaymentsSettings() {
+  const { draft, set, save } = useDraft()
+  const toast = useToast()
+  const [testing, setTesting] = useState(false)
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const toggle = (id: PaymentMethod) => {
+    const on = draft.enabledPayments.includes(id)
+    set('enabledPayments', on ? draft.enabledPayments.filter((m) => m !== id) : [...draft.enabledPayments, id])
+  }
+
+  const testApi = async () => {
+    setTesting(true)
+    setStatus(null)
+    try {
+      const base = draft.apiUrl.replace(/\/$/, '')
+      const r = await fetch(`${base}/health`, { headers: { Accept: 'application/json' } })
+      if (!r.ok) throw new Error(`Server replied HTTP ${r.status}`)
+      const j = (await r.json()) as { ok?: boolean; mpesa?: string }
+      setStatus({ ok: !!j.ok, msg: `Connected${j.mpesa ? ` · M-Pesa ${j.mpesa}` : ''}` })
+    } catch (e) {
+      setStatus({ ok: false, msg: `Not reachable — ${errorText(e)}` })
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const saveAll = async () => {
+    if (draft.enabledPayments.length === 0) return toast('Keep at least one payment method enabled', 'error')
+    await save()
+  }
+
+  return (
+    <>
+      <Section title="Currency" desc="Shown on every price, receipt and report.">
+        <div className="grid items-end gap-4 md:grid-cols-2">
+          <div className="flex items-end gap-3">
+            <div className="w-32">
+              <input
+                className="input uppercase"
+                list="currency-codes"
+                maxLength={3}
+                value={draft.currency}
+                onChange={(e) => set('currency', e.target.value.toUpperCase())}
+                aria-label="Currency code"
+              />
+              <datalist id="currency-codes">
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
+              Preview: <b className="text-slate-900">{money(1234567, draft.currency)}</b>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Accepted at checkout" desc="Enabled methods appear on the tender row. Disable anything you never take.">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {METHOD_META.map(({ id, label, desc, icon: Icon }) => {
+            const on = draft.enabledPayments.includes(id)
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => toggle(id)}
+                className={`flex items-start gap-3 rounded-xl border p-4 text-left transition ${on ? 'border-brand-500 bg-brand-50/60 ring-1 ring-brand-500' : 'border-slate-200 hover:border-slate-300'}`}
+              >
+                <span className={`mt-0.5 rounded-lg p-2 ${on ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                  <Icon size={18} />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2 font-semibold text-slate-900">
+                    {label}
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${on ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                      {on ? 'On' : 'Off'}
+                    </span>
+                  </span>
+                  <span className="block text-sm text-slate-500">{desc}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </Section>
+
+      <Section title="M-Pesa" desc="Till number printed on receipts, plus how cashiers capture payments.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Till / Paybill number">
+            <input className="input" value={draft.mpesaTill} onChange={(e) => set('mpesaTill', e.target.value)} />
+          </Field>
+          <Field label="Mode">
+            <select className="input" value={draft.mpesaMode} onChange={(e) => set('mpesaMode', e.target.value as Settings['mpesaMode'])}>
+              <option value="manual">Manual — cashier types the confirmation code</option>
+              <option value="stk">STK Push — prompt sent to the customer's phone</option>
+            </select>
+          </Field>
+        </div>
+      </Section>
+
+      <Section title="Local server" desc="Handles M-Pesa STK Push (Daraja) and network printers. Default /api works when the app is served by that server.">
+        <div className="flex gap-2">
+          <input className="input font-mono" value={draft.apiUrl} onChange={(e) => set('apiUrl', e.target.value)} />
+          <button className="btn-ghost shrink-0" onClick={testApi} disabled={testing}>
+            {testing ? <Loader2 size={16} className="animate-spin" /> : null} Test connection
+          </button>
+        </div>
+        {status && (
+          <p className={`mt-2 flex items-center gap-1.5 text-sm font-medium ${status.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+            <span className={`inline-block h-2 w-2 rounded-full ${status.ok ? 'bg-emerald-500' : 'bg-red-500'}`} />
+            {status.msg}
+          </p>
+        )}
+        <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+          STK Push needs Safaricom Daraja credentials in the server's <code>.env</code> file. See <code>docs/MPESA.md</code>. Manual mode works with no setup and no internet.
+        </p>
+      </Section>
+
+      <SaveBar onSave={saveAll} />
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Hardware
 
 function HardwareSettings() {
   const { draft, set, save } = useDraft()
@@ -228,87 +536,7 @@ function HardwareSettings() {
   )
 }
 
-function UserSettings() {
-  const users = useLiveQuery(() => db.users.toArray(), [], [] as User[])
-  const { user: me } = useSession()
-  const [edit, setEdit] = useState<Partial<User> | null>(null)
-  return (
-    <>
-      <div className="mb-3 flex justify-between">
-        <h3 className="font-semibold">Staff</h3>
-        <button className="btn-primary" onClick={() => setEdit({ role: 'cashier', active: true })}>
-          <Plus size={16} /> Add staff
-        </button>
-      </div>
-      <ListPanel title="Staff" footer={<span>{users.length} user{users.length === 1 ? '' : 's'}</span>}>
-        <table className="w-full">
-          <thead className="table-head">
-            <tr>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="table-row cursor-pointer hover:bg-slate-50" onClick={() => setEdit(u)}>
-                <td className="font-semibold">
-                  {u.name} {u.id === me?.id && <span className="text-xs text-slate-400">(you)</span>}
-                </td>
-                <td className="capitalize">{u.role}</td>
-                <td>{u.active ? 'Active' : 'Disabled'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </ListPanel>
-      <p className="mt-3 text-xs text-slate-500">Owner: everything. Manager: refunds, inventory, purchasing, reports. Cashier: selling, discounts, customers, service jobs.</p>
-      {edit && <UserModal user={edit} users={users} onClose={() => setEdit(null)} />}
-    </>
-  )
-}
-
-function UserModal({ user, users, onClose }: { user: Partial<User>; users: User[]; onClose: () => void }) {
-  const toast = useToast()
-  const [u, setU] = useState(user)
-  const save = async () => {
-    try {
-      if (!u.name?.trim()) throw new Error('Name is required')
-      if (!new RegExp(`^\\d{${PIN_LENGTH}}$`).test(u.pin ?? '')) throw new Error(`PIN must be ${PIN_LENGTH} digits`)
-      if (users.some((x) => x.pin === u.pin && x.id !== u.id)) throw new Error('That PIN is already used')
-      const remainingOwners = users.filter((x) => x.role === 'owner' && x.active && x.id !== u.id).length
-      if (remainingOwners === 0 && (u.role !== 'owner' || !u.active)) throw new Error('Keep at least one active owner')
-      const rec = { ...u, name: u.name.trim() } as User
-      if (rec.id === undefined) delete rec.id
-      await db.users.put(rec)
-      onClose()
-    } catch (e) {
-      toast(errorText(e), 'error')
-    }
-  }
-  return (
-    <Modal title={u.id ? `Edit ${user.name}` : 'Add staff'} onClose={onClose} footer={<button className="btn-primary" onClick={save}>Save</button>}>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Name">
-          <input className="input" value={u.name ?? ''} onChange={(e) => setU({ ...u, name: e.target.value })} autoFocus />
-        </Field>
-        <Field label={`PIN (${PIN_LENGTH} digits)`}>
-          <input className="input font-mono" inputMode="numeric" maxLength={PIN_LENGTH} value={u.pin ?? ''} onChange={(e) => setU({ ...u, pin: e.target.value.replace(/\D/g, '') })} />
-        </Field>
-        <Field label="Role">
-          <select className="input" value={u.role} onChange={(e) => setU({ ...u, role: e.target.value as Role })}>
-            <option value="cashier">Cashier</option>
-            <option value="manager">Manager</option>
-            <option value="owner">Owner</option>
-          </select>
-        </Field>
-        <label className="mt-6 flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={u.active} onChange={(e) => setU({ ...u, active: e.target.checked })} /> Active
-        </label>
-      </div>
-    </Modal>
-  )
-}
+// ---------------------------------------------------------------- Bike models
 
 function BikeSettings() {
   const { draft, set, save } = useDraft()
@@ -342,6 +570,69 @@ function BikeSettings() {
     </>
   )
 }
+
+// ---------------------------------------------------------------- Notifications
+
+function NotifySettings() {
+  const { draft, set, save } = useDraft()
+  const rows: { key: 'notifyLowStock' | 'notifyOwing' | 'notifyJobUpdates'; title: string; desc: string; icon: typeof Bell }[] = [
+    { key: 'notifyLowStock', title: 'Low stock & reorders', desc: 'Parts at or below their reorder level, plus out-of-stock alerts.', icon: PackageSearch },
+    { key: 'notifyOwing', title: 'Customer credit', desc: 'Customers with an outstanding on-account balance.', icon: UserRound },
+    { key: 'notifyJobUpdates', title: 'Service jobs', desc: 'Jobs waiting for parts and jobs ready for collection.', icon: Bell },
+  ]
+  return (
+    <>
+      <p className="mb-4 text-sm text-slate-600">Choose which alert groups appear on the Notifications page. The open/closed shift reminder is always shown.</p>
+      <div className="space-y-3">
+        {rows.map(({ key, title, desc, icon: Icon }) => (
+          <label key={key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-300">
+            <span className={`mt-0.5 rounded-lg p-2 ${draft[key] ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+              <Icon size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold text-slate-900">{title}</span>
+              <span className="block text-sm text-slate-500">{desc}</span>
+            </span>
+            <span className="relative mt-1 inline-flex shrink-0">
+              <input type="checkbox" className="peer sr-only" checked={draft[key]} onChange={(e) => set(key, e.target.checked)} />
+              <span className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-brand-600" />
+              <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+            </span>
+          </label>
+        ))}
+      </div>
+      <SaveBar onSave={save} />
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Security
+
+function SecuritySettings() {
+  const { user } = useSession()
+
+  if (!user) return null
+
+  return (
+    <>
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <ShieldCheck size={20} className="mt-0.5 shrink-0 text-brand-600" />
+        <div className="text-sm text-slate-600">
+          You are signed in as <b className="text-slate-900">{user.name}</b> ({user.role}). Lock the till when you step away — every sale, refund and settings change is recorded against your name in the activity log.
+        </div>
+      </div>
+
+      <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-600">Change my PIN</h3>
+      <ChangePinForm />
+
+      <p className="mt-5 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+        PINs are stored only on this device. To add, disable or re-role staff members, open <b>Staff</b> from the sidebar (owner only) — or your own details from <b>My profile</b> in the top-right menu.
+      </p>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Backup
 
 function BackupSettings() {
   const toast = useToast()
@@ -378,6 +669,130 @@ function BackupSettings() {
           Restore from file
           <input type="file" accept=".json" className="hidden" onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
         </label>
+      </div>
+      <p className="mt-4 text-xs text-slate-500">
+        The backup JSON contains every table — products, sales, customers, jobs, staff, settings and the activity log. Restore it on any till running this app.
+      </p>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- About
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / 1048576).toFixed(1)} MB`
+}
+
+function AboutSettings() {
+  const toast = useToast()
+  const [usage, setUsage] = useState<number | null>(null)
+  const [quota, setQuota] = useState<number | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    navigator.storage
+      ?.estimate()
+      .then((e) => {
+        if (!alive) return
+        setUsage(e.usage ?? null)
+        setQuota(e.quota ?? null)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const counts = useLiveQuery(
+    async () => ({
+      products: await db.products.count(),
+      customers: await db.customers.count(),
+      sales: await db.sales.count(),
+      jobs: await db.jobs.count(),
+      movements: await db.movements.count(),
+      staff: await db.users.count(),
+      logs: await db.logs.count(),
+    }),
+    [],
+    null,
+  )
+
+  const reset = async () => {
+    if (!confirm('Erase ALL data on this till — products, sales, customers, jobs, staff, settings?')) return
+    if (!confirm('This cannot be undone (take a backup first). Reset everything?')) return
+    try {
+      await db.transaction('rw', db.tables, async () => {
+        for (const t of db.tables) await t.clear()
+      })
+      window.location.reload()
+    } catch (e) {
+      toast(`Reset failed: ${errorText(e)}`, 'error')
+    }
+  }
+
+  const rows: [string, number | undefined][] = counts
+    ? [
+        ['Products', counts.products],
+        ['Customers', counts.customers],
+        ['Sales receipts', counts.sales],
+        ['Service jobs', counts.jobs],
+        ['Stock movements', counts.movements],
+        ['Staff', counts.staff],
+        ['Log entries', counts.logs],
+      ]
+    : []
+
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 font-semibold text-slate-900">
+            <Database size={17} className="text-brand-600" /> Optimas POS
+          </div>
+          <dl className="mt-2 space-y-1 text-sm text-slate-600">
+            <div className="flex justify-between">
+              <dt>Version</dt>
+              <dd className="font-mono font-semibold">{APP_VERSION}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Storage used</dt>
+              <dd className="font-semibold">{usage != null ? fmtBytes(usage) : '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Browser quota</dt>
+              <dd className="font-semibold">{quota != null ? fmtBytes(quota) : '—'}</dd>
+            </div>
+          </dl>
+        </div>
+        <div className="rounded-xl border border-slate-200 p-4">
+          <div className="font-semibold text-slate-900">Data on this till</div>
+          <dl className="mt-2 space-y-1 text-sm text-slate-600">
+            {rows.map(([label, n]) => (
+              <div key={label} className="flex justify-between">
+                <dt>{label}</dt>
+                <dd className="font-semibold tabular-nums">{n ?? '…'}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm text-slate-600">
+        Everything is stored locally in this browser (IndexedDB) and works offline. STK Push and network printing need the bundled Node server (<code>npm run server</code>). Setup docs live in <code>docs/</code> — <code>MPESA.md</code> for Daraja credentials.
+      </p>
+
+      <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+        <div className="flex items-center gap-2 font-semibold text-red-700">
+          <AlertTriangle size={17} /> Factory reset
+        </div>
+        <p className="mt-1 text-sm text-red-600">
+          Wipes every table and reloads. The sample catalogue and default Owner (PIN 1234) / Cashier (PIN 0000) accounts come back on the next start.
+        </p>
+        <button className="btn-ghost mt-3 border-red-300 text-red-600 hover:bg-red-100" onClick={reset}>
+          Reset all data…
+        </button>
       </div>
     </>
   )

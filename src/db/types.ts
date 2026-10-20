@@ -8,6 +8,10 @@ export interface User {
   pin: string
   role: Role
   active: boolean
+  /** Optional profile details shown on the Profile page. */
+  email?: string
+  phone?: string
+  about?: string
 }
 
 export interface Category {
@@ -214,4 +218,22 @@ export interface Settings {
   paperWidth: 58 | 80
   autoPrint: boolean
   openDrawerOnCash: boolean
+  /** Payment methods shown in the checkout tender list. At least one must stay enabled. */
+  enabledPayments: PaymentMethod[]
+  /** Which alert groups the Notifications page shows. */
+  notifyLowStock: boolean
+  notifyOwing: boolean
+  notifyJobUpdates: boolean
+}
+
+export type LogKind = 'auth' | 'sale' | 'stock' | 'shift' | 'settings' | 'user' | 'system'
+
+export interface LogEntry {
+  id?: number
+  at: number
+  kind: LogKind
+  action: string
+  detail?: string
+  userId?: number
+  userName?: string
 }

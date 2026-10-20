@@ -42,6 +42,13 @@ export default function PaymentModal({
   const amount = entry ? toCents(entry) : remaining
   const c = settings.currency
 
+  const enabled = settings.enabledPayments?.length ? settings.enabledPayments : METHODS.map((m) => m.id)
+  const methods = METHODS.filter((m) => enabled.includes(m.id))
+
+  useEffect(() => {
+    if (methods.length > 0 && !methods.some((m) => m.id === method)) setMethod(methods[0].id)
+  }, [methods, method])
+
   useEffect(() => {
     setEntry('')
     setReference('')
@@ -166,8 +173,8 @@ export default function PaymentModal({
 
         {/* Tender entry */}
         <div className={done ? 'pointer-events-none opacity-40' : ''}>
-          <div className="mb-3 grid grid-cols-4 gap-2">
-            {METHODS.map(({ id, label, icon: Icon }) => (
+          <div className={`mb-3 grid gap-2 ${methods.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+            {methods.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setMethod(id)}

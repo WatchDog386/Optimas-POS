@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import type {
   Category,
   Customer,
+  LogEntry,
   ParkedSale,
   Product,
   PurchaseOrder,
@@ -30,6 +31,7 @@ export class PosDB extends Dexie {
   purchaseOrders!: EntityTable<PurchaseOrder, 'id'>
   shifts!: EntityTable<Shift, 'id'>
   jobs!: EntityTable<ServiceJob, 'id'>
+  logs!: EntityTable<LogEntry, 'id'>
   kv!: EntityTable<KV, 'key'>
 
   constructor(name = 'optimas-pos') {
@@ -47,6 +49,9 @@ export class PosDB extends Dexie {
       shifts: '++id, userId, openedAt, closedAt',
       jobs: '++id, &jobNo, customerId, status, createdAt',
       kv: 'key',
+    })
+    this.version(2).stores({
+      logs: '++id, at, kind, userId',
     })
   }
 }

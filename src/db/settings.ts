@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
+import { logActivity } from './logs'
 import type { Settings } from './types'
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,6 +19,10 @@ export const DEFAULT_SETTINGS: Settings = {
   paperWidth: 80,
   autoPrint: false,
   openDrawerOnCash: true,
+  enabledPayments: ['cash', 'mpesa', 'card', 'account'],
+  notifyLowStock: true,
+  notifyOwing: true,
+  notifyJobUpdates: true,
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -28,6 +33,14 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(patch: Partial<Settings>): Promise<void> {
   const current = await getSettings()
   await db.kv.put({ key: 'settings', value: { ...current, ...patch } })
+  const changed = Object.keys(patch).filter((k) => {
+    const before = (current as unknown as Record<string, unknown>)[k]
+    const after = (patch as unknown as Record<string, unknown>)[k]
+    return JSON.stringify(before) !== JSON.stringify(after)
+  })
+  if (changed.length > 0) {
+    await logActivity('settings', 'Settings updated', { detail: changed.join(', ') })
+  }
 }
 
 export function useSettings(): Settings {
