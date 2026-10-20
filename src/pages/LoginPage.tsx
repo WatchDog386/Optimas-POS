@@ -81,7 +81,7 @@ export default function LoginPage() {
 
         {/* sign-in sheet */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-ink px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="mt-auto w-full">
+          <div className="mt-auto mb-10 w-full">
             <p className="text-center text-sm text-white/70">Enter PIN</p>
 
             {/* OTP-style PIN boxes */}
@@ -131,7 +131,7 @@ export default function LoginPage() {
               type="button"
               onClick={submit}
               disabled={pin.length !== PIN_LENGTH || busy}
-              className="mt-5 w-full rounded-2xl bg-[#2f63a8] py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-12px_rgba(47,99,168,0.9)] transition duration-150 hover:bg-[#2a5896] active:scale-[0.99] disabled:opacity-40"
+              className="mt-5 w-full rounded-2xl bg-[#2f63a8] py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-12px_rgba(47,99,168,0.9)] transition duration-150 hover:bg-[#2a5896] active:scale-[0.99]"
             >
               Login
             </button>
