@@ -222,7 +222,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             {cards.map(({ label, value, sub, icon: Icon, bg, strip, to }) => (
               <Link
                 key={label}
@@ -230,16 +230,16 @@ export default function DashboardPage() {
                 aria-label={`${label}: ${value}. Open details.`}
                 className={`group relative overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${bg}`}
               >
-                <div className="p-4 pb-3">
+                <div className="p-3 pb-2 sm:p-4 sm:pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="text-3xl font-extrabold leading-tight">{value}</div>
-                    <Icon size={44} className="shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30" />
+                    <div className="min-w-0 truncate text-2xl font-extrabold leading-tight sm:text-3xl">{value}</div>
+                    <Icon size={44} className="h-8 w-8 shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30 sm:h-11 sm:w-11" />
                   </div>
                   <div className="mt-1 text-sm font-semibold sm:text-base">{label}</div>
                   <div className="mt-0.5 text-[11px] opacity-90 sm:text-sm">{sub}</div>
                 </div>
                 <div
-                  className={`flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold uppercase tracking-wide transition duration-150 ${strip}`}
+                  className={`flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition duration-150 sm:px-4 sm:py-2 sm:text-sm ${strip}`}
                 >
                   More info
                   <ArrowRight size={14} className="transition duration-150 group-hover:translate-x-1" />
@@ -428,18 +428,18 @@ export default function DashboardPage() {
             )}
           </ListPanel>
 
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-1">
             {tiles.map(({ label, value, icon: Icon, bg, fg, to }) => (
               <Link
                 key={label}
                 to={to}
                 aria-label={`${label}: ${value}`}
-                className={`flex items-center gap-4 rounded-lg px-4 py-3 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 ${bg}`}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 sm:gap-4 sm:px-4 sm:py-3 ${bg}`}
               >
                 <Icon size={26} className={`shrink-0 ${fg}`} strokeWidth={2.25} />
                 <div className={`min-w-0 ${fg}`}>
                   <div className="text-xs font-normal leading-snug opacity-90 sm:text-[15px]">{label}</div>
-                  <div className="text-[15px] font-bold leading-snug">{value}</div>
+                  <div className="truncate text-sm font-bold leading-snug sm:text-[15px]">{value}</div>
                 </div>
               </Link>
             ))}

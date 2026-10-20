@@ -178,15 +178,15 @@ export default function ServicePage() {
       />
 
       {/* KPI cards */}
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {kpis.map(({ label, value, sub, icon: Icon, bg }) => (
-          <div key={label} className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-md ${bg}`}>
+          <div key={label} className={`relative overflow-hidden rounded-2xl p-3 text-white shadow-md sm:p-4 ${bg}`}>
             <div className="flex items-start justify-between gap-2">
-              <div className="text-3xl font-extrabold leading-tight">{value}</div>
+              <div className="min-w-0 truncate text-2xl font-extrabold leading-tight sm:text-3xl">{value}</div>
               <Icon size={26} className="shrink-0 opacity-80" />
             </div>
-            <div className="mt-1.5 text-base font-bold">{label}</div>
-            <div className="mt-0.5 text-sm opacity-90">{sub}</div>
+            <div className="mt-1.5 text-sm font-bold sm:text-base">{label}</div>
+            <div className="mt-0.5 text-[11px] opacity-90 sm:text-sm">{sub}</div>
           </div>
         ))}
       </div>
