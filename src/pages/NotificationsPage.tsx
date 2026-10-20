@@ -121,6 +121,48 @@ export default function NotificationsPage() {
 
   const unread = items.filter((i) => !read.has(i.id))
 
+  const body =
+    items.length === 0 ? (
+      <div className="px-4">
+        <div className="py-12 text-center text-sm text-slate-500">
+          All clear — no stock, credit or job alerts right now.
+        </div>
+      </div>
+    ) : (
+      <ul className="divide-y divide-slate-100">
+        {items.map((n) => {
+          const isRead = read.has(n.id)
+          const Icon = n.icon
+          return (
+            <li key={n.id}>
+              <button
+                type="button"
+                onClick={() => setRead((prev) => new Set(prev).add(n.id))}
+                className={`flex w-full items-start gap-4 px-4 py-3.5 text-left transition hover:bg-slate-50 ${
+                  isRead ? 'opacity-70' : 'bg-white'
+                }`}
+              >
+                <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg ${n.iconClass}`}>
+                  <Icon size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-800">{n.title}</span>
+                    <Badge tone={n.tone}>{n.label}</Badge>
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-500">{n.body}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2 pt-0.5 text-xs text-slate-400">
+                  {timeAgo(n.at)}
+                  {!isRead && <span className="h-2 w-2 rounded-full bg-brand-500" />}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    )
+
   return (
     <div className="p-4 lg:p-6">
       <PageHeader
@@ -128,61 +170,36 @@ export default function NotificationsPage() {
         subtitle={`${unread.length} unread · stock, credit, service jobs and shift alerts — choose groups in Settings → Notifications`}
         actions={
           unread.length > 0 ? (
-            <button
-              className="btn-ghost"
-              onClick={() => setRead(new Set(items.map((i) => i.id)))}
-            >
-              <CheckCheck size={16} /> Mark all as read
-            </button>
+            <span className="hidden sm:inline-flex">
+              <button
+                className="btn-ghost"
+                onClick={() => setRead(new Set(items.map((i) => i.id)))}
+              >
+                <CheckCheck size={16} /> Mark all as read
+              </button>
+            </span>
           ) : undefined
         }
       />
 
-      <ListPanel
-        title="All notifications"
-        actions={<Badge tone="blue">{items.length} total</Badge>}
-      >
-        {items.length === 0 ? (
-          <div className="px-4">
-            <div className="py-12 text-center text-sm text-slate-500">
-              All clear — no stock, credit or job alerts right now.
-            </div>
-          </div>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {items.map((n) => {
-              const isRead = read.has(n.id)
-              const Icon = n.icon
-              return (
-                <li key={n.id}>
-                  <button
-                    type="button"
-                    onClick={() => setRead((prev) => new Set(prev).add(n.id))}
-                    className={`flex w-full items-start gap-4 px-4 py-3.5 text-left transition hover:bg-slate-50 ${
-                      isRead ? 'opacity-70' : 'bg-white'
-                    }`}
-                  >
-                    <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg ${n.iconClass}`}>
-                      <Icon size={18} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-800">{n.title}</span>
-                        <Badge tone={n.tone}>{n.label}</Badge>
-                      </span>
-                      <span className="mt-0.5 block text-sm text-slate-500">{n.body}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2 pt-0.5 text-xs text-slate-400">
-                      {timeAgo(n.at)}
-                      {!isRead && <span className="h-2 w-2 rounded-full bg-brand-500" />}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </ListPanel>
+      {/* Mobile: mark all as read, aligned right */}
+      {unread.length > 0 && (
+        <div className="mb-3 flex justify-end sm:hidden">
+          <button className="btn-ghost" onClick={() => setRead(new Set(items.map((i) => i.id)))}>
+            <CheckCheck size={16} /> Mark all as read
+          </button>
+        </div>
+      )}
+
+      {/* Mobile: bare list, no panel wrap */}
+      <div className="sm:hidden">{body}</div>
+
+      {/* Desktop: panel chrome */}
+      <div className="hidden sm:block">
+        <ListPanel title="All notifications" actions={<Badge tone="blue">{items.length} total</Badge>}>
+          {body}
+        </ListPanel>
+      </div>
     </div>
   )
 }

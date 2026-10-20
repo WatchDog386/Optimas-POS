@@ -113,8 +113,33 @@ export default function LogsPage() {
   return (
     <div className="p-4 lg:p-6">
       <PageHeader title="Activity log" subtitle="Sign-ins, sales, stock changes, shift and settings events on this device" />
+
+      {/* Mobile: search + kind dropdown (replaces the panel bar and pills) */}
+      <div className="mb-3 flex items-center gap-2 sm:hidden">
+        <input
+          className="input h-9 min-w-0 flex-1 text-sm"
+          placeholder="Search…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select
+          className="input h-9 w-32 shrink-0 text-sm"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as KindFilter)}
+          aria-label="Filter events"
+        >
+          {Object.entries(KIND_OPTIONS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <ListPanel
         title="Events"
+        barClassName="hidden sm:flex"
+        toolbarClassName="hidden sm:flex"
         actions={
           <input
             className="input h-8 w-48 border-0 bg-white py-1 text-sm"
@@ -144,7 +169,7 @@ export default function LogsPage() {
               <th className="w-24">Type</th>
               <th>Event</th>
               <th>Detail</th>
-              <th className="w-40">User</th>
+              <th className="hidden w-40 sm:table-cell">User</th>
             </tr>
           </thead>
           <tbody>
@@ -156,7 +181,7 @@ export default function LogsPage() {
                 </td>
                 <td className="font-semibold text-slate-800">{e.action}</td>
                 <td className="text-slate-500">{e.detail ?? '—'}</td>
-                <td className="text-slate-600">{e.userName ?? '—'}</td>
+                <td className="hidden text-slate-600 sm:table-cell">{e.userName ?? '—'}</td>
               </tr>
             ))}
             {rows.length === 0 && (

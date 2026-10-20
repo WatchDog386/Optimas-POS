@@ -254,7 +254,7 @@ body,
    zebra rows on the off-white canvas with a teal hover tint. */
 @utility table-head {
   & th {
-    @apply border-r border-white/10 bg-navy-600 px-3.5 py-3 text-left text-xs font-semibold uppercase tracking-[0.08em] text-white;
+    @apply border-r border-white/10 bg-navy-600 px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-white sm:px-3.5 sm:py-3 sm:text-xs;
     &:last-child {
       @apply border-r-0;
     }
@@ -265,7 +265,7 @@ body,
 }
 @utility table-row {
   & td {
-    @apply border-b border-r border-hairline px-3.5 py-3 text-[15px] text-ink-body;
+    @apply border-b border-r border-hairline px-2 py-2.5 text-[13px] text-ink-body sm:px-3.5 sm:py-3 sm:text-[15px];
     &:last-child {
       @apply border-r-0;
     }

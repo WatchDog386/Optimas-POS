@@ -105,21 +105,25 @@ export function ListPanel({
   toolbar,
   children,
   footer,
+  barClassName = '',
+  toolbarClassName = '',
 }: {
   title: ReactNode
   actions?: ReactNode
   toolbar?: ReactNode
   children: ReactNode
   footer?: ReactNode
+  barClassName?: string
+  toolbarClassName?: string
 }) {
   return (
     <div className="overflow-hidden rounded-none border border-hairline bg-white shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-ink px-4 py-3">
+      <div className={`flex flex-wrap items-center justify-between gap-2 bg-ink px-4 py-3 ${barClassName}`}>
         <h2 className="text-sm font-bold uppercase tracking-wider text-white">{title}</h2>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
       {toolbar && (
-        <div className="flex flex-wrap items-center justify-between gap-2 bg-ink-raised px-4 py-2.5">{toolbar}</div>
+        <div className={`flex flex-wrap items-center justify-between gap-2 bg-ink-raised px-4 py-2.5 ${toolbarClassName}`}>{toolbar}</div>
       )}
       <div className="overflow-x-auto">{children}</div>
       {footer && (
