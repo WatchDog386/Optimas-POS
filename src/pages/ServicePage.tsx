@@ -11,11 +11,11 @@ import { Modal, PageHeader, useToast } from '../components/ui'
 import CustomerPicker from '../components/CustomerPicker'
 import { CART_KEY, lineFromProduct } from './SellPage'
 
-const COLUMNS: { id: JobStatus; label: string; tone: string; dot: string }[] = [
-  { id: 'open', label: 'Booked in', tone: 'border-t-slate-400', dot: 'bg-slate-400' },
-  { id: 'in_progress', label: 'Being worked on', tone: 'border-t-sky-500', dot: 'bg-sky-500' },
-  { id: 'waiting_parts', label: 'Waiting for parts', tone: 'border-t-amber-500', dot: 'bg-amber-500' },
-  { id: 'ready', label: 'Ready for pickup', tone: 'border-t-emerald-500', dot: 'bg-emerald-500' },
+const COLUMNS: { id: JobStatus; label: string; tone: string; dot: string; hdr: string }[] = [
+  { id: 'open', label: 'Booked in', tone: 'border-t-slate-400', dot: 'bg-slate-400', hdr: 'md:bg-[linear-gradient(135deg,#94A3B8_0%,#3F4A54_100%)]' },
+  { id: 'in_progress', label: 'Being worked on', tone: 'border-t-sky-500', dot: 'bg-sky-500', hdr: 'md:bg-[linear-gradient(135deg,#0EA5E9_0%,#06425D_100%)]' },
+  { id: 'waiting_parts', label: 'Waiting for parts', tone: 'border-t-amber-500', dot: 'bg-amber-500', hdr: 'md:bg-[linear-gradient(135deg,#F59E0B_0%,#623F04_100%)]' },
+  { id: 'ready', label: 'Ready for pickup', tone: 'border-t-emerald-500', dot: 'bg-emerald-500', hdr: 'md:bg-[linear-gradient(135deg,#10B981_0%,#064A34_100%)]' },
 ]
 
 function jobValue(j: ServiceJob): number {
@@ -204,13 +204,20 @@ export default function ServicePage() {
         {COLUMNS.map((col) => {
           const list = jobs.filter((j) => j.status === col.id)
           return (
-            <div key={col.id} className={`flex min-h-0 flex-col rounded-xl border-t-4 bg-slate-200/60 ${col.tone}`}>
-              <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold text-slate-700">
+            <div
+              key={col.id}
+              className={`flex min-h-0 flex-col overflow-hidden rounded-xl border-t-4 bg-slate-200/60 md:border-t-0 ${col.tone}`}
+            >
+              <div
+                className={`flex items-center justify-between px-3 py-2 text-sm font-semibold text-slate-700 md:text-white ${col.hdr}`}
+              >
                 <span className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${col.dot}`} />
+                  <span className={`h-2 w-2 rounded-full ${col.dot} md:bg-white/75`} />
                   {col.label}
                 </span>
-                <span className="rounded-full bg-white px-2 text-xs font-bold text-slate-500">{list.length}</span>
+                <span className="rounded-full bg-white px-2 text-xs font-bold text-slate-500 md:bg-white/20 md:text-white">
+                  {list.length}
+                </span>
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-2">
                 {list.map((j) => (

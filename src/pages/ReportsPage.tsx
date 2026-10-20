@@ -5,6 +5,7 @@ import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import type { PaymentMethod, Product, Sale, SaleLine } from '../db/types'
 import { money, moneyShort } from '../lib/money'
+import { gradFrom } from '../lib/color'
 import { download, toCsv } from '../lib/csv'
 import { Badge, Empty, PageHeader } from '../components/ui'
 import { rangeStart } from './SalesPage'
@@ -420,21 +421,42 @@ function Kpi({
   icon: typeof Banknote
 }) {
   return (
-    <div className="card relative overflow-hidden p-4">
-      <div className="absolute inset-x-0 top-0 h-1" style={{ background: color }} />
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-          <div className="mt-1 truncate text-xl font-bold" style={{ color }}>
-            {value}
+    <>
+      {/* Phone: light card with the coloured top line */}
+      <div className="card relative overflow-hidden p-4 sm:hidden">
+        <div className="absolute inset-x-0 top-0 h-1" style={{ background: color }} />
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+            <div className="mt-1 truncate text-xl font-bold" style={{ color }}>
+              {value}
+            </div>
+            {sub && <div className="mt-0.5 truncate text-xs text-slate-500">{sub}</div>}
           </div>
-          {sub && <div className="mt-0.5 truncate text-xs text-slate-500">{sub}</div>}
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: `${color}1f`, color }}>
+            <Icon size={18} />
+          </span>
         </div>
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: `${color}1f`, color }}>
-          <Icon size={18} />
-        </span>
       </div>
-    </div>
+      {/* sm and up: start-card style — gradient, no top line */}
+      <div
+        className="hidden relative overflow-hidden rounded-xl p-4 text-white shadow-md sm:block"
+        style={{ background: gradFrom(color) }}
+      >
+        <span className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full border border-white/15" aria-hidden />
+        <span className="pointer-events-none absolute -right-2 -top-16 h-24 w-24 rounded-full border border-white/10" aria-hidden />
+        <div className="relative flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium opacity-80">{label}</div>
+            <div className="mt-1.5 truncate text-2xl font-bold leading-none">{value}</div>
+          </div>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15">
+            <Icon size={18} />
+          </span>
+        </div>
+        {sub && <div className="relative mt-3.5 truncate text-[11px] opacity-90">{sub}</div>}
+      </div>
+    </>
   )
 }
 
