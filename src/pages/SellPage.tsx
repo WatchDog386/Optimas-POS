@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bike, Image as ImageIcon, Minus, PauseCircle, Package, Percent, Plus, Search, ShoppingCart, Trash2, UserRound, Wrench, X } from 'lucide-react'
+import { Bike, Check, CreditCard, Image as ImageIcon, Minus, PauseCircle, Package, Percent, Plus, Search, ShoppingCart, Trash2, UserRound, Wrench, X } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { completeSale } from '../db/sales'
@@ -63,6 +63,8 @@ export default function SellPage() {
   const [bike, setBike] = useState<string>('all')
   const [dialog, setDialog] = useState<Dialog>(null)
   const [receipt, setReceipt] = useState<Sale | null>(null)
+  const [addedId, setAddedId] = useState<number | null>(null)
+  const addedTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     try {
@@ -101,6 +103,9 @@ export default function SellPage() {
       return { ...c, lines: [...c.lines, lineFromProduct(p)] }
     })
     if (p.serialized) setTimeout(() => setDialog({ line: cart.lines.length }), 0)
+    setAddedId(p.id ?? null)
+    window.clearTimeout(addedTimer.current)
+    addedTimer.current = window.setTimeout(() => setAddedId(null), 900)
   }
 
   const findExact = (code: string) => {
@@ -239,15 +244,25 @@ export default function SellPage() {
           </div>
         </div>
 
-        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-          <CategoryChip active={category === 'all'} onClick={() => setCategory('all')}>
-            All
-          </CategoryChip>
-          {categories.map((c) => (
-            <CategoryChip key={c.id} active={category === c.id} onClick={() => setCategory(c.id!)}>
-              {c.name}
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
+            <CategoryChip active={category === 'all'} count={products.length} onClick={() => setCategory('all')}>
+              All
             </CategoryChip>
-          ))}
+            {categories.map((c) => (
+              <CategoryChip
+                key={c.id}
+                active={category === c.id}
+                count={products.filter((p) => p.categoryId === c.id).length}
+                onClick={() => setCategory(c.id!)}
+              >
+                {c.name}
+              </CategoryChip>
+            ))}
+          </div>
+          <span className="shrink-0 rounded-md bg-white px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 ring-1 ring-[#e8e8e8]">
+            {visible.length} shown
+          </span>
         </div>
 
         <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto pb-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -257,38 +272,73 @@ export default function SellPage() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="tile group flex flex-col overflow-hidden rounded-xl border border-[#e8e8e8] bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-150 hover:-translate-y-0.5 hover:border-[#00A94F]/50 hover:shadow-md active:scale-[0.99]"
+                className="tile group flex flex-col overflow-hidden rounded-xl border border-[#e8e8e8] bg-white text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition duration-150 hover:-translate-y-1 hover:border-[#00A94F]/50 hover:shadow-lg active:scale-[0.98]"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[#f1f1f1] bg-white">
+                <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[#f1f1f1] bg-[#FAFAFA]">
                   {p.image ? (
-                    <img src={p.image} alt={p.name} className="h-full w-full object-cover transition group-hover:scale-105" draggable={false} />
+                    <img src={p.image} alt={p.name} className="h-full w-full object-cover transition duration-200 group-hover:scale-105" draggable={false} />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-300">
-                      <Package size={32} strokeWidth={1.5} />
-                      <span className="px-2 text-center text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                      <Package size={34} strokeWidth={1.5} />
+                      <span className="px-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                         {p.brand || 'No photo'}
                       </span>
                     </div>
                   )}
+                  {p.image && p.brand && (
+                    <span className="absolute left-2 top-2 rounded bg-white/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-[#ececec]">
+                      {p.brand}
+                    </span>
+                  )}
                   {p.trackStock && (
                     <span
-                      className={`absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-sm ${
-                        p.stock <= 0 ? 'bg-red-500 text-white' : low ? 'bg-amber-100 text-amber-700' : 'bg-white/95 text-slate-600 ring-1 ring-[#ececec]'
+                      className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-[#ececec] ${
+                        p.stock <= 0 ? 'text-red-600' : low ? 'text-amber-700' : 'text-slate-600'
                       }`}
                     >
-                      {p.stock} left
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          p.stock <= 0 ? 'bg-red-500' : low ? 'bg-amber-400' : 'bg-[#00A94F]'
+                        }`}
+                      />
+                      {p.stock <= 0 ? 'Out of stock' : `${p.stock} left`}
                     </span>
                   )}
                 </div>
                 <div className="flex flex-1 flex-col p-3">
-                  <div className="line-clamp-2 text-sm font-medium leading-snug text-slate-700">{p.name}</div>
-                  <div className="mt-0.5 font-mono text-[11px] text-slate-400">{p.sku}</div>
-                  <div className="mt-auto flex items-baseline gap-1.5 pt-1.5">
-                    <span className="text-[17px] font-extrabold leading-none text-slate-900">{moneyShort(p.price)}</span>
+                  <div className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-slate-800 transition group-hover:text-[#008F43]">
+                    {p.name}
+                  </div>
+                  <div className="mt-1 font-mono text-[11px] text-slate-400">{p.sku}</div>
+                  <div className="mt-auto flex items-end justify-between pt-2">
+                    <div>
+                      <div className="text-[17px] font-extrabold leading-none tracking-tight text-slate-900">{moneyShort(p.price)}</div>
+                      <div className="mt-1 text-[10px] text-slate-400">
+                        {p.trackStock
+                          ? low
+                            ? 'Reorder soon'
+                            : 'In stock'
+                          : p.taxable && settings.pricesIncludeVat
+                            ? 'incl. VAT'
+                            : ''}
+                      </div>
+                    </div>
                     {!p.trackStock && <Badge tone="blue">service</Badge>}
                   </div>
-                  <span className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-md bg-[#00A94F] py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition group-hover:bg-[#008F43]">
-                    <ShoppingCart size={13} /> Add to cart
+                  <span
+                    className={`mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition ${
+                      addedId === p.id ? 'bg-[#008F43]' : 'bg-[#00A94F] group-hover:bg-[#008F43]'
+                    }`}
+                  >
+                    {addedId === p.id ? (
+                      <>
+                        <Check size={13} /> Added
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart size={13} /> Add to cart
+                      </>
+                    )}
                   </span>
                 </div>
               </button>
@@ -305,104 +355,195 @@ export default function SellPage() {
 
       {/* Cart / ticket */}
       <aside className="flex w-[380px] shrink-0 flex-col border-l border-[#e0e0e0] bg-[#EFF0EF] xl:w-[420px]">
-        <div className="flex items-center gap-2 border-b border-[#e5e5e5] bg-white p-3">
-          <button className="btn-ghost flex-1 justify-start truncate border-[#e5e5e5] bg-white" onClick={() => setDialog('customer')}>
-            <UserRound size={16} />
-            {customer ? (
-              <span className="truncate">
-                {customer.name}
-                {customer.bikeModel && <span className="text-slate-400"> · {customer.bikeModel}</span>}
+        <div className="border-b border-[#e5e5e5] bg-white p-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#00A94F]/10 text-[#00A94F]">
+                <ShoppingCart size={17} />
               </span>
-            ) : (
-              'Add customer (F4)'
-            )}
-          </button>
-          <button className="btn-ghost relative border-[#e5e5e5] bg-white px-3" onClick={() => setDialog('parked')} title="Parked sales">
-            <PauseCircle size={16} />
-            {parkedCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#00A94F] text-[10px] font-bold">{parkedCount}</span>
-            )}
-          </button>
-          <button className="btn-ghost border-[#e5e5e5] bg-white px-3" onClick={clear} disabled={!cart.lines.length} title="Clear sale">
-            <Trash2 size={16} />
+              <div>
+                <div className="text-sm font-bold leading-tight text-slate-900">Current sale</div>
+                <div className="text-[11px] text-slate-400">
+                  {totals.itemCount} item{totals.itemCount === 1 ? '' : 's'} · {cart.lines.length} line{cart.lines.length === 1 ? '' : 's'}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                className="relative grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-slate-500 transition hover:border-[#00A94F]/60 hover:text-[#008F43]"
+                onClick={() => setDialog('parked')}
+                title="Parked sales"
+              >
+                <PauseCircle size={16} />
+                {parkedCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#00A94F] text-[9px] font-bold text-white">
+                    {parkedCount}
+                  </span>
+                )}
+              </button>
+              <button
+                className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-slate-500 transition hover:border-red-300 hover:text-red-500 disabled:opacity-40"
+                onClick={clear}
+                disabled={!cart.lines.length}
+                title="Clear sale"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+          <button
+            className="mt-3 flex w-full items-center gap-2 rounded-lg border border-[#e8e8e8] bg-[#F6F7F6] px-3 py-2 text-left text-sm transition hover:border-[#00A94F]/60"
+            onClick={() => setDialog('customer')}
+          >
+            <UserRound size={15} className="shrink-0 text-slate-400" />
+            <span className="min-w-0 flex-1 truncate font-medium text-slate-700">
+              {customer ? (
+                <>
+                  {customer.name}
+                  {customer.bikeModel && <span className="text-slate-400"> · {customer.bikeModel}</span>}
+                </>
+              ) : (
+                'Walk-in customer'
+              )}
+            </span>
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#00A94F]">{customer ? 'Change' : 'Add · F4'}</span>
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
           {cart.lines.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
-              <ShoppingCart size={40} className="text-[#00A94F]/50" />
-              <p className="text-sm">Tap a part or scan a barcode to start</p>
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-400">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-[#e8e8e8]">
+                <ShoppingCart size={24} className="text-[#00A94F]" />
+              </span>
+              <p className="text-sm font-medium text-slate-500">Tap a part or scan a barcode</p>
+              <p className="text-[11px] text-slate-400">Items you add will appear here</p>
             </div>
           ) : (
-            cart.lines.map((l, i) => (
-              <div key={i} className="flex items-center gap-2 border-b border-[#f1f1f1] bg-white px-3 py-2.5">
-                <button className="min-w-0 flex-1 text-left" onClick={() => setDialog({ line: i })}>
-                  <div className="truncate text-sm font-semibold text-slate-800">{l.name}</div>
-                  <div className="text-xs text-slate-500">
-                    {money(l.unitPrice, '')}
-                    {l.discount > 0 && <span className="text-emerald-700"> · −{money(l.discount, '')}</span>}
-                    {l.serial && <span> · S/N {l.serial}</span>}
+            cart.lines.map((l, i) => {
+              const img = products.find((x) => x.id === l.productId)?.image
+              return (
+                <div key={i} className="flex items-start gap-2.5 rounded-xl border border-[#e8e8e8] bg-white p-2.5 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#ececec] bg-[#FAFAFA]">
+                    {img ? (
+                      <img src={img} alt="" className="h-full w-full object-cover" draggable={false} />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-slate-300">
+                        <Package size={16} />
+                      </div>
+                    )}
                   </div>
-                </button>
-                <div className="flex items-center rounded border border-[#e5e5e5]">
-                  <button className="p-1.5 text-[#00A94F] transition hover:bg-[#00A94F]/10" onClick={() => setQty(i, l.qty - 1)} aria-label="Decrease">
-                    <Minus size={14} />
-                  </button>
-                  <span className="w-7 border-x border-[#e5e5e5] text-center text-sm font-bold">{l.qty}</span>
-                  <button
-                    className="p-1.5 text-[#00A94F] transition hover:bg-[#00A94F]/10"
-                    onClick={() => setQty(i, l.qty + 1)}
-                    disabled={!!l.serial}
-                    aria-label="Increase"
-                  >
-                    <Plus size={14} />
-                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <button className="min-w-0 text-left" onClick={() => setDialog({ line: i })}>
+                        <div className="truncate text-sm font-semibold text-slate-800">{l.name}</div>
+                        <div className="mt-0.5 truncate text-[11px] text-slate-400">
+                          {money(l.unitPrice, '')} each
+                          {l.discount > 0 && <span className="text-emerald-700"> · −{money(l.discount, '')}</span>}
+                          {l.serial && <span> · S/N {l.serial}</span>}
+                        </div>
+                      </button>
+                      <div className="shrink-0 text-sm font-extrabold text-slate-900">{money(lineTotal(l), '')}</div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="inline-flex items-center gap-0.5 rounded-full bg-[#F2F4F2] p-0.5">
+                        <button
+                          className="grid h-7 w-7 place-items-center rounded-full text-[#00A94F] transition hover:bg-white hover:shadow-sm"
+                          onClick={() => setQty(i, l.qty - 1)}
+                          aria-label="Decrease"
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="min-w-[1.5rem] text-center text-sm font-bold">{l.qty}</span>
+                        <button
+                          className="grid h-7 w-7 place-items-center rounded-full text-[#00A94F] transition hover:bg-white hover:shadow-sm disabled:opacity-40"
+                          onClick={() => setQty(i, l.qty + 1)}
+                          disabled={!!l.serial}
+                          aria-label="Increase"
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                      <button className="text-[11px] font-semibold text-slate-400 transition hover:text-[#008F43]" onClick={() => setDialog({ line: i })}>
+                        Edit
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="w-20 text-right text-sm font-bold text-slate-900">{money(lineTotal(l), '')}</div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
 
-        <div className="border-t border-[#e8e8e8] p-3">
-          <div className="mb-2 flex gap-2">
-            <button className="btn-ghost flex-1 border-[#e5e5e5] px-2" onClick={() => setDialog('custom')}>
-              <Wrench size={16} /> Custom item
+        <div className="border-t border-[#e0e0e0] bg-[#EFF0EF] p-3.5">
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            <button
+              className="flex flex-col items-center gap-1 rounded-xl border border-[#e5e5e5] bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-[#00A94F]/60 hover:text-[#008F43]"
+              onClick={() => setDialog('custom')}
+            >
+              <Wrench size={16} /> Custom
             </button>
-            <button className="btn-ghost flex-1 border-[#e5e5e5] px-2" onClick={() => setDialog('discount')} disabled={!cart.lines.length || !can('discount')}>
+            <button
+              className="flex flex-col items-center gap-1 rounded-xl border border-[#e5e5e5] bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-[#00A94F]/60 hover:text-[#008F43] disabled:opacity-40"
+              onClick={() => setDialog('discount')}
+              disabled={!cart.lines.length || !can('discount')}
+            >
               <Percent size={16} /> Discount
             </button>
-            <button className="btn-ghost flex-1 border-[#e5e5e5] px-2" onClick={park} disabled={!cart.lines.length}>
+            <button
+              className="flex flex-col items-center gap-1 rounded-xl border border-[#e5e5e5] bg-white py-2 text-[11px] font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:border-[#00A94F]/60 hover:text-[#008F43] disabled:opacity-40"
+              onClick={park}
+              disabled={!cart.lines.length}
+            >
               <PauseCircle size={16} /> Park
             </button>
           </div>
-          <dl className="mb-2 space-y-1 rounded-md border border-[#e5e5e5] bg-white p-2.5 text-sm">
-            <div className="flex justify-between text-slate-600">
-              <dt>Subtotal · {totals.itemCount} items</dt>
-              <dd>{money(totals.subtotal, settings.currency)}</dd>
-            </div>
-            {totals.discount > 0 && (
-              <div className="flex justify-between text-emerald-700">
-                <dt>Discount</dt>
-                <dd>−{money(totals.discount, settings.currency)}</dd>
+          <div className="rounded-xl border border-[#e5e5e5] bg-white p-3 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between text-slate-500">
+                <dt>Subtotal</dt>
+                <dd className="font-medium text-slate-700">{money(totals.subtotal, settings.currency)}</dd>
               </div>
-            )}
-            <div className="flex justify-between text-slate-600">
-              <dt>
-                VAT {settings.vatRate}%{settings.pricesIncludeVat ? ' (incl.)' : ''}
-              </dt>
-              <dd>{money(totals.tax, settings.currency)}</dd>
-            </div>
-          </dl>
+              {totals.discount > 0 && (
+                <div className="flex justify-between text-emerald-700">
+                  <dt>Discount</dt>
+                  <dd>−{money(totals.discount, settings.currency)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-500">
+                <dt>
+                  VAT {settings.vatRate}%{settings.pricesIncludeVat ? ' (incl.)' : ''}
+                </dt>
+                <dd className="font-medium text-slate-700">{money(totals.tax, settings.currency)}</dd>
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t border-dashed border-[#dcdcdc] pt-2">
+                <span className="text-sm font-bold text-slate-700">Total · {totals.itemCount} items</span>
+                <span className="text-xl font-extrabold tracking-tight text-slate-900">{money(totals.total, settings.currency)}</span>
+              </div>
+            </dl>
+          </div>
           <button
-            className="mt-3 h-14 w-full rounded-md bg-[#00A94F] text-lg font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#008F43] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#00A94F] text-base font-bold uppercase tracking-wide text-white shadow-[0_8px_18px_-8px_rgba(0,169,79,0.8)] transition hover:bg-[#008F43] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             onClick={charge}
             disabled={!cart.lines.length}
           >
-            Charge {money(totals.total, settings.currency)}
+            <CreditCard size={18} /> Charge {money(totals.total, settings.currency)}
           </button>
-          <p className="mt-1 text-center text-[11px] text-slate-400">F2 search · F4 customer · F8 park · F9 charge</p>
+          <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+            {(
+              [
+                ['F2', 'search'],
+                ['F4', 'customer'],
+                ['F8', 'park'],
+                ['F9', 'charge'],
+              ] as const
+            ).map(([key, what]) => (
+              <span key={key} className="flex items-center gap-1">
+                <kbd className="rounded border border-[#e0e0e0] bg-white px-1 py-0.5 text-[10px] font-bold text-slate-500">{key}</kbd>
+                {what}
+              </span>
+            ))}
+          </p>
         </div>
       </aside>
 
@@ -490,17 +631,36 @@ export default function SellPage() {
   )
 }
 
-function CategoryChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function CategoryChip({
+  active,
+  count,
+  onClick,
+  children,
+}: {
+  active: boolean
+  count?: number
+  onClick: () => void
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition ${
         active
-          ? 'border-[#00A94F] bg-[#00A94F] text-white shadow-sm'
+          ? 'border-[#00A94F] bg-[#00A94F] text-white shadow-[0_4px_10px_-4px_rgba(0,169,79,0.6)]'
           : 'border-[#e5e5e5] bg-white text-slate-600 hover:border-[#00A94F]/60 hover:text-[#008F43]'
       }`}
     >
       {children}
+      {count !== undefined && (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+            active ? 'bg-white/20 text-white' : 'bg-[#F1F3F1] text-slate-500'
+          }`}
+        >
+          {count}
+        </span>
+      )}
     </button>
   )
 }
