@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { History, ShieldCheck, UserRound } from 'lucide-react'
+import { Download, History, ShieldCheck, UserRound } from 'lucide-react'
 import { db } from '../db/db'
 import { useSession } from '../session'
 import type { LogEntry, User } from '../db/types'
 import { Badge, PageHeader, errorText, useToast } from '../components/ui'
 import ChangePinForm from '../components/ChangePinForm'
+import { useInstall } from '../lib/installPrompt'
 
 type SectionId = 'personal' | 'security' | 'activity'
 
@@ -69,6 +70,7 @@ export default function ProfilePage() {
   const [section, setSection] = useState<SectionId>('personal')
   const [draft, setDraft] = useState<Draft | null>(user ? toDraft(user) : null)
   const [dirty, setDirty] = useState(false)
+  const appInstall = useInstall()
 
   useEffect(() => {
     if (user) {
@@ -166,6 +168,27 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+
+          {!appInstall.installed && appInstall.canInstall && (
+            <button
+              onClick={appInstall.install}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-raised active:scale-[0.99]"
+            >
+              <Download size={15} />
+              Install app
+            </button>
+          )}
+          {!appInstall.installed && !appInstall.canInstall && appInstall.isIOS && (
+            <p className="mt-4 px-1 text-xs leading-relaxed text-slate-400">
+              On iPhone: tap <b className="text-slate-500">Share</b> → <b className="text-slate-500">Add to Home Screen</b> to install the app.
+            </p>
+          )}
+          {appInstall.installed && (
+            <p className="mt-4 flex items-center gap-1.5 px-1 text-xs text-slate-400">
+              <Badge tone="green">Installed</Badge>
+              on this device
+            </p>
+          )}
 
           <p className="mt-4 hidden px-1 text-xs leading-relaxed text-slate-400 md:block">
             Signed in with your {user.pin.length}-digit PIN. Profile details stay on this device.
