@@ -184,6 +184,7 @@ export default function DashboardPage() {
       perm: 'inventory' as const,
       btn: 'btn-primary',
       icon: Package,
+      img: '/sale.png',
     },
     {
       title: 'Service bay',
@@ -195,6 +196,7 @@ export default function DashboardPage() {
       to: '/service',
       btn: 'btn-primary',
       icon: Wrench,
+      img: '/service.png',
     },
     {
       title: 'Shift',
@@ -205,6 +207,7 @@ export default function DashboardPage() {
       to: '/shift',
       btn: 'btn-primary',
       icon: Wallet,
+      img: '/shift.png',
     },
     {
       title: 'Customers',
@@ -213,6 +216,7 @@ export default function DashboardPage() {
       to: '/customers',
       btn: 'btn-primary',
       icon: Users,
+      img: '/customer.png',
     },
   ]
 
@@ -372,11 +376,9 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="mt-4 grid grid-cols-4 gap-x-2 gap-y-4">
-              {panels.map(({ title, to, icon: Icon }) => (
+              {panels.map(({ title, to, img }) => (
                 <Link key={title} to={to} className="flex flex-col items-center gap-2 transition active:scale-95">
-                  <span className="grid h-14 w-14 place-items-center rounded-full bg-ink">
-                    <Icon size={20} className="text-white" />
-                  </span>
+                  <img src={img} alt="" className="h-14 w-14 object-contain" />
                   <span className="text-center text-[11px] font-medium leading-tight text-slate-600">{title}</span>
                 </Link>
               ))}
