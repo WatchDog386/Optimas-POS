@@ -41,7 +41,7 @@ export class PosDB extends Dexie {
       categories: '++id, name',
       suppliers: '++id, name',
       products: '++id, &sku, barcode, name, categoryId, partNumber, *fitment, supplierId, active',
-      customers: '++id, name, phone, plate',
+      customers: '++id, name, phone, plate, balance',
       sales: '++id, &receiptNo, createdAt, customerId, userId, shiftId, status',
       parked: '++id, createdAt',
       movements: '++id, productId, at, reason',

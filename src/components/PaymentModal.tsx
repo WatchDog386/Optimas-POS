@@ -19,15 +19,18 @@ export default function PaymentModal({
   customer,
   onClose,
   onComplete,
+  initialMethod,
 }: {
   total: number
   settings: Settings
   customer?: Customer
   onClose: () => void
   onComplete: (payments: Payment[]) => Promise<void>
+  /** Tender tab to open on. Falls back to the first enabled method. */
+  initialMethod?: PaymentMethod
 }) {
   const [payments, setPayments] = useState<Payment[]>([])
-  const [method, setMethod] = useState<PaymentMethod>('cash')
+  const [method, setMethod] = useState<PaymentMethod>(initialMethod ?? 'cash')
   const [entry, setEntry] = useState('')
   const [reference, setReference] = useState('')
   const [phone, setPhone] = useState(customer?.phone ?? '')

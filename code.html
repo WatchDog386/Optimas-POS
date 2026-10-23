@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "on-primary": "#ffffff",
+          "surface-container-lowest": "#ffffff",
+          "surface-container": "#eaedff",
+          "tertiary": "#001105",
+          "surface": "#faf8ff",
+          "secondary": "#0051d5",
+          "on-tertiary": "#ffffff",
+          "on-secondary": "#ffffff",
+          "on-background": "#131b2e",
+          "tertiary-container": "#002a12",
+          "surface-dim": "#d2d9f4",
+          "tertiary-fixed": "#77fca3",
+          "inverse-primary": "#b7c7e4",
+          "on-tertiary-fixed-variant": "#005228",
+          "secondary-fixed-dim": "#b4c5ff",
+          "surface-variant": "#dae2fd",
+          "background": "#faf8ff",
+          "inverse-on-surface": "#eef0ff",
+          "outline-variant": "#c5c6cd",
+          "secondary-container": "#316bf3",
+          "surface-container-highest": "#dae2fd",
+          "surface-container-low": "#f2f3ff",
+          "secondary-fixed": "#dbe1ff",
+          "primary-container": "#14243a",
+          "on-surface-variant": "#44474d",
+          "on-tertiary-container": "#009f54",
+          "on-secondary-container": "#fefcff",
+          "outline": "#75777d",
+          "on-error-container": "#93000a",
+          "on-surface": "#131b2e",
+          "on-primary-fixed": "#0b1c32",
+          "surface-container-high": "#e2e7ff",
+          "tertiary-fixed-dim": "#59df89",
+          "surface-bright": "#faf8ff",
+          "on-primary-container": "#7c8ba6",
+          "primary-fixed-dim": "#b7c7e4",
+          "on-tertiary-fixed": "#00210d",
+          "error-container": "#ffdad6",
+          "on-secondary-fixed-variant": "#003ea8",
+          "primary-fixed": "#d4e3ff",
+          "on-error": "#ffffff",
+          "surface-tint": "#505f78",
+          "on-primary-fixed-variant": "#38475f",
+          "error": "#ba1a1a",
+          "inverse-surface": "#283044",
+          "on-secondary-fixed": "#00174b",
+          "primary": "#000e23"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.125rem",
+          "lg": "0.25rem",
+          "xl": "0.5rem",
+          "full": "0.75rem"
+        },
+        "spacing": {
+          "gutter": "1rem",
+          "space-md": "0.75rem",
+          "space-sm": "0.5rem",
+          "space-xs": "0.25rem",
+          "margin-mobile": "0.75rem",
+          "space-xl": "1.5rem",
+          "space-lg": "1rem",
+          "margin": "1.5rem",
+          "gutter-compact": "0.5rem"
+        },
+        "fontFamily": {
+          "display-lg-mobile": ["Inter"],
+          "body-lg": ["Inter"],
+          "label-md": ["Inter"],
+          "body-md": ["Inter"],
+          "label-sm": ["Inter"],
+          "headline-lg": ["Inter"],
+          "numeric-data": ["Inter"],
+          "headline-sm": ["Inter"],
+          "display-lg": ["Inter"],
+          "currency-callout": ["Inter"],
+          "body-sm": ["Inter"]
+        },
+        "fontSize": {
+          "display-lg-mobile": ["26px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+          "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+          "label-md": ["13px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+          "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+          "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+          "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+          "numeric-data": ["14px", {"lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+          "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+          "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+          "currency-callout": ["28px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+          "body-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "400"}]
+        }
+      }
+    }
+  }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col h-full overflow-hidden"><div class="p-space-lg bg-surface-container-lowest flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="MOTOCORE Brand Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UlKK4JYVFii0PU2hCzsnG0Fk62_aeflZ-cO_Rb34nqA271BcibRoHyTMw029eMGOVwS8m6VhLNDLbomdI2bZw-z4rh6RXaqPMgkLS0e6hS8IqAqT7_chQ6jyNJE8erhMLW8P09ftfFSuO3Cx3rNU1Jko8lgVoPn7udNckzHnOFUrc3tlnRHRckvs8sh6Q-uluaZkMUe5xlRX5mTmQwtn54iVG1Qf925zE341ly3BNz3MEB4Eqzl_7WRQ"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight font-bold">MOTOCORE</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Enterprise POS</span></div></div><button aria-label="Collapse Sidebar" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high p-space-xs rounded transition-colors" type="button"><span class="material-symbols-outlined text-lg">menu_open</span></button></div><div class="px-space-md py-space-sm bg-surface-container"><div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm text-on-surface font-bold truncate">MOTOCORE Auto Spares Ltd</span><span class="material-symbols-outlined text-sm text-on-surface-variant">expand_more</span></div><span class="font-body-sm text-body-sm text-on-surface-variant truncate">Kirinyaga Rd Central (Branch #01)</span><div class="flex items-center gap-1.5 mt-0.5"><span class="w-2 h-2 rounded-full bg-on-tertiary-container animate-pulse"></span><span class="font-label-sm text-label-sm text-on-tertiary-container font-semibold">Online / Sync OK</span></div></div></div><div class="flex-1 overflow-y-auto px-space-md py-space-md"><nav class="flex flex-col gap-space-md" data-active-classes="bg-primary-container text-on-primary-container font-bold rounded-lg"><div class="flex flex-col gap-1"><span class="px-space-sm font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">OPERATIONS</span><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-sm transition-colors bg-primary-container text-on-primary-container font-bold rounded-lg" data-path="dashboard" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">dashboard</span><span class="font-label-md text-label-md">Dashboard</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="point-of-sale" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">point_of_sale</span><span class="font-label-md text-label-md">Point of Sale</span></div><span class="px-1.5 py-0.5 bg-secondary text-on-secondary rounded font-label-sm text-label-sm">F2 Ready</span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sales-and-invoices" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">receipt_long</span><span class="font-label-md text-label-md">Sales & Invoices</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="customer-credit-and-debts" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">group</span><span class="font-label-md text-label-md">Customer Credit</span></div><span class="px-1.5 py-0.5 bg-surface-container-highest text-on-surface rounded font-label-sm text-label-sm">KSh 248K</span></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">INVENTORY & CATALOG</span><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="products-and-spares" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">inventory_2</span><span class="font-label-md text-label-md">Products & Spares</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="vehicle-compatibility-matrix" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">build</span><span class="font-label-md text-label-md">Vehicle Fit Matrix</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="stock-adjustments-and-counts" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">fact_check</span><span class="font-label-md text-label-md">Stock Adjustments</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="low-stock-alerts" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">warning</span><span class="font-label-md text-label-md">Low Stock Alerts</span></div><span class="px-1.5 py-0.5 bg-error text-on-error rounded font-label-sm text-label-sm">14</span></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">PURCHASES & VENDORS</span><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="suppliers-and-orders" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">local_shipping</span><span class="font-label-md text-label-md">Suppliers & Orders</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="goods-received" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">inventory</span><span class="font-label-md text-label-md">Goods Received (GRN)</span></div></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">FINANCIALS</span><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="mpesa-till-reconciliation" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">phone_android</span><span class="font-label-md text-label-md">M-Pesa Reconciliation</span></div><span class="px-1.5 py-0.5 bg-tertiary-fixed-dim text-on-tertiary-fixed rounded font-label-sm text-label-sm">Live</span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="financial-reports-and-profit-loss" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">bar_chart</span><span class="font-label-md text-label-md">Financial Reports</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="expenses-and-petty-cash" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">account_balance_wallet</span><span class="font-label-md text-label-md">Expenses & Cash</span></div></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">SYSTEM</span><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="user-roles-and-cashiers" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">badge</span><span class="font-label-md text-label-md">User Roles & Cashiers</span></div></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="store-settings" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-xl">settings</span><span class="font-label-md text-label-md">Store Settings</span></div></a></div></nav></div><div class="p-space-sm bg-surface-container-lowest flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-base text-on-surface-variant">person</span><div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface font-semibold">Kamau N.</span><span class="font-body-sm text-body-sm text-on-surface-variant">Till 02 • Active</span></div></div><button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Quick Lock Register" type="button"><span class="material-symbols-outlined text-lg">lock</span></button></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs text-on-surface-variant font-label-md text-label-md"><span class="hover:text-on-surface cursor-pointer">MOTOCORE</span><span class="material-symbols-outlined text-sm">chevron_right</span><span class="text-on-surface font-semibold">Fast Register</span></div><div class="relative flex items-center w-80 lg:w-96"><span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg">qr_code_scanner</span><input class="w-full pl-9 pr-16 py-1.5 bg-surface-container-low text-on-surface rounded font-body-sm text-body-sm focus:outline-none focus:bg-surface-container-lowest placeholder:text-outline-variant" placeholder="Search Part No, SKU, OEM, Barcode [Ctrl + K]" type="text"/><span class="absolute right-2 px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Ctrl+K</span></div></div><div class="flex items-center gap-space-sm"><button class="flex items-center gap-1.5 px-space-md py-1.5 rounded bg-secondary text-on-secondary font-label-md text-label-md font-semibold hover:bg-secondary-container transition-colors shadow-sm" type="button"><span class="material-symbols-outlined text-base">add</span><span>New Sale (F1)</span></button><div class="hidden xl:flex items-center gap-1.5 px-space-sm py-1 bg-surface-container-low rounded text-on-surface font-label-sm text-label-sm"><span class="material-symbols-outlined text-sm text-on-surface-variant">store</span><span>Kirinyaga Road (Hub)</span></div><div class="hidden lg:flex items-center gap-1 px-space-sm py-1 bg-surface-container-low rounded text-on-surface-variant font-label-sm text-label-sm"><span class="material-symbols-outlined text-sm text-on-tertiary-container">sync</span><span>12s ago</span></div><div class="hidden 2xl:flex items-center gap-1.5 px-space-sm py-1 bg-surface-container-low rounded text-on-tertiary-container font-label-sm text-label-sm font-semibold"><span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span><span>M-Pesa Express Connected</span></div><div class="relative"><button aria-label="Notifications" class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-full transition-colors" type="button"><span class="material-symbols-outlined text-xl">notifications</span></button><span class="absolute top-1.5 right-1.5 w-4 h-4 bg-error text-on-error rounded-full flex items-center justify-center font-label-sm text-label-sm font-bold">3</span></div><div class="flex items-center gap-space-xs pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJDhvk6qsoJsJJdFsRBkndSo7XMTvHDFbJ9brSoDsBYQfcm0WW8BcOD_p6T5ZsgRrlrVE4KjaGDvo0IcZIgtrlQ18ZB4lDEqdv0rO9jnVTEoriiMUwXvT1KUGeezh3EC5xl3UiIPjSHeghGF2LwTYj4WNA4bgcp2xRYO9pKo8wpM1V9ZIZckMJ-XZ-O8pzJgJKulDUISgOfDVpeF9xgJVjI_agd7NcGkK9liObXdDWQGrrf4RGI-8i"/><div class="hidden md:flex flex-col text-left"><span class="font-label-md text-label-md text-on-surface font-semibold leading-tight">Joseph Mwangi</span><span class="font-label-sm text-label-sm text-on-surface-variant">Store Mgr • Admin</span></div></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="px-gutter py-space-lg flex flex-col gap-space-lg max-w-[1720px] mx-auto w-full">
+<!-- Top Operational Bar & Date Filter -->
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-lg text-headline-lg text-primary font-bold tracking-tight">Store Executive Dashboard</h1>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container animate-ping"></span>
+            Hub Live Sync
+          </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Real-time sales, inventory movement, and cash flow across Kirinyaga Rd Hub (Nairobi Central)</p>
+</div>
+<!-- Action & Filter Group -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<!-- Date Selector -->
+<div class="relative inline-flex items-center">
+<div class="flex items-center gap-1.5 px-space-sm py-1.5 bg-surface-container-low rounded-lg text-on-surface font-label-md text-label-md cursor-pointer hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-base text-on-surface-variant">calendar_today</span>
+<span class="font-semibold">Today: Fri 24 Oct 2025</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant">arrow_drop_down</span>
+</div>
+</div>
+<!-- Cashier Selector -->
+<div class="flex items-center gap-1.5 px-space-sm py-1.5 bg-surface-container-low rounded-lg text-on-surface font-label-md text-label-md cursor-pointer hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-base text-on-surface-variant">badge</span>
+<span>All Cashiers (4)</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant">arrow_drop_down</span>
+</div>
+<div class="h-6 w-px bg-surface-container-highest hidden sm:block"></div>
+<!-- Export -->
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5">
+<button class="px-2.5 py-1 text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm rounded transition-colors flex items-center gap-1" title="Export PDF" type="button">
+<span class="material-symbols-outlined text-sm">picture_as_pdf</span>
+<span>PDF</span>
+</button>
+<button class="px-2.5 py-1 text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm rounded transition-colors flex items-center gap-1" title="Export Excel" type="button">
+<span class="material-symbols-outlined text-sm">table_view</span>
+<span>Excel</span>
+</button>
+</div>
+<!-- Quick Primary Actions -->
+<div class="flex items-center gap-1.5">
+<button class="flex items-center gap-1 px-space-sm py-1.5 bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">arrow_downward</span>
+<span>Stock Inward</span>
+</button>
+<button class="flex items-center gap-1 px-space-sm py-1.5 bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">account_balance_wallet</span>
+<span>Record Expense</span>
+</button>
+<button class="flex items-center gap-1.5 px-space-md py-1.5 bg-secondary text-on-secondary rounded-lg font-label-md text-label-md font-bold shadow-sm hover:bg-secondary-container transition-all" type="button">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+<span>Add Part (F3)</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 6 Core Enterprise KPI Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-space-md">
+<!-- Card 1: Gross Revenue -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">Gross Sales (Today)</span>
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+            +14.2%
+          </span>
+</div>
+<div class="flex flex-col">
+<span class="font-currency-callout text-currency-callout text-primary font-bold tracking-tight">KSh 482,650</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">84 tickets • Avg KSh 5,745</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full mt-3 overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 78%;"></div>
+</div>
+</div>
+<!-- Card 2: Gross Profit -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">Est. Gross Profit</span>
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold">
+            30.4% margin
+          </span>
+</div>
+<div class="flex flex-col">
+<span class="font-currency-callout text-currency-callout text-primary font-bold tracking-tight">KSh 146,820</span>
+<div class="flex items-center gap-1 font-body-sm text-body-sm text-on-tertiary-container font-medium mt-0.5">
+<span class="material-symbols-outlined text-xs">check_circle</span>
+<span>+8.6% vs daily target</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full mt-3 overflow-hidden">
+<div class="bg-on-tertiary-container h-full rounded-full" style="width: 84%;"></div>
+</div>
+</div>
+<!-- Card 3: Till & Cash Balance -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">Cash & Till Balance</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container"></span>
+            100% Synced
+          </span>
+</div>
+<div class="flex flex-col">
+<span class="font-currency-callout text-currency-callout text-primary font-bold tracking-tight">KSh 422,650</span>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant mt-0.5">
+<span>Cash: <strong class="text-on-surface">128.4K</strong></span>
+<span>M-Pesa: <strong class="text-on-surface">294.2K</strong></span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2 pt-1 border-t border-surface-container-high text-on-surface-variant font-body-sm text-body-sm">
+<span>Till #894102</span>
+<a class="text-secondary font-semibold hover:underline" data-path="mpesa-till-reconciliation" href="#">Verify</a>
+</div>
+</div>
+<!-- Card 4: Inventory Valuation -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">Total Stock Value</span>
+<span class="material-symbols-outlined text-base text-on-surface-variant">inventory_2</span>
+</div>
+<div class="flex flex-col">
+<span class="font-currency-callout text-currency-callout text-primary font-bold tracking-tight">KSh 18.45M</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">3,420 SKU lines in 12 Aisles</span>
+</div>
+<div class="flex items-center justify-between mt-2 pt-1 border-t border-surface-container-high font-body-sm text-body-sm">
+<span class="text-on-surface-variant">Turnover: 4.8x/yr</span>
+<span class="text-on-surface font-medium">Shelf Space: 91%</span>
+</div>
+</div>
+<!-- Card 5: Outstanding Debts -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">Customer Credit</span>
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
+            Alert
+          </span>
+</div>
+<div class="flex flex-col">
+<span class="font-currency-callout text-currency-callout text-error font-bold tracking-tight">KSh 742,100</span>
+<span class="font-body-sm text-body-sm text-on-error-container mt-0.5 font-medium">KSh 185,000 overdue >30d</span>
+</div>
+<div class="flex items-center justify-between mt-2 pt-1 border-t border-surface-container-high text-on-surface-variant font-body-sm text-body-sm">
+<span>16 Garages</span>
+<a class="text-secondary font-semibold hover:underline" data-path="customer-credit-and-debts" href="#">Review Ledgers →</a>
+</div>
+</div>
+<!-- Card 6: Low-Stock Critical -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold uppercase tracking-wider">Stock Attention</span>
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold">18</span>
+</div>
+<div class="flex flex-col">
+<span class="font-currency-callout text-currency-callout text-primary font-bold tracking-tight">18 SKUs</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">6 zero stock, 12 reorder alert</span>
+</div>
+<div class="flex items-center justify-between mt-2 pt-1 border-t border-surface-container-high text-on-surface-variant font-body-sm text-body-sm">
+<span class="text-error font-medium">Est. KSh 310K req.</span>
+<button class="text-secondary font-semibold hover:underline flex items-center gap-0.5" type="button">
+            Auto PO
+            <span class="material-symbols-outlined text-xs">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Charts & Analytics Section (2-Column Bento Layout) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Left Chart: Hourly Revenue & Cashier Velocity (8 Cols) -->
+<div class="lg:col-span-8 bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm mb-space-md">
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm text-primary font-bold">Hourly Revenue & Cashier Velocity</h2>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Today's hourly throughput compared to Kirinyaga Rd 7-day rolling average</span>
+</div>
+<!-- Tender distribution badges -->
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container font-label-sm text-label-sm text-on-surface">
+<span class="w-2.5 h-2.5 rounded-sm bg-on-tertiary-container"></span>
+<span>M-Pesa (62%)</span>
+</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container font-label-sm text-label-sm text-on-surface">
+<span class="w-2.5 h-2.5 rounded-sm bg-secondary"></span>
+<span>Cash (26%)</span>
+</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container font-label-sm text-label-sm text-on-surface">
+<span class="w-2.5 h-2.5 rounded-sm bg-outline"></span>
+<span>Card / Credit (12%)</span>
+</span>
+</div>
+</div>
+<!-- SVG Line/Bar Composite Chart Graphic -->
+<div class="w-full relative h-72 flex flex-col justify-end pt-4 pb-2">
+<!-- Background Axis Grid Lines -->
+<div class="absolute inset-x-0 inset-y-6 flex flex-col justify-between pointer-events-none opacity-40">
+<div class="w-full border-b border-surface-container-high flex justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant -mt-2.5">KSh 90K</span>
+</div>
+<div class="w-full border-b border-surface-container-high flex justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant -mt-2.5">KSh 60K</span>
+</div>
+<div class="w-full border-b border-surface-container-high flex justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant -mt-2.5">KSh 30K</span>
+</div>
+<div class="w-full border-b border-surface-container-high flex justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant -mt-2.5">0</span>
+</div>
+</div>
+<!-- Interactive Bar / Trend SVG -->
+<svg class="w-full h-56 overflow-visible" fill="none" viewbox="0 0 900 240" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<lineargradient id="mpesaGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#009f54" stop-opacity="0.9"></stop>
+<stop offset="100%" stop-color="#009f54" stop-opacity="0.3"></stop>
+</lineargradient>
+<lineargradient id="cashGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#0051d5" stop-opacity="0.9"></stop>
+<stop offset="100%" stop-color="#0051d5" stop-opacity="0.3"></stop>
+</lineargradient>
+<lineargradient id="areaGlow" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#316bf3" stop-opacity="0.15"></stop>
+<stop offset="100%" stop-color="#316bf3" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- 7-day average baseline line -->
+<path d="M 40 180 Q 120 160 210 130 T 380 90 T 550 50 T 720 110 T 860 170" fill="none" opacity="0.6" stroke="#75777d" stroke-dasharray="4 4" stroke-width="2"></path>
+<!-- Stacked Hour Bars -->
+<!-- 08:00 -->
+<rect fill="url(#mpesaGrad)" height="70" rx="3" width="30" x="35" y="160"></rect>
+<rect fill="url(#cashGrad)" height="15" rx="2" width="30" x="35" y="145"></rect>
+<!-- 09:00 -->
+<rect fill="url(#mpesaGrad)" height="100" rx="3" width="30" x="120" y="130"></rect>
+<rect fill="url(#cashGrad)" height="25" rx="2" width="30" x="120" y="105"></rect>
+<!-- 10:00 (Rush 1) -->
+<rect fill="url(#mpesaGrad)" height="135" rx="3" width="30" x="205" y="95"></rect>
+<rect fill="url(#cashGrad)" height="25" rx="2" width="30" x="205" y="70"></rect>
+<!-- 11:00 (Peak Morning Counter Traffic) -->
+<rect fill="url(#mpesaGrad)" height="170" rx="3" width="30" x="290" y="60"></rect>
+<rect fill="url(#cashGrad)" height="30" rx="2" width="30" x="290" y="30"></rect>
+<!-- 12:00 -->
+<rect fill="url(#mpesaGrad)" height="150" rx="3" width="30" x="375" y="80"></rect>
+<rect fill="url(#cashGrad)" height="25" rx="2" width="30" x="375" y="55"></rect>
+<!-- 13:00 (Lunch Shift) -->
+<rect fill="url(#mpesaGrad)" height="120" rx="3" width="30" x="460" y="110"></rect>
+<rect fill="url(#cashGrad)" height="20" rx="2" width="30" x="460" y="90"></rect>
+<!-- 14:00 (Afternoon Surge) -->
+<rect fill="url(#mpesaGrad)" height="185" rx="3" width="30" x="545" y="45"></rect>
+<rect fill="url(#cashGrad)" height="25" rx="2" width="30" x="545" y="20"></rect>
+<!-- 15:00 (Workshop Re-supply Peak) -->
+<rect fill="url(#mpesaGrad)" height="200" rx="3" width="30" x="630" y="30"></rect>
+<rect fill="url(#cashGrad)" height="20" rx="2" width="30" x="630" y="10"></rect>
+<!-- 16:00 (Current Hour) -->
+<rect fill="url(#mpesaGrad)" height="180" rx="3" width="30" x="715" y="50"></rect>
+<rect fill="url(#cashGrad)" height="20" rx="2" width="30" x="715" y="30"></rect>
+<!-- 17:00 (Projected/Live) -->
+<rect fill="#dae2fd" height="110" opacity="0.6" rx="3" width="30" x="800" y="120"></rect>
+<!-- Peak Indicator Pin at 15:00 -->
+<g transform="translate(645, 8)">
+<circle cx="0" cy="0" fill="#009f54" r="4"></circle>
+<line stroke="#009f54" stroke-width="1.5" x1="0" x2="0" y1="0" y2="-12"></line>
+<rect fill="#14243a" height="16" rx="3" width="84" x="-42" y="-28"></rect>
+<text fill="#ffffff" font-family="Inter" font-size="10" font-weight="600" text-anchor="middle" x="0" y="-17">Peak: 72,400 KSh</text>
+</g>
+</svg>
+<!-- X-Axis Labels -->
+<div class="flex justify-between text-on-surface-variant font-label-sm text-label-sm pt-2 px-6">
+<span>08:00</span>
+<span>09:00</span>
+<span>10:00</span>
+<span>11:00</span>
+<span>12:00</span>
+<span>13:00</span>
+<span>14:00</span>
+<span class="font-bold text-secondary">15:00</span>
+<span class="font-bold text-on-surface">16:00 (Now)</span>
+<span class="opacity-50">17:00</span>
+</div>
+</div>
+<!-- Footer Meta Row -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-sm border-t border-surface-container-high mt-space-sm text-on-surface-variant font-body-sm text-body-sm">
+<div class="flex items-center gap-space-md">
+<span><strong class="text-on-surface font-semibold">Till #01:</strong> 38 Sales (Kamau)</span>
+<span><strong class="text-on-surface font-semibold">Till #02:</strong> 31 Sales (Otieno)</span>
+<span><strong class="text-on-surface font-semibold">Counter #03 (B2B):</strong> 15 Invoices</span>
+</div>
+<span class="inline-flex items-center gap-1 text-on-tertiary-container font-semibold">
+<span class="material-symbols-outlined text-sm">bolt</span>
+            Speed: 1m 42s avg transaction
+          </span>
+</div>
+</div>
+<!-- Right Card: Sales by Spare Category & Movement (4 Cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<h2 class="font-headline-sm text-headline-sm text-primary font-bold">Category Movement</h2>
+<span class="font-label-sm text-label-sm text-secondary font-semibold cursor-pointer hover:underline">Full Catalog →</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">Today's sales volume ranked by automotive category</p>
+<!-- Breakdown List -->
+<div class="flex flex-col gap-3">
+<!-- Category 1 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="font-bold text-on-surface flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                  Engine Components
+                </span>
+<div class="flex items-center gap-2">
+<span class="font-numeric-data text-numeric-data text-on-surface font-semibold">KSh 164,100</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">34%</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Cylinder kits, Piston rings, Valve stems (Bajaj, TVS, Toyota)</span>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 34%;"></div>
+</div>
+</div>
+<!-- Category 2 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="font-bold text-on-surface flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
+                  Braking & Friction
+                </span>
+<div class="flex items-center gap-2">
+<span class="font-numeric-data text-numeric-data text-on-surface font-semibold">KSh 115,800</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">24%</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Brake pads, Bonded shoes, Rotors, Hydraulic fluid</span>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-on-tertiary-container h-full rounded-full" style="width: 24%;"></div>
+</div>
+</div>
+<!-- Category 3 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="font-bold text-on-surface flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+                  Transmission & Drive
+                </span>
+<div class="flex items-center gap-2">
+<span class="font-numeric-data text-numeric-data text-on-surface font-semibold">KSh 96,500</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">20%</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">428H Drive chains, Front/Rear sprockets, Fan belts</span>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full rounded-full" style="width: 20%;"></div>
+</div>
+</div>
+<!-- Category 4 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="font-bold text-on-surface flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+                  Lubricants & Fluids
+                </span>
+<div class="flex items-center gap-2">
+<span class="font-numeric-data text-numeric-data text-on-surface font-semibold">KSh 67,500</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">14%</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Yamalube 4T, Castrol Activ, Total 20W50 1L bottles</span>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 14%;"></div>
+</div>
+</div>
+<!-- Category 5 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="font-bold text-on-surface flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                  Electrical & Ignition
+                </span>
+<div class="flex items-center gap-2">
+<span class="font-numeric-data text-numeric-data text-on-surface font-semibold">KSh 38,750</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">8%</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Spark plugs, Stators, CDI units, Horns, 12V Regulators</span>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-outline h-full rounded-full" style="width: 8%;"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-space-md p-space-sm bg-surface-container-low rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-base">recommend</span>
+<span class="font-body-sm text-body-sm text-on-surface">Top Performer: <strong class="font-semibold">Bajaj Boxer 150 Spares</strong></span>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-on-surface">42 units</span>
+</div>
+</div>
+</div>
+<!-- Operational Workspaces Grid (Two Dense Operational Panels) -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-space-lg">
+<!-- Left Panel: Critical Low-Stock & Reorder Alerts -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-xl">warning</span>
+<h2 class="font-headline-sm text-headline-sm text-primary font-bold">Critical Low-Stock & Reorder Alerts</h2>
+</div>
+<button class="px-2.5 py-1 bg-surface-container text-on-surface font-label-sm text-label-sm font-semibold rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-sm">receipt</span>
+<span>Create Bulk PO</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">Items below minimum shelf threshold requiring immediate purchase orders</p>
+<!-- Dense Operational Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+<th class="py-2.5 px-3 rounded-l">Part Name / OEM</th>
+<th class="py-2.5 px-2 text-center">Stock / Min</th>
+<th class="py-2.5 px-3">Primary Supplier</th>
+<th class="py-2.5 px-3 text-right">Restock Cost</th>
+<th class="py-2.5 px-3 text-right rounded-r">Action</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm divide-y divide-surface-container-high">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">NGK C7HSA Spark Plug</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">OEM: 4629 • Fit: Boxer / TVS / CT100</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded font-label-sm text-label-sm font-bold bg-error text-on-error">
+                      3 / 50 pcs
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">AutoXpress Ind.</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">Lead: Same Day (NBO)</span>
+</div>
+</td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 8,500
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<button class="px-2 py-1 bg-secondary text-on-secondary rounded font-label-sm text-label-sm font-bold hover:bg-secondary-container transition-colors" type="button">
+                      + PO
+                    </button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">Endurance Rear Brake Shoes</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">OEM: END-BS-04 • Boxer BM150</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded font-label-sm text-label-sm font-bold bg-error text-on-error">
+                      0 / 25 sets
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Nairobi Spares Wholesalers</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">Lead: 24 hrs</span>
+</div>
+</td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 16,250
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<button class="px-2 py-1 bg-secondary text-on-secondary rounded font-label-sm text-label-sm font-bold hover:bg-secondary-container transition-colors" type="button">
+                      + PO
+                    </button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">DID Drive Chain 428H-128L</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Heavy Duty Gold • Universal 125-150cc</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded font-label-sm text-label-sm font-bold bg-error-container text-on-error-container">
+                      2 / 20 pcs
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Trans-Africa Logistics</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">Lead: 48 hrs</span>
+</div>
+</td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 28,000
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<button class="px-2 py-1 bg-secondary text-on-secondary rounded font-label-sm text-label-sm font-bold hover:bg-secondary-container transition-colors" type="button">
+                      + PO
+                    </button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">Total Hi-Perf 4T 20W50 1L</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Carton (12x1L) • Mineral Oil</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded font-label-sm text-label-sm font-bold bg-error-container text-on-error-container">
+                      4 / 30 btls
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">TotalEnergies Depot NBO</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">Lead: Same Day</span>
+</div>
+</td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 18,200
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<button class="px-2 py-1 bg-secondary text-on-secondary rounded font-label-sm text-label-sm font-bold hover:bg-secondary-container transition-colors" type="button">
+                      + PO
+                    </button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">Exedy Clutch Plate Kit (1NZ-FE)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">TYD035U • Toyota Probox/Succeed</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded font-label-sm text-label-sm font-bold bg-error text-on-error">
+                      1 / 8 kits
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Japan Direct Spares Ltd</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">Lead: 12 hrs</span>
+</div>
+</td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 44,500
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<button class="px-2 py-1 bg-secondary text-on-secondary rounded font-label-sm text-label-sm font-bold hover:bg-secondary-container transition-colors" type="button">
+                      + PO
+                    </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="pt-space-md mt-space-md border-t border-surface-container flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
+<span>Showing 5 of 18 alert lines</span>
+<a class="text-secondary font-bold hover:underline" data-path="low-stock-alerts" href="#">View All Low-Stock SKUs →</a>
+</div>
+</div>
+<!-- Right Panel: Recent POS Transactions (Live Counter Stream) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-xl">receipt_long</span>
+<h2 class="font-headline-sm text-headline-sm text-primary font-bold">Live Counter Transactions</h2>
+</div>
+<a class="px-2.5 py-1 bg-surface-container text-on-surface font-label-sm text-label-sm font-semibold rounded-lg hover:bg-surface-container-high transition-colors" data-path="sales-and-invoices" href="#">
+              All Invoices
+            </a>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">Real-time point of sale transactions logged from Kirinyaga Rd tills</p>
+<!-- Live Transactions Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+<th class="py-2.5 px-3 rounded-l">Receipt • Time</th>
+<th class="py-2.5 px-3">Customer / Fleet</th>
+<th class="py-2.5 px-2 text-center">Items</th>
+<th class="py-2.5 px-3 text-right">Amount</th>
+<th class="py-2.5 px-3 text-center">Tender</th>
+<th class="py-2.5 px-2 text-right rounded-r">Action</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm divide-y divide-surface-container-high">
+<!-- Tx 1 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">#MC-8492</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">16:14 • Till 02 (Otieno)</span>
+</div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Apex Boda Boda Sacco</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Account: APX-412</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center font-numeric-data text-numeric-data font-semibold text-on-surface">
+                    6
+                  </td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 14,800
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-tertiary-fixed text-on-tertiary-fixed" title="M-Pesa STK Ref: QKH7298DJ1">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container"></span>
+                      M-Pesa
+                    </span>
+</td>
+<td class="py-2.5 px-2 text-right">
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded hover:bg-surface-container-high transition-colors" title="Print Thermal Receipt" type="button">
+<span class="material-symbols-outlined text-base">print</span>
+</button>
+</td>
+</tr>
+<!-- Tx 2 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">#MC-8491</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">16:11 • Till 01 (Kamau)</span>
+</div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Walk-in Cash Rider</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Motorcycle Spares</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center font-numeric-data text-numeric-data font-semibold text-on-surface">
+                    2
+                  </td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 2,450
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-secondary-fixed text-on-secondary-fixed">
+                      Cash
+                    </span>
+</td>
+<td class="py-2.5 px-2 text-right">
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded hover:bg-surface-container-high transition-colors" title="Print Thermal Receipt" type="button">
+<span class="material-symbols-outlined text-base">print</span>
+</button>
+</td>
+</tr>
+<!-- Tx 3 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">#MC-8490</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">16:03 • Desk 03 (Mwangi)</span>
+</div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Kariuki Auto Garage</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Workshop Order (Fleet)</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center font-numeric-data text-numeric-data font-semibold text-on-surface">
+                    14
+                  </td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 42,600
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-surface-container-highest text-on-surface">
+                      Split (M+C)
+                    </span>
+</td>
+<td class="py-2.5 px-2 text-right">
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded hover:bg-surface-container-high transition-colors" title="Print Thermal Receipt" type="button">
+<span class="material-symbols-outlined text-base">print</span>
+</button>
+</td>
+</tr>
+<!-- Tx 4 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">#MC-8489</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">15:52 • Till 02 (Otieno)</span>
+</div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Matatu 14-Seater SACCO</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Fleet Maintenance</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center font-numeric-data text-numeric-data font-semibold text-on-surface">
+                    4
+                  </td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 18,300
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-tertiary-fixed text-on-tertiary-fixed" title="M-Pesa Ref: QKH1901LL8">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container"></span>
+                      M-Pesa
+                    </span>
+</td>
+<td class="py-2.5 px-2 text-right">
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded hover:bg-surface-container-high transition-colors" title="Print Thermal Receipt" type="button">
+<span class="material-symbols-outlined text-base">print</span>
+</button>
+</td>
+</tr>
+<!-- Tx 5 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">#MC-8488</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">15:47 • Till 01 (Kamau)</span>
+</div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Walk-in Workshop Runner</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Quick Spark & Filter</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-center font-numeric-data text-numeric-data font-semibold text-on-surface">
+                    3
+                  </td>
+<td class="py-2.5 px-3 text-right font-numeric-data text-numeric-data font-bold text-on-surface">
+                    KSh 3,850
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-sm text-label-sm font-semibold bg-tertiary-fixed text-on-tertiary-fixed" title="M-Pesa Ref: QKG9802AA4">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container"></span>
+                      M-Pesa
+                    </span>
+</td>
+<td class="py-2.5 px-2 text-right">
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded hover:bg-surface-container-high transition-colors" title="Print Thermal Receipt" type="button">
+<span class="material-symbols-outlined text-base">print</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="pt-space-md mt-space-md border-t border-surface-container flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
+<span>Live Polling: 84 of 84 logged</span>
+</div>
+<a class="text-secondary font-bold hover:underline" data-path="point-of-sale" href="#">Open Full POS Register →</a>
+</div>
+</div>
+</div>
+<!-- Quick Operational Shortcuts Bar at bottom -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-wrap items-center justify-between gap-space-md shadow-sm">
+<div class="flex items-center gap-space-sm text-on-surface font-label-md text-label-md">
+<span class="material-symbols-outlined text-secondary text-lg">bolt</span>
+<span class="font-bold">Register Actions:</span>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<button class="flex items-center gap-1.5 px-space-md py-2 bg-surface-container-lowest text-on-surface rounded-lg font-label-md text-label-md font-semibold hover:bg-surface-container transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-base text-primary">point_of_sale</span>
+<span>End of Day Till Count (Z-Report)</span>
+</button>
+<button class="flex items-center gap-1.5 px-space-md py-2 bg-surface-container-lowest text-on-surface rounded-lg font-label-md text-label-md font-semibold hover:bg-surface-container transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-base text-secondary">lock_open</span>
+<span>Open Shift Cash Drawer</span>
+</button>
+<button class="flex items-center gap-1.5 px-space-md py-2 bg-surface-container-lowest text-on-surface rounded-lg font-label-md text-label-md font-semibold hover:bg-surface-container transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-base text-on-surface-variant">barcode_scanner</span>
+<span>Price Lookup Scanner (F4)</span>
+</button>
+<button class="flex items-center gap-1.5 px-space-md py-2 bg-surface-container-lowest text-on-surface rounded-lg font-label-md text-label-md font-semibold hover:bg-surface-container transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-base text-on-tertiary-container">history_edu</span>
+<span>Customer Statement Generator</span>
+</button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useSearchParams } from 'react-router-dom'
 import { Banknote, Clock, Download, Percent, Receipt, TrendingUp, Trophy, Undo2 } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
@@ -31,11 +32,18 @@ function saleProfit(s: Sale): { revenueExVat: number; cost: number } {
 const pct = (v: number, total: number) => (total > 0 ? Math.max(0, (v / total) * 100) : 0)
 
 export default function ReportsPage() {
+  const [searchParams] = useSearchParams()
   const settings = useSettings()
   const [range, setRange] = useState<Range>('week')
   const sales = useLiveQuery(() => db.sales.where('createdAt').aboveOrEqual(rangeStart(range)).toArray(), [range], [] as Sale[])
   const products = useLiveQuery(() => db.products.toArray(), [], [] as Product[])
   const categories = useLiveQuery(() => db.categories.toArray(), [], [])
+
+  useEffect(() => {
+    if (searchParams.get('view') === 'expenses') {
+      // Expenses view - could add expenses tab in the future
+    }
+  }, [searchParams])
 
   const stats = useMemo(() => {
     const valid = sales.filter((s) => s.status !== 'voided')

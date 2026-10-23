@@ -15,6 +15,7 @@ export default function ReceiptModal({
   onClose,
   isNew,
   actions,
+  autoPrint,
 }: {
   sale: Sale
   settings: Settings
@@ -22,6 +23,8 @@ export default function ReceiptModal({
   isNew?: boolean
   /** Extra footer buttons, e.g. Refund from sales history. */
   actions?: ReactNode
+  /** Force auto-print after the sale completes, overriding the shop setting. */
+  autoPrint?: boolean
 }) {
   const toast = useToast()
   const cashier = useLiveQuery(() => db.users.get(sale.userId), [sale.userId])
@@ -44,7 +47,7 @@ export default function ReceiptModal({
   // Auto-print once when a fresh sale opens (the ref guards against StrictMode double effects).
   const autoPrinted = useRef(false)
   useEffect(() => {
-    if (!isNew || !settings.autoPrint || autoPrinted.current) return
+    if (!isNew || !(autoPrint ?? settings.autoPrint) || autoPrinted.current) return
     autoPrinted.current = true
     print(false)
   }, [])

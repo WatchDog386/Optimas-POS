@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useSearchParams } from 'react-router-dom'
 import { Bike, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Tag, Upload } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
@@ -10,19 +11,36 @@ import { money, toCents } from '../lib/money'
 import { download, parseCsv, toCsv } from '../lib/csv'
 import { useSession } from '../session'
 import { Badge, Empty, ListPanel, Modal, PageHeader, errorText, useToast } from '../components/ui'
+import { quotationImportSummary, quotationProductSkus } from '../db/quotationProducts'
 
 const CSV_HEADER = ['sku', 'name', 'barcode', 'partNumber', 'category', 'brand', 'fitment', 'cost', 'price', 'stock', 'reorderLevel', 'location', 'taxable', 'serialized', 'trackStock']
 
 export default function InventoryPage() {
+  const [searchParams] = useSearchParams()
   const settings = useSettings()
   const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(searchParams.get('q') ?? '')
   const [cat, setCat] = useState<number | 'all'>('all')
   const [lowOnly, setLowOnly] = useState(false)
   const [editing, setEditing] = useState<Partial<Product> | null>(null)
   const [adjusting, setAdjusting] = useState<Product | null>(null)
   const [history, setHistory] = useState<Product | null>(null)
+
+  useEffect(() => {
+    setQ(searchParams.get('q') ?? '')
+    const view = searchParams.get('view')
+    if (view === 'compatibility') {
+      // Could add a compatibility view in the future
+    } else if (view === 'adjustments') {
+      // Could add stock adjustments view in the future
+    } else if (view === 'lowstock') {
+      setLowOnly(true)
+    }
+    if (searchParams.get('new') === '1') {
+      setEditing({})
+    }
+  }, [searchParams])
 
   const products = useLiveQuery(() => db.products.orderBy('name').toArray(), [], [] as Product[])
   const categories = useLiveQuery(() => db.categories.toArray(), [], [])
@@ -38,6 +56,9 @@ export default function InventoryPage() {
 
   const stockValue = products.filter((p) => p.trackStock && p.stock > 0).reduce((s, p) => s + p.stock * p.cost, 0)
   const lowCount = products.filter((p) => p.active && p.trackStock && p.stock <= p.reorderLevel).length
+  const inactiveCount = products.filter((p) => !p.active).length
+  const quoteProducts = products.filter((product) => quotationProductSkus.has(product.sku))
+  const quoteSetupCount = quoteProducts.filter((product) => !product.barcode || product.price <= 0 || !product.active).length
 
   const exportCsv = () => {
     const data = products.map((p) => [
@@ -105,7 +126,7 @@ export default function InventoryPage() {
     <div className="p-4 lg:p-6">
       <PageHeader
         title="Inventory"
-        subtitle={`${products.length} parts · stock value ${money(stockValue, settings.currency)} at cost · ${lowCount} low on stock`}
+        subtitle={`${products.length} parts · ${inactiveCount} inactive · stock value ${money(stockValue, settings.currency)} at cost · ${lowCount} low on stock`}
         actions={
           <>
             <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
@@ -121,6 +142,14 @@ export default function InventoryPage() {
           </>
         }
       />
+      {quoteProducts.length > 0 && (
+        <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
+          <div className="font-semibold">Quotation {quotationImportSummary.reference}: {quoteProducts.length} parts in the catalog</div>
+          <p className="mt-1 text-blue-800">
+            {quoteSetupCount} still need barcode, selling price, or activation. The quoted {quotationImportSummary.requestedUnits} units are not counted as on-hand stock; record a receipt after availability is confirmed.
+          </p>
+        </div>
+      )}
       {/* Mobile: search + category dropdown + low-stock toggle (replaces the dark bar and toolbar) */}
       <div className="mb-3 flex items-center gap-2 sm:hidden">
         <input
@@ -213,16 +242,22 @@ export default function InventoryPage() {
           <tbody>
             {rows.map((p) => {
               const margin = p.price ? Math.round(((p.price - p.cost) / p.price) * 100) : 0
+              const quotationPart = quotationProductSkus.has(p.sku)
               return (
-                <tr key={p.id} className={`table-row ${p.active ? '' : 'opacity-50'}`}>
+                <tr key={p.id} className="table-row">
                   <td className="font-mono text-xs">{p.sku}</td>
                   <td>
                     <div className="font-semibold">{p.name}</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
                       {[catName[p.categoryId ?? -1], p.partNumber && `P/N ${p.partNumber}`, p.barcode].filter(Boolean).join(' · ')}
+                      {!p.active && (
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600" title="Not available on the cashier screen until activated">
+                          Draft · not for sale
+                        </span>
+                      )}
                     </div>
                   </td>
-                  <td className="text-xs">{p.fitment.length ? p.fitment.join(', ') : <span className="text-slate-400">Universal</span>}</td>
+                  <td className="text-xs">{p.fitment.length ? p.fitment.join(', ') : <span className="text-slate-400">{quotationPart ? 'Fitment unconfirmed' : 'Universal'}</span>}</td>
                   <td className="text-xs">{p.location}</td>
                   <td className="text-right">
                     {p.trackStock ? <Badge tone={p.stock <= 0 ? 'red' : p.stock <= p.reorderLevel ? 'amber' : 'green'}>{p.stock}</Badge> : '—'}
@@ -322,6 +357,11 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
   const save = async () => {
     try {
       if (!p.sku?.trim() || !p.name?.trim()) throw new Error('SKU and name are required')
+      if (p.active && toCents(price) <= 0) throw new Error('Set a selling price above zero before activating this part')
+      if (p.active && quotationProductSkus.has(p.sku.trim())) {
+        if (!p.barcode?.trim()) throw new Error('Add the barcode before activating this quoted part')
+        if (p.trackStock !== false && (p.stock ?? 0) <= 0) throw new Error('Receive stock before activating this quoted part')
+      }
       const clash = await db.products.where('sku').equals(p.sku.trim()).first()
       if (clash && clash.id !== p.id) throw new Error(`SKU ${p.sku} is already used by ${clash.name}`)
       if (p.barcode) {

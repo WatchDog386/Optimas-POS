@@ -1,34 +1,35 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle,
-  ArrowRight,
-  Banknote,
-  Boxes,
-  CheckCircle2,
+  AlertCircle,
+  ArrowUpRight,
+  BarChart2,
+  Bell,
+  Building2,
+  Calendar,
+  ChevronRight,
+  DollarSign,
+  ExternalLink,
   FileText,
+  Group,
   Package,
   Plus,
   Receipt,
-  ScrollText,
-  Settings as SettingsIcon,
+  RotateCcw,
+  Search,
   TrendingUp,
   Truck,
-  UserCog,
   Users,
   Wallet,
-  Wrench,
 } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { useSession } from '../session'
-import type { LogEntry, PaymentMethod, Sale } from '../db/types'
-import { money, moneyShort } from '../lib/money'
-import { Badge, Empty, ListPanel } from '../components/ui'
+import type { Category, PaymentMethod, Sale } from '../db/types'
+import { summarizeShift } from '../db/shifts'
 
 const METHOD_LABEL: Record<PaymentMethod, string> = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', account: 'On account' }
-const METHOD_COLOR: Record<PaymentMethod, string> = { cash: '#22c55e', mpesa: '#2c8286', card: '#8b5cf6', account: '#fbbf24' }
 
 function startOfDay(d = new Date()): number {
   const x = new Date(d)
@@ -36,30 +37,93 @@ function startOfDay(d = new Date()): number {
   return x.getTime()
 }
 
+function formatKsh(value: number): string {
+  return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value / 100)
+}
+
+interface HourlyBarProps {
+  x: number
+  mpesaHeight: number
+  cashHeight: number
+  otherHeight: number
+  isPeak: boolean
+  peakLabel: string
+}
+
+function HourlyBar({ x, mpesaHeight, cashHeight, otherHeight, isPeak, peakLabel }: HourlyBarProps) {
+  const peakY = 230 - mpesaHeight - cashHeight - otherHeight - 8
+  const transform = isPeak ? `translate(${x + 15}, ${peakY})` : ''
+  return (
+    <g key={`bar-${x}`}>
+      <rect fill="url(#mpesaGrad)" height={mpesaHeight} rx={3} width={30} x={x} y={230 - mpesaHeight} />
+      <rect fill="url(#cashGrad)" height={cashHeight} rx={2} width={30} x={x} y={230 - mpesaHeight - cashHeight} />
+      <rect fill="url(#otherGrad)" height={otherHeight} rx={2} width={30} x={x} y={230 - mpesaHeight - cashHeight - otherHeight} />
+      {isPeak && (
+        <g transform={transform}>
+          <circle cx="0" cy="0" fill="#00a859" r="4" />
+          <line stroke="#00a859" strokeWidth="1.5" x1="0" x2="0" y1="0" y2="-12" />
+          <rect fill="#0f172a" height="16" rx={3} width={84} x="-42" y="-28" />
+          <text fill="#ffffff" fontFamily="Inter" fontSize="10" fontWeight="600" textAnchor="middle" x="0" y="-17">Peak: {peakLabel}</text>
+        </g>
+      )}
+    </g>
+  )
+}
+
 export default function DashboardPage() {
-  const { user, shift, can } = useSession()
+  const { user, shift } = useSession()
   const settings = useSettings()
+  const navigate = useNavigate()
+  const searchRef = useRef<HTMLInputElement>(null)
+  const [catalogQuery, setCatalogQuery] = useState('')
   const todayStart = useMemo(() => startOfDay(), [])
-  const [cardSlide, setCardSlide] = useState(0)
-  const isAdmin = can('users')
+  const [cashierFilter, setCashierFilter] = useState<number | 'all'>('all')
+
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        searchRef.current?.focus()
+        return
+      }
+      if (event.key === 'F1') { event.preventDefault(); navigate('/sell') }
+      if (event.key === 'F3') { event.preventDefault(); navigate('/inventory?new=1') }
+      if (event.key === 'F4') { event.preventDefault(); searchRef.current?.focus() }
+    }
+    window.addEventListener('keydown', onShortcut)
+    return () => window.removeEventListener('keydown', onShortcut)
+  }, [navigate])
 
   const sales = useLiveQuery(() => db.sales.where('createdAt').aboveOrEqual(todayStart).toArray(), [todayStart], [] as Sale[])
-  const products = useLiveQuery(() => db.products.toArray(), [], [])
-  const customers = useLiveQuery(() => db.customers.count(), [], 0)
-  const jobs = useLiveQuery(() => db.jobs.where('status').notEqual('collected').count(), [], 0)
-  const recentSales = useLiveQuery(
-    () => db.sales.where('createdAt').aboveOrEqual(todayStart).reverse().limit(8).sortBy('createdAt'),
-    [todayStart],
+  const products = useLiveQuery(() => db.products.toArray(), [], [] as import('../db/types').Product[])
+  const users = useLiveQuery(() => db.users.toArray(), [], [])
+  const suppliers = useLiveQuery(() => db.suppliers.toArray(), [], [])
+  const shiftSales = useLiveQuery(
+    () => (shift?.id ? db.sales.where('shiftId').equals(shift.id).toArray() : Promise.resolve([] as Sale[])),
+    [shift?.id],
     [] as Sale[],
   )
-  const recentLogs = useLiveQuery(
-    () => (isAdmin ? db.logs.orderBy('at').reverse().limit(5).toArray() : Promise.resolve<LogEntry[]>([])),
-    [isAdmin],
-    [] as LogEntry[],
+  const customerCredit = useLiveQuery(() => db.customers.where('balance').above(0).toArray(), [], [] as { balance: number; creditLimit: number }[])
+  const customersMap = useLiveQuery(() => db.customers.toArray(), [], [] as { id: number; name: string; phone?: string; balance: number }[])
+  const categories = useLiveQuery(() => db.categories.toArray(), [], [] as Category[])
+  const supplierNames = useMemo(() => Object.fromEntries(suppliers.map((supplier) => [supplier.id, supplier.name])), [suppliers])
+
+  const cashierUsers = users.filter((staff) => staff.active && staff.role === 'cashier')
+  const cashierSales = useMemo(
+    () => (cashierFilter === 'all' ? sales : sales.filter((sale) => sale.userId === cashierFilter)),
+    [sales, cashierFilter],
   )
+  const recentTransactions = useMemo(
+    () => [...cashierSales].filter((sale) => sale.status !== 'voided').sort((a, b) => b.createdAt - a.createdAt).slice(0, 10),
+    [cashierSales],
+  )
+  const shiftSummary = useMemo(() => {
+    if (!shift) return undefined
+    return summarizeShift(shift, shiftSales)
+  }, [shift, shiftSales])
 
   const stats = useMemo(() => {
-    const valid = sales.filter((s) => s.status !== 'voided')
+    const valid = cashierSales.filter((s) => s.status !== 'voided')
     const positive = valid.filter((s) => s.total >= 0)
     const revenue = positive.reduce((s, x) => s + x.total, 0)
     const refunds = valid.filter((s) => s.total < 0).reduce((s, x) => s - x.total, 0)
@@ -68,599 +132,661 @@ export default function DashboardPage() {
     const profit = revenue - cost - Math.abs(refunds)
     const avg = positive.length ? Math.round(revenue / positive.length) : 0
     const byMethod: Record<PaymentMethod, number> = { cash: 0, mpesa: 0, card: 0, account: 0 }
+    const grossByMethod: Record<PaymentMethod, number> = { cash: 0, mpesa: 0, card: 0, account: 0 }
     for (const s of valid) {
-      for (const p of s.payments) byMethod[p.method] += p.amount
+      for (const p of s.payments) {
+        byMethod[p.method] += p.amount
+        if (s.total >= 0) grossByMethod[p.method] += p.amount
+      }
       byMethod.cash -= s.change
+      if (s.total >= 0) grossByMethod.cash -= s.change
     }
-    return { count: positive.length, revenue, profit, avg, refunds: Math.abs(refunds), byMethod }
-  }, [sales])
+    return { count: positive.length, revenue, profit, avg, refunds: Math.abs(refunds), byMethod, grossByMethod }
+  }, [cashierSales])
 
   const lowStock = useMemo(
     () =>
       products
         .filter((p) => p.active && p.trackStock && p.stock <= p.reorderLevel)
-        .sort((a, b) => a.stock - b.stock)
-        .slice(0, 6),
+        .sort((a, b) => a.stock - b.stock),
     [products],
   )
 
-  const weekStart = useMemo(() => startOfDay(new Date(Date.now() - 6 * 86400000)), [])
-  const weekSales = useLiveQuery(
-    () => db.sales.where('createdAt').aboveOrEqual(weekStart).toArray(),
-    [weekStart],
-    [] as Sale[],
-  )
-  const weekRevenue = useMemo(
-    () => weekSales.filter((s) => s.status !== 'voided' && s.total >= 0).reduce((s, x) => s + x.total, 0),
-    [weekSales],
-  )
-  const weekCount = useMemo(
-    () => weekSales.filter((s) => s.status !== 'voided' && s.total >= 0).length,
-    [weekSales],
-  )
+  const totalStockValue = useMemo(() => {
+    let val = 0
+    for (const p of products) if (p.active && p.trackStock) val += p.stock * p.cost
+    return val
+  }, [products])
 
-  const today = new Date()
-  const dateLabel = today.toLocaleDateString('en-KE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  const totalCredit = useMemo(() => customerCredit.reduce((s, c) => s + c.balance, 0), [customerCredit])
+  const totalCreditLimit = useMemo(() => customerCredit.reduce((s, c) => s + c.creditLimit, 0), [customerCredit])
+  const creditUtilization = totalCreditLimit > 0 ? Math.min(100, Math.round((totalCredit / totalCreditLimit) * 100)) : 0
+  const activeStockProducts = products.filter((p) => p.active && p.trackStock)
+  const stockCoverage = Math.min(100, Math.round((activeStockProducts.filter((p) => p.stock > p.reorderLevel).length / Math.max(1, activeStockProducts.length)) * 100))
 
-  const greeting = today.getHours() < 12 ? 'Good morning' : today.getHours() < 17 ? 'Good afternoon' : 'Good evening'
+  const categorySales = useMemo(() => {
+    const catMap = new Map<number, { name: string; revenue: number; count: number }>()
+    for (const s of cashierSales.filter(s => s.status !== 'voided' && s.total >= 0)) {
+      for (const l of s.lines) {
+        const p = products.find(pr => pr.id === l.productId)
+        if (p?.categoryId) {
+          const cat = catMap.get(p.categoryId) || { name: '', revenue: 0, count: 0 }
+          const soldQty = Math.max(0, l.qty - (l.refundedQty ?? 0))
+          cat.name = p.categoryId.toString()
+          cat.revenue += soldQty * l.unitPrice
+          cat.count += soldQty
+          catMap.set(p.categoryId, cat)
+        }
+      }
+    }
+    return Array.from(catMap.entries())
+      .map(([id, data]) => ({ ...data, name: categories.find(c => c.id === id)?.name || 'Unknown' }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+  }, [cashierSales, products, categories])
 
-  const cards = [
+  const totalCatRevenue = categorySales.reduce((s, c) => s + c.revenue, 0) || 1
+  const tenderTotal = Math.max(1, Object.values(stats.grossByMethod).reduce((sum, amount) => sum + Math.max(0, amount), 0))
+  const tenderPercent = (amount: number) => Math.round((Math.max(0, amount) / tenderTotal) * 100)
+
+  const hourlyData = useMemo(() => {
+    const currentHour = new Date().getHours()
+    const hours = Array.from({ length: 10 }, (_, index) => ({ hour: (currentHour - 9 + index + 24) % 24, mpesa: 0, cash: 0, other: 0 }))
+    for (const sale of cashierSales) {
+      if (sale.status === 'voided' || sale.total < 0) continue
+      const hour = new Date(sale.createdAt).getHours()
+      const row = hours.find((entry) => entry.hour === hour)
+      if (!row) continue
+      for (const payment of sale.payments) {
+        if (payment.method === 'mpesa') row.mpesa += payment.amount
+        else if (payment.method === 'cash') row.cash += payment.amount
+        else row.other += payment.amount
+      }
+      row.cash = Math.max(0, row.cash - sale.change)
+    }
+    return hours.map((entry) => ({ ...entry, label: `${String(entry.hour).padStart(2, '0')}:00`, total: entry.mpesa + entry.cash + entry.other }))
+  }, [cashierSales])
+  const maxHourly = Math.max(1, ...hourlyData.map((entry) => entry.total))
+  const peakHour = hourlyData.reduce((peak, entry) => (entry.total > peak.total ? entry : peak), hourlyData[0])
+
+  const topPart = useMemo(() => {
+    const parts = new Map<number, { name: string; units: number }>()
+    for (const sale of cashierSales) {
+      if (sale.status === 'voided' || sale.total < 0) continue
+      for (const line of sale.lines) {
+        if (!line.productId) continue
+        const part = parts.get(line.productId) ?? { name: line.name, units: 0 }
+        part.units += Math.max(0, line.qty - (line.refundedQty ?? 0))
+        parts.set(line.productId, part)
+      }
+    }
+    return [...parts.values()].filter((part) => part.units > 0).sort((a, b) => b.units - a.units)[0]
+  }, [cashierSales])
+
+  const searchCatalog = () => {
+    const query = catalogQuery.trim()
+    navigate(query ? `/inventory?q=${encodeURIComponent(query)}` : '/inventory')
+  }
+
+  const exportTodayCsv = () => {
+    const rows = [
+      ['Receipt', 'Time', 'Customer', 'Items', 'Amount (KES)', 'Tender'],
+      ...cashierSales.filter((sale) => sale.status !== 'voided').sort((a, b) => b.createdAt - a.createdAt).map((sale) => [
+        sale.receiptNo,
+        new Date(sale.createdAt).toLocaleString('en-KE'),
+        getCustomerName(sale.customerId),
+        String(sale.lines.reduce((total, line) => total + Math.abs(line.qty), 0)),
+        (sale.total / 100).toFixed(2),
+        [...new Set(sale.payments.map((payment) => METHOD_LABEL[payment.method]))].join(' + '),
+      ]),
+    ]
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\r\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `optimas-sales-${new Date().toISOString().slice(0, 10)}.csv`
+    anchor.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  const getCustomerName = (customerId?: number) => {
+    if (!customerId) return 'Walk-in Customer'
+    const c = customersMap.find(cust => cust.id === customerId)
+    return c?.name || 'Unknown Customer'
+  }
+
+  const getCustomerAccount = (customerId?: number) => {
+    if (!customerId) return 'Retail'
+    const c = customersMap.find(cust => cust.id === customerId)
+    return c?.phone ? `Account: ${c.phone}` : 'Account Customer'
+  }
+
+  const kpiCards = [
     {
-      label: 'Sales today',
-      value: String(stats.count),
-      sub: `${money(stats.revenue, settings.currency)} collected`,
-      hero: money(stats.revenue, settings.currency),
-      right: `${stats.count} sale${stats.count === 1 ? '' : 's'}`,
-      meta: `Avg sale ${money(stats.avg, settings.currency)}`,
-      badge: 'Live',
-      act: { label: 'New sale', to: '/sell', icon: Plus },
-      icon: Receipt,
-      bg: 'bg-[#2480E8]',
-      grad: 'linear-gradient(135deg, #2480E8 0%, #0B3F78 100%)',
-      strip: 'bg-[#1565C0] group-hover:bg-[#0F4F9A]',
-      to: '/sales',
+      label: 'Gross Sales (Today)',
+      value: formatKsh(stats.revenue),
+      sub: `${stats.count} tickets · Avg ${formatKsh(stats.avg)}`,
+      trend: 'Today',
+      icon: DollarSign,
+      gradient: 'kpi-gradient-blue',
+      progress: null,
+      action: { label: 'View Sales', to: '/sales', icon: FileText },
     },
     {
-      label: 'Gross profit',
-      value: money(stats.profit, settings.currency),
-      sub: stats.refunds > 0 ? `${money(stats.refunds, settings.currency)} in refunds` : 'No refunds today',
-      hero: money(stats.profit, settings.currency),
-      right: stats.revenue > 0 ? `${Math.round((stats.profit / stats.revenue) * 100)}% margin` : 'No sales yet',
-      meta: stats.refunds > 0 ? `${money(stats.refunds, settings.currency)} in refunds` : 'No refunds today',
-      badge: 'After costs',
-      act: { label: 'Sales', to: '/sales', icon: Receipt },
+      label: 'Est. Gross Profit',
+      value: formatKsh(stats.profit),
+      sub: stats.refunds > 0 ? `${formatKsh(stats.refunds)} in refunds` : 'No refunds today',
+      trend: `${stats.revenue ? Math.round((stats.profit / stats.revenue) * 100) : 0}% margin`,
       icon: TrendingUp,
-      bg: 'bg-[#2F8F54]',
-      grad: 'linear-gradient(135deg, #2F8F54 0%, #144B2A 100%)',
-      strip: 'bg-[#1F6B3C] group-hover:bg-[#15522C]',
-      to: '/reports',
+      gradient: 'kpi-gradient-green',
+      progress: Math.max(0, Math.min(100, Math.round((stats.profit / Math.max(1, stats.revenue)) * 100))),
+      action: { label: 'Reports', to: '/reports', icon: BarChart2 },
     },
     {
-      label: '7-day sales',
-      value: moneyShort(weekRevenue),
-      sub: `${money(weekRevenue, settings.currency)} this week`,
-      hero: money(weekRevenue, settings.currency),
-      right: `${weekCount} sale${weekCount === 1 ? '' : 's'}`,
-      meta: `Daily avg ${money(Math.round(weekRevenue / 7), settings.currency)}`,
-      badge: 'This week',
-      act: { label: 'New sale', to: '/sell', icon: Plus },
-      icon: Banknote,
-      bg: 'bg-[#FABF24]',
-      grad: 'linear-gradient(135deg, #FABF24 0%, #7A5A02 100%)',
-      strip: 'bg-[#D19E00] group-hover:bg-[#B38600]',
-      to: '/reports',
+      label: 'Cash & Till Balance',
+      value: formatKsh(shiftSummary?.expectedCash ?? stats.byMethod.cash),
+      sub: shift ? `Whole-shift till · M-Pesa: ${formatKsh(shiftSummary?.byMethod.mpesa ?? 0)}` : `Cash today · M-Pesa: ${formatKsh(stats.byMethod.mpesa)}`,
+      trend: shift ? 'Shift open' : 'No open shift',
+      icon: Wallet,
+      gradient: 'kpi-gradient-teal',
+      progress: null,
+      action: { label: 'Reconcile', to: '/shift', icon: RotateCcw },
     },
     {
-      label: 'Open jobs',
-      value: String(jobs),
-      sub: jobs === 0 ? 'Workshop is clear' : 'Service jobs in progress',
-      hero: String(jobs),
-      right: jobs > 0 ? 'In workshop' : 'All clear',
-      meta: jobs === 0 ? 'Workshop is clear' : 'Service jobs in progress',
-      badge: 'Workshop',
-      act: { label: 'New job', to: '/service?new=1', icon: Plus },
-      icon: Wrench,
-      bg: 'bg-[#E23C37]',
-      grad: 'linear-gradient(135deg, #E23C37 0%, #6E1512 100%)',
-      strip: 'bg-[#B32420] group-hover:bg-[#8F1B18]',
-      to: '/service',
-    },
-  ]
-
-  const panels = [
-    {
-      title: 'Low stock',
-      body:
-        lowStock.length === 0
-          ? 'Every tracked part is above its reorder level.'
-          : `${lowStock.length} part${lowStock.length === 1 ? '' : 's'} at or below reorder level. Restock soon.`,
-      action: 'Review inventory',
-      to: '/inventory',
-      perm: 'inventory' as const,
-      btn: 'btn-primary',
+      label: 'Total Stock Value',
+      value: formatKsh(totalStockValue),
+      sub: `${activeStockProducts.length} active stock SKUs`,
+      trend: `${stockCoverage}% above min`,
       icon: Package,
-      img: '/sale.png',
+      gradient: 'kpi-gradient-violet',
+      progress: stockCoverage,
+      action: { label: 'Inventory', to: '/inventory', icon: Package },
     },
     {
-      title: 'Service bay',
-      body:
-        jobs === 0
-          ? 'No open service jobs. Create one from the Service page when a bike comes in.'
-          : `${jobs} job${jobs === 1 ? '' : 's'} still open. Follow up with customers waiting for parts.`,
-      action: 'Open service jobs',
-      to: '/service',
-      btn: 'btn-primary',
-      icon: Wrench,
-      img: '/service.png',
-    },
-    {
-      title: 'Shift',
-      body: shift
-        ? `Shift open since ${new Date(shift.openedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}. Float ${money(shift.openingFloat, settings.currency)}.`
-        : 'No shift is open. Open a shift before taking cash sales.',
-      action: shift ? 'View shift' : 'Open a shift',
-      to: '/shift',
-      btn: 'btn-primary',
-      icon: Wallet,
-      img: '/shift.png',
-    },
-    {
-      title: 'Customers',
-      body: `${customers} customer${customers === 1 ? '' : 's'} on file. Average sale today ${money(stats.avg, settings.currency)}.`,
-      action: 'Manage customers',
-      to: '/customers',
-      btn: 'btn-primary',
+      label: 'Customer Credit',
+      value: formatKsh(totalCredit),
+      sub: `${customerCredit.length} customer accounts with a balance`,
+      trend: totalCreditLimit > 0 ? `${creditUtilization}% used` : customerCredit.length ? 'No limit set' : 'Clear',
       icon: Users,
-      img: '/customer.png',
-    },
-  ]
-
-  const methodTotal = Object.values(stats.byMethod).reduce((a, b) => a + b, 0) || 1
-
-  const activeMethods = (Object.keys(stats.byMethod) as PaymentMethod[]).filter((m) => stats.byMethod[m] > 0)
-  const methodPct = (m: PaymentMethod) => Math.max(0, Math.round((stats.byMethod[m] / methodTotal) * 100))
-  let donutAcc = 0
-  const donutStops = activeMethods
-    .map((m) => {
-      const start = donutAcc
-      donutAcc += (stats.byMethod[m] / methodTotal) * 100
-      return `${METHOD_COLOR[m]} ${start}% ${donutAcc}%`
-    })
-    .join(', ')
-
-  const tiles = [
-    { label: 'Customers', value: String(customers), icon: Users, bg: 'bg-[#FFC107]', fg: 'text-black', to: '/customers' },
-    {
-      label: 'Active parts',
-      value: String(products.filter((p) => p.active).length),
-      icon: Boxes,
-      bg: 'bg-[#2E9E4F]',
-      fg: 'text-white',
-      to: '/inventory',
-    },
-    { label: 'Low stock', value: String(lowStock.length), icon: Truck, bg: 'bg-[#E84545]', fg: 'text-white', to: '/inventory' },
-    {
-      label: 'Shift',
-      value: shift ? 'Open' : 'Closed',
-      icon: Wallet,
-      bg: 'bg-[#2BC4E8]',
-      fg: 'text-black',
-      to: '/shift',
+      gradient: 'kpi-gradient-red',
+      progress: creditUtilization,
+      action: { label: 'Review', to: '/customers', icon: Group },
     },
     {
-      label: 'Avg sale',
-      value: money(stats.avg, settings.currency),
-      icon: AlertTriangle,
-      bg: 'bg-[#7E57C2]',
-      fg: 'text-white',
-      to: '/reports',
+      label: 'Stock Attention',
+      value: `${lowStock.length} SKUs`,
+      sub: `${lowStock.filter(p => p.stock <= 0).length} zero stock, ${lowStock.filter(p => p.stock > 0).length} reorder alert`,
+      trend: `Est. ${formatKsh(lowStock.reduce((s, p) => s + Math.max(0, p.reorderLevel - p.stock) * p.cost, 0))} req.`,
+      icon: AlertCircle,
+      gradient: 'kpi-gradient-amber',
+      progress: null,
+      action: { label: 'Auto PO', to: '/purchasing', icon: Truck },
     },
   ]
 
   return (
-    <div className="p-4 lg:p-6">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap items-baseline gap-3">
-          <h1 className="text-[26px] font-light leading-none tracking-tight text-slate-700 sm:text-[34px]">Dashboard</h1>
-          <p className="text-[11px] text-slate-500 sm:text-sm">
-            {greeting} <span className="text-base">👋</span> {user?.name} · {dateLabel}
-          </p>
-        </div>
-        <Link
-          to="/sell"
-          className="rounded-full border border-brand-500 px-3.5 py-1 text-xs font-semibold text-brand-600 transition hover:bg-brand-50 sm:hidden"
-        >
-          Start a new sale
-        </Link>
-      </div>
+    <div className="min-h-full bg-mc-canvas">
+      <section id="dashboard-print" className="hidden">
+        <h1>{settings.shopName} · Store Executive Dashboard</h1>
+        <p>Daily snapshot · {new Date().toLocaleString('en-KE')}</p>
+        <table>
+          <tbody>
+            {kpiCards.map((card) => <tr key={card.label}><th>{card.label}</th><td>{card.value}</td></tr>)}
+          </tbody>
+        </table>
+        <h2>Today’s transactions</h2>
+        <table>
+          <thead><tr><th>Receipt</th><th>Time</th><th>Customer</th><th>Amount</th><th>Tender</th></tr></thead>
+          <tbody>
+            {recentTransactions.map((sale) => <tr key={sale.id}>
+              <td>{sale.receiptNo}</td>
+              <td>{new Date(sale.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}</td>
+              <td>{getCustomerName(sale.customerId)}</td>
+              <td>{formatKsh(sale.total)}</td>
+              <td>{[...new Set(sale.payments.map((payment) => METHOD_LABEL[payment.method]))].join(' + ')}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </section>
+      {/* Main content */}
+      <div>
+        {/* Top header */}
+        <header className="sticky top-0 z-40 h-16 bg-white/80 backdrop-blur-xl border-b border-mc-line flex items-center justify-between px-4 lg:px-6">
+          <div className="flex items-center gap-3">
+            <nav className="flex items-center gap-1.5 text-sm text-mc-muted">
+              <span className="text-mc-body">{settings.shopName}</span>
+              <ChevronRight size={14} className="text-mc-faint" />
+              <span className="text-mc-ink font-semibold">Executive Dashboard</span>
+            </nav>
+          </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-        <div className="min-w-0 space-y-4">
-          <div
-            className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4"
-            onScroll={(e) => {
-              const el = e.currentTarget
-              const pitch = el.scrollWidth / cards.length
-              setCardSlide(Math.round(el.scrollLeft / pitch))
-            }}
-          >
-            {cards.map(({ label, value, sub, hero, right, meta, badge, act, icon: Icon, bg, grad, strip, to }) => (
-              <div
-                key={label}
-                className={`group relative min-w-full shrink-0 snap-start overflow-hidden rounded-xl text-white shadow-md transition duration-150 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.98] sm:min-w-0 ${bg}`}
-              >
-                <div className="pointer-events-none absolute inset-0 sm:hidden" style={{ background: grad }} />
-                {/* Decorative arcs, top-right (mobile) */}
-                <span className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full border border-white/15 sm:hidden" />
-                <span className="pointer-events-none absolute -right-4 -top-24 h-40 w-40 rounded-full border border-white/10 sm:hidden" />
-                {/* Mobile: reference-style card */}
-                <div className="relative flex flex-col gap-3.5 p-4 sm:hidden">
-                  <Link to={to} aria-label={`${label}: ${value}. Open details.`} className="block min-w-0">
-                    <div className="text-[11px] font-medium opacity-80">{label}</div>
-                    <div className="mt-1.5 flex items-end justify-between gap-3">
-                      <span className="min-w-0 truncate text-[26px] font-bold leading-none">{hero}</span>
-                      <span className="shrink-0 pb-0.5 text-sm font-semibold opacity-90">{right}</span>
-                    </div>
-                  </Link>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <Link
-                      to={to}
-                      className="flex items-center justify-center gap-1.5 rounded-lg border border-white/70 bg-white/5 px-3 py-2.5 text-[13px] font-semibold transition hover:bg-white/15"
-                    >
-                      <FileText size={14} />
-                      Details
-                    </Link>
-                    <Link
-                      to={act.to}
-                      aria-label={act.label}
-                      className="flex items-center justify-center gap-1.5 rounded-lg border border-white/70 bg-white/5 px-3 py-2.5 text-[13px] font-semibold transition hover:bg-white/15"
-                    >
-                      <act.icon size={14} />
-                      {act.label}
-                    </Link>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="min-w-0 truncate opacity-90">{meta}</span>
-                    <span className="shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold">{badge}</span>
-                  </div>
-                </div>
-                {/* Desktop: original layout */}
-                <Link
-                  to={to}
-                  aria-label={`${label}: ${value}. Open details.`}
-                  className="hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 sm:block"
-                >
-                  <div className="p-4 pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 truncate text-3xl font-extrabold leading-tight">{value}</div>
-                      <Icon size={44} className="shrink-0 text-black/20 transition duration-150 group-hover:scale-110 group-hover:text-black/30" />
-                    </div>
-                    <div className="mt-1 text-base font-semibold">{label}</div>
-                    <div className="mt-0.5 text-sm opacity-90">{sub}</div>
-                  </div>
-                  <div
-                    className={`flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold uppercase tracking-wide transition duration-150 ${strip}`}
-                  >
-                    More info
-                    <ArrowRight size={14} className="transition duration-150 group-hover:translate-x-1" />
-                  </div>
-                </Link>
+          <form className="relative hidden min-w-0 w-full max-w-xl flex-1 items-center md:flex" onSubmit={(event) => { event.preventDefault(); searchCatalog() }}>
+            <Search size={18} className="absolute left-3 text-mc-faint" />
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search Part No, SKU, OEM, Barcode [Ctrl + K]"
+              value={catalogQuery}
+              onChange={(event) => setCatalogQuery(event.target.value)}
+              className="w-full pl-9 pr-10 py-2 bg-mc-canvas border border-mc-line rounded-lg text-sm text-mc-body outline-none focus:border-mc-cobalt focus:ring-2 focus:ring-mc-cobalt/25 placeholder:text-mc-faint"
+            />
+            <kbd className="absolute right-2.5 px-1.5 py-0.5 rounded bg-mc-panel text-mc-muted text-[10px] font-medium">Ctrl+K</kbd>
+          </form>
+
+          <div className="flex items-center gap-2">
+            <NavLink to="/sell" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-mc-cobalt text-white rounded-lg font-medium hover:bg-mc-cobalt-hover transition shadow-sm">
+              <Plus size={16} /> New Sale (F1)
+            </NavLink>
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-mc-canvas rounded text-mc-body text-sm">
+              <Building2 size={14} className="text-mc-muted" />
+              <span>{settings.shopName}</span>
+            </div>
+            {settings.enabledPayments.includes('mpesa') && <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 bg-mc-canvas rounded text-mc-mpesa text-sm font-medium">
+              <span className="w-2 h-2 rounded-full bg-mc-mpesa animate-pulse-dot" />
+              M-Pesa Enabled
+            </div>}
+            <Link to="/notifications" aria-label="Notifications" className="rounded-full p-2 text-mc-muted transition hover:bg-mc-canvas hover:text-mc-body">
+              <Bell size={20} />
+            </Link>
+            <div className="flex items-center gap-2 pl-2 ml-2 border-l border-mc-line">
+              <div aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-mc-cobalt-soft text-xs font-bold text-mc-cobalt-hover">
+                {(user?.name ?? 'O').split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}
               </div>
-            ))}
-          </div>
-
-          {/* Carousel dots */}
-          <div className="mt-1 flex justify-center gap-1.5 sm:hidden">
-            {cards.map((c, i) => (
-              <span
-                key={c.label}
-                className={`h-1.5 w-1.5 rounded-full transition ${i === cardSlide ? 'bg-slate-700' : 'bg-slate-300'}`}
-              />
-            ))}
-          </div>
-
-          {/* Mobile: quick actions — circles only, no panel wrap */}
-          <div className="sm:hidden">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-800">Quick Actions</span>
-              <Link
-                to="/settings"
-                className="rounded-full border border-slate-400 px-3.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-brand-500 hover:text-brand-600"
-              >
-                Manage
-              </Link>
-            </div>
-            <div className="mt-4 grid grid-cols-4 gap-x-2 gap-y-4">
-              {panels.map(({ title, to, img }) => (
-                <Link key={title} to={to} className="flex flex-col items-center gap-2 transition active:scale-95">
-                  <img src={img} alt="" className="h-14 w-14 object-contain" />
-                  <span className="text-center text-[11px] font-medium leading-tight text-slate-600">{title}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Desktop: description panels */}
-          <div className="hidden gap-4 sm:grid sm:grid-cols-2">
-            {panels.map(({ title, body, action, to, btn }) => (
-              <div key={title} className="card flex flex-col p-4">
-                <h2 className="text-sm font-bold text-navy-900 sm:text-lg">{title}</h2>
-                <p className="mt-1 flex-1 text-xs text-slate-600 sm:text-base">{body}</p>
-                <div className="mt-3">
-                  <Link to={to} className={`${btn} mt-auto self-start`}>
-                    {action}
-                  </Link>
-                </div>
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-semibold text-mc-ink">{user?.name}</p>
+                <p className="text-[11px] text-mc-muted">{user?.role}</p>
               </div>
-            ))}
-          </div>
-
-          {/* Mobile: heading + status only */}
-          <div className="card p-4 sm:hidden">
-            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <Receipt size={15} className="text-brand-500" />
-              Today's sales
             </div>
-            {recentSales.length === 0 ? (
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-                <Receipt size={14} className="shrink-0 text-slate-400" />
-                No sales yet today.
-              </p>
-            ) : (
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
-                <CheckCircle2 size={14} className="shrink-0 text-cta" />
-                {stats.count} sale{stats.count === 1 ? '' : 's'} · {money(stats.revenue, settings.currency)} collected
-              </p>
-            )}
           </div>
+        </header>
 
-          <div className="hidden sm:block">
-            <ListPanel
-              title="Today's sales"
-            actions={
-              <Link to="/sales" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
-                All sales <ArrowRight size={15} />
-              </Link>
-            }
-            footer={
-              <>
-                <span>
-                  <strong>{stats.count}</strong> sale{stats.count === 1 ? '' : 's'} today
+        {/* Dashboard content */}
+        <main className="p-4 lg:p-6">
+          {/* Top Operational Bar */}
+          <div className="mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 lg:p-6 rounded-xl border border-mc-line shadow-sm">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-[24px] font-bold tracking-tight text-mc-ink">Store Executive Dashboard</h1>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-mc-cobalt-soft text-mc-cobalt-hover text-[11px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-mc-cobalt animate-pulse-dot" />
+                  Local POS Data
                 </span>
-                <span className="text-xs text-slate-500">{money(stats.revenue, settings.currency)} collected</span>
-              </>
-            }
-          >
-            {recentSales.length === 0 ? (
-              <Empty>No sales yet today. Head to Sell when the first customer walks in.</Empty>
-            ) : (
-              <table className="w-full">
-                <thead className="table-head">
-                  <tr>
-                    <th>Receipt</th>
-                    <th>Time</th>
-                    <th>Items</th>
-                    <th>Method</th>
-                    <th className="text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentSales
-                    .slice()
-                    .reverse()
-                    .map((s) => {
-                      const items = s.lines.reduce((n, l) => n + l.qty, 0)
-                      return (
-                        <tr key={s.id} className="table-row">
-                          <td className="font-semibold">{s.receiptNo}</td>
-                          <td className="text-xs">
-                            {new Date(s.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                          <td className="text-xs">
-                            {items} item{items === 1 ? '' : 's'}
-                          </td>
-                          <td className="text-xs">{s.payments.map((p) => METHOD_LABEL[p.method]).join(', ') || '—'}</td>
-                          <td className={`text-right font-semibold ${s.total < 0 ? 'text-red-600' : ''}`}>{money(s.total, settings.currency)}</td>
-                        </tr>
-                      )
-                    })}
-                </tbody>
-              </table>
-            )}
-            </ListPanel>
+              </div>
+              <p className="text-sm text-mc-muted">Sales, inventory movement, and till activity recorded at {settings.shopName}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-mc-canvas border border-mc-line rounded-lg text-sm font-medium text-mc-body">
+                <Calendar size={16} className="text-mc-muted" />
+                <span className="font-semibold">Today</span>
+              </div>
+              <label className="flex items-center gap-2 rounded-lg border border-mc-line bg-mc-canvas px-3 py-2 text-sm font-medium text-mc-body">
+                <Group size={16} className="text-mc-muted" />
+                <select
+                  className="max-w-40 bg-transparent outline-none"
+                  value={cashierFilter}
+                  onChange={(e) => setCashierFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                  aria-label="Filter dashboard by cashier"
+                >
+                  <option value="all">All Cashiers ({cashierUsers.length})</option>
+                  {cashierUsers.map((staff) => <option key={staff.id} value={staff.id}>{staff.name}</option>)}
+                </select>
+              </label>
+              <div className="w-px h-6 bg-mc-line hidden sm:block" />
+              <div className="flex items-center bg-mc-canvas border border-mc-line rounded-lg p-0.5">
+                <button onClick={() => window.print()} className="px-2.5 py-1 text-mc-muted hover:text-mc-body text-[11px] font-medium rounded transition flex items-center gap-1" type="button">
+                  <FileText size={14} /> PDF
+                </button>
+                <button onClick={exportTodayCsv} className="px-2.5 py-1 text-mc-muted hover:text-mc-body text-[11px] font-medium rounded transition flex items-center gap-1" type="button">
+                  <FileText size={14} /> CSV
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link to="/purchasing" className="flex items-center gap-1 px-3 py-2 bg-mc-panel text-mc-body rounded-lg font-medium hover:bg-mc-panel-2 transition">
+                  <ArrowUpRight size={16} className="text-mc-cobalt" />
+                  <span>Stock Inward</span>
+                </Link>
+                <Link to="/shift" className="flex items-center gap-1 px-3 py-2 bg-mc-panel text-mc-body rounded-lg font-medium hover:bg-mc-panel-2 transition">
+                  <ExternalLink size={16} className="text-mc-muted" />
+                  <span>Record Expense</span>
+                </Link>
+                <Link to="/inventory?new=1" className="flex items-center gap-1.5 px-4 py-2 bg-mc-cobalt text-white rounded-lg font-medium font-semibold hover:bg-mc-cobalt-hover transition shadow-sm">
+                  <Plus size={16} /> Add Part (F3)
+                </Link>
+              </div>
+            </div>
           </div>
 
-          {isAdmin && (
-            <ListPanel
-              title="Admin"
-              barClassName="hidden sm:flex"
-              toolbarClassName="hidden sm:flex"
-              actions={
-                <Link to="/logs" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
-                  Activity log <ArrowRight size={15} />
-                </Link>
-              }
-              toolbar={
-                <>
-                  <div className="flex flex-wrap gap-2">
-                    <Link to="/staff" className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/20">
-                      <UserCog size={13} className="mr-1 inline -translate-y-px" /> Staff
-                    </Link>
-                    <Link to="/logs" className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/20">
-                      <ScrollText size={13} className="mr-1 inline -translate-y-px" /> Logs
-                    </Link>
-                    <Link to="/settings" className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/20">
-                      <SettingsIcon size={13} className="mr-1 inline -translate-y-px" /> Settings
-                    </Link>
+          {/* 6 Core Enterprise KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+            {kpiCards.map((card) => (
+              <Link key={card.label} to={card.action.to} className="group block">
+                <div className={`${card.gradient} flex h-full min-h-[132px] flex-col rounded-xl p-4 lg:p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="min-w-0 text-[11px] font-bold uppercase tracking-wider text-white/70">{card.label}</span>
+                    <span className="inline-flex max-w-[52%] shrink-0 items-center gap-0.5 truncate rounded px-1.5 py-0.5 text-right text-[11px] font-bold text-white/90 bg-white/10">
+                      {card.trend}
+                    </span>
                   </div>
-                  <span className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">Last {recentLogs.length} events</span>
-                </>
-              }
-            >
-              {recentLogs.length === 0 ? (
-                <Empty>No activity recorded yet.</Empty>
-              ) : (
+                  <div className="flex flex-col">
+                    <span className="text-[clamp(1.25rem,2vw,1.75rem)] font-bold tracking-tight text-white">{card.value}</span>
+                    <span className="text-[12px] text-white/60 mt-0.5">{card.sub}</span>
+                  </div>
+                  <div className="mt-auto h-5 pt-3">
+                    {card.progress !== null && <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                      <div className="bg-white/40 h-full rounded-full transition-all duration-300" style={{ width: `${card.progress}%` }} />
+                    </div>}
+                  </div>
+                  {/* The icon appears on hover to keep the main figures clear. */}
+                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <card.action.icon size={24} className="text-white/50" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Charts & Analytics Section */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
+            {/* Hourly Revenue & Cashier Velocity */}
+            <div className="xl:col-span-8 bg-white rounded-xl border border-mc-line p-4 lg:p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div>
+                  <h2 className="text-[18px] font-semibold text-mc-ink">Hourly Sales & Tender Mix</h2>
+                  <p className="text-sm text-mc-muted mt-0.5">Today's recorded sales by hour · refunds excluded</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-mc-cobalt-soft text-mc-cobalt-hover text-[11px] font-medium">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-mc-mpesa" />
+                    M-Pesa ({tenderPercent(stats.grossByMethod.mpesa)}%)
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-green-100 text-green-700 text-[11px] font-medium">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-mc-cobalt" />
+                    Cash ({tenderPercent(stats.grossByMethod.cash)}%)
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 text-mc-muted text-[11px] font-medium">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-mc-faint" />
+                    Card / account ({tenderPercent(stats.grossByMethod.card + stats.grossByMethod.account)}%)
+                  </span>
+                </div>
+              </div>
+
+              {/* Chart Area */}
+              <div className="relative h-72 flex flex-col justify-end pt-4 pb-2">
+                {/* Grid Lines */}
+                <div className="absolute inset-x-0 inset-y-6 flex flex-col justify-between pointer-events-none opacity-40">
+                  <div className="w-full border-b border-mc-line flex justify-between"><span className="text-[10px] text-mc-faint -mt-2.5">{formatKsh(maxHourly)}</span></div>
+                  <div className="w-full border-b border-mc-line flex justify-between"><span className="text-[10px] text-mc-faint -mt-2.5">{formatKsh((maxHourly * 2) / 3)}</span></div>
+                  <div className="w-full border-b border-mc-line flex justify-between"><span className="text-[10px] text-mc-faint -mt-2.5">{formatKsh(maxHourly / 3)}</span></div>
+                  <div className="w-full border-b border-mc-line flex justify-between"><span className="text-[10px] text-mc-faint -mt-2.5">0</span></div>
+                </div>
+
+                {/* SVG Chart */}
+                <svg className="w-full h-56 overflow-visible" fill="none" viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="mpesaGrad" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#00a859" stopOpacity="0.9" />
+                      <stop offset="100%" stopColor="#00a859" stopOpacity="0.3" />
+                    </linearGradient>
+                    <linearGradient id="cashGrad" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#2563eb" stopOpacity="0.9" />
+                      <stop offset="100%" stopColor="#2563eb" stopOpacity="0.3" />
+                    </linearGradient>
+                    <linearGradient id="otherGrad" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.9" />
+                      <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.3" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Stacked Hour Bars */}
+                  {hourlyData.map((d, i) => {
+                    const x = 35 + i * 85
+                    const mpesaHeight = (d.mpesa / maxHourly) * 200
+                    const cashHeight = (d.cash / maxHourly) * 200
+                    const otherHeight = (d.other / maxHourly) * 200
+                    const isPeak = d.hour === peakHour.hour && peakHour.total > 0
+                    return <HourlyBar key={d.hour} x={x} mpesaHeight={mpesaHeight} cashHeight={cashHeight} otherHeight={otherHeight} isPeak={isPeak} peakLabel={formatKsh(peakHour.total)} />
+                  })}
+                </svg>
+
+                {/* X-Axis Labels */}
+                <div className="flex justify-between text-mc-muted text-[10px] font-medium pt-2 px-6">
+                  {hourlyData.map((d) => (
+                    <span key={d.hour} className={d.hour === new Date().getHours() ? 'font-bold text-mc-cobalt' : ''}>
+                      {d.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer Meta Row */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-4 mt-4 border-t border-mc-line text-mc-muted text-sm">
+                <div className="flex flex-wrap items-center gap-4">
+                  <span><strong className="text-mc-body">Today:</strong> {stats.count} completed tickets</span>
+                  <span><strong className="text-mc-body">Cashier accounts:</strong> {cashierUsers.length}</span>
+                  <span><strong className="text-mc-body">Open shift:</strong> {shift ? `#${shift.id}` : 'None'}</span>
+                </div>
+                <span className="inline-flex items-center gap-1 text-mc-mpesa font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-mc-mpesa animate-pulse-dot" />
+                  Current till totals
+                </span>
+              </div>
+            </div>
+
+            {/* Category Movement */}
+            <div className="xl:col-span-4 bg-white rounded-xl border border-mc-line p-4 lg:p-6 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[18px] font-semibold text-mc-ink">Category Movement</h2>
+                <NavLink to="/inventory" className="text-sm text-mc-cobalt hover:underline font-medium">Full Catalog →</NavLink>
+              </div>
+              <p className="text-sm text-mc-muted mb-5">Today's sales volume ranked by automotive category</p>
+              <div className="flex-1 flex flex-col gap-3">
+                {categorySales.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-mc-muted text-sm">No sales data today</div>
+                ) : (
+                  categorySales.map((cat, i) => {
+                    const pct = Math.round((cat.revenue / totalCatRevenue) * 100)
+                    const colors = [
+                      'bg-mc-cobalt',
+                      'bg-mc-mpesa',
+                      'bg-mc-cobalt-hover',
+                      'bg-navy-700',
+                      'bg-mc-faint',
+                    ]
+                    return (
+                      <div key={cat.name} className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-mc-body flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${colors[i % colors.length]}`} />
+                            {cat.name}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="mc-figure text-[13px]">{formatKsh(cat.revenue)}</span>
+                            <span className="text-[11px] text-mc-muted font-bold">{pct}%</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-mc-canvas h-1.5 rounded-full overflow-hidden">
+                          <div className={`${colors[i % colors.length]} h-full rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+              <div className="mt-4 p-3 bg-mc-canvas rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ArrowUpRight size={16} className="text-mc-mpesa" />
+                  <span className="text-sm text-mc-body">Top part: <strong className="font-semibold">{topPart?.name ?? 'No sales yet'}</strong></span>
+                </div>
+                <span className="text-[11px] font-bold text-mc-ink">{topPart ? `${topPart.units} units` : '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Operational Workspaces Grid */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+            {/* Critical Low-Stock & Reorder Alerts */}
+            <div className="bg-white rounded-xl border border-mc-line p-4 lg:p-6 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={20} className="text-mc-danger" />
+                  <h2 className="text-[18px] font-semibold text-mc-ink">Critical Low-Stock & Reorder Alerts</h2>
+                </div>
+                <Link className="mc-btn" to="/purchasing">
+                  <FileText size={14} /> Create Bulk PO
+                </Link>
+              </div>
+              <p className="text-sm text-mc-muted mb-4">Items below minimum shelf threshold requiring immediate purchase orders</p>
+              <div className="overflow-x-auto flex-1">
                 <table className="w-full">
                   <thead className="table-head">
                     <tr>
-                      <th>Event</th>
-                      <th>Detail</th>
-                      <th className="hidden sm:table-cell">User</th>
-                      <th className="text-right">Time</th>
+                      <th className="rounded-l">Part Name / OEM</th>
+                      <th className="text-center">Stock / Min</th>
+                      <th>Primary Supplier</th>
+                      <th className="text-right">Restock Cost</th>
+                      <th className="text-right rounded-r">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentLogs.map((l, i) => (
-                      <tr key={`${l.at}-${i}`} className="table-row">
-                        <td className="font-semibold">{l.action}</td>
-                        <td className="text-xs">{l.detail ?? '—'}</td>
-                        <td className="hidden text-xs sm:table-cell">{l.userName ?? '—'}</td>
-                        <td className="text-right text-xs">
-                          {new Date(l.at).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+                    {lowStock.slice(0, 8).map((p) => (
+                      <tr key={p.id} className="table-row">
+                        <td className="py-2.5">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-mc-body">{p.name}</span>
+                            <span className="text-[11px] text-mc-muted font-mono">OEM: {p.partNumber || '—'} · Fit: {p.fitment[0] || 'Not specified'}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${p.stock <= 0 ? 'bg-mc-danger-soft text-mc-danger' : 'bg-mc-warn-soft text-mc-warn'}`}>
+                            {p.stock} / {p.reorderLevel} pcs
+                          </span>
+                        </td>
+                        <td className="py-2.5">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-mc-body">{p.supplierId ? supplierNames[p.supplierId] ?? `Supplier #${p.supplierId}` : 'No supplier assigned'}</span>
+                            <span className="text-[11px] text-mc-muted">{p.supplierId ? 'Supplier on file' : 'Supplier details needed'}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-right mc-figure text-[13px]">
+                          {formatKsh((p.reorderLevel - p.stock) * p.cost)}
+                        </td>
+                        <td className="py-2.5 text-right">
+                          <Link className="mc-btn-primary text-[11px] px-2 py-1" to="/purchasing">
+                            + PO
+                          </Link>
                         </td>
                       </tr>
                     ))}
+                    {lowStock.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-mc-muted">No active products are at or below their reorder level.</td></tr>}
                   </tbody>
                 </table>
-              )}
-            </ListPanel>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <div className="card p-4">
-            <h2 className="text-sm font-bold text-navy-900 sm:text-lg">Payment mix today</h2>
-
-            {/* Mobile: donut graph */}
-            <div className="sm:hidden">
-              {activeMethods.length === 0 ? (
-                <p className="py-6 text-center text-xs text-slate-500">No payments recorded yet today.</p>
-              ) : (
-                <>
-                  <div className="mt-3 flex justify-center">
-                    <div className="h-36 w-36 rounded-full p-5" style={{ background: `conic-gradient(${donutStops})` }}>
-                      <div className="grid h-full w-full place-items-center rounded-full bg-white text-center">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-slate-400">Total</div>
-                          <div className="text-sm font-bold text-slate-800">{money(stats.revenue, settings.currency)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5">
-                    {activeMethods.map((m) => (
-                      <span key={m} className="flex items-center gap-1.5 text-[11px] text-slate-600">
-                        <span className="h-2 w-2 rounded-full" style={{ background: METHOD_COLOR[m] }} />
-                        {METHOD_LABEL[m]} {methodPct(m)}%
-                      </span>
-                    ))}
-                  </div>
-                </>
-              )}
+              </div>
+              <div className="pt-3 mt-3 border-t border-mc-line flex items-center justify-between text-mc-muted text-sm">
+                <span>Showing {Math.min(8, lowStock.length)} of {lowStock.length} alert lines</span>
+                <NavLink to="/inventory?view=lowstock" className="text-mc-cobalt hover:underline font-semibold">View All Low-Stock SKUs →</NavLink>
+              </div>
             </div>
 
-            {/* Desktop: bars */}
-            <ul className="mt-3 hidden space-y-3 sm:block">
-              {(Object.keys(stats.byMethod) as PaymentMethod[]).map((m) => {
-                const amount = stats.byMethod[m]
-                const pct = Math.max(0, Math.round((amount / methodTotal) * 100))
-                return (
-                  <li key={m}>
-                    <div className="flex items-center justify-between text-base">
-                      <span className="font-semibold text-slate-700">{METHOD_LABEL[m]}</span>
-                      <span className="tabular-nums text-slate-600">{money(amount, settings.currency)}</span>
-                    </div>
-                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div className={`h-full rounded-full ${m === 'cash' ? 'bg-emerald-500' : m === 'mpesa' ? 'bg-brand-500' : m === 'card' ? 'bg-violet-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          {/* Mobile: heading + status only */}
-          <div className="card p-4 sm:hidden">
-            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <Boxes size={15} className="text-amber-500" />
-              Low stock
-            </div>
-            {lowStock.length === 0 ? (
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-                <CheckCircle2 size={14} className="shrink-0 text-cta" />
-                Nothing needs reordering.
-              </p>
-            ) : (
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
-                <AlertTriangle size={14} className="shrink-0 text-amber-500" />
-                {lowStock.length} part{lowStock.length === 1 ? '' : 's'} at or below reorder level.
-              </p>
-            )}
-          </div>
-
-          <div className="hidden sm:block">
-            <ListPanel
-              title="Low stock"
-              actions={
-                <Link to="/inventory" className="flex items-center gap-1 text-sm font-semibold text-white/80 hover:text-white">
-                  Inventory <ArrowRight size={14} />
-                </Link>
-              }
-            >
-            {lowStock.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-500">Nothing needs reordering.</p>
-            ) : (
-              <table className="w-full">
-                <thead className="table-head">
-                  <tr>
-                    <th>Part</th>
-                    <th className="text-right">Stock</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lowStock.map((p) => (
-                    <tr key={p.id} className="table-row">
-                      <td>
-                        <div className="font-semibold">{p.name}</div>
-                        <div className="font-mono text-xs text-slate-500">{p.sku}</div>
-                      </td>
-                      <td className="text-right">
-                        <Badge tone={p.stock <= 0 ? 'red' : 'amber'}>{p.stock}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            </ListPanel>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-1">
-            {tiles.map(({ label, value, icon: Icon, bg, fg, to }) => (
-              <Link
-                key={label}
-                to={to}
-                aria-label={`${label}: ${value}`}
-                className={`${label === 'Avg sale' ? 'hidden sm:flex' : 'flex'} items-center gap-2.5 rounded-lg px-3 py-2.5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 sm:gap-4 sm:px-4 sm:py-3 ${bg}`}
-              >
-                <Icon size={26} className={`shrink-0 ${fg}`} strokeWidth={2.25} />
-                <div className={`min-w-0 ${fg}`}>
-                  <div className="text-sm font-normal leading-snug opacity-90 sm:text-[15px]">{label}</div>
-                  <div className="truncate text-sm font-bold leading-snug sm:text-[15px]">{value}</div>
+            {/* Recent Counter Transactions */}
+            <div className="bg-white rounded-xl border border-mc-line p-4 lg:p-6 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Receipt size={20} className="text-mc-cobalt" />
+                  <h2 className="text-[18px] font-semibold text-mc-ink">Recent Counter Transactions</h2>
                 </div>
-              </Link>
-            ))}
+                <NavLink to="/sales" className="mc-btn text-[11px]">All Invoices</NavLink>
+              </div>
+              <p className="text-sm text-mc-muted mb-4">Recorded point of sale transactions from tills</p>
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full">
+                  <thead className="table-head">
+                    <tr>
+                      <th className="rounded-l">Receipt · Time</th>
+                      <th>Customer / Fleet</th>
+                      <th className="text-center">Items</th>
+                      <th className="text-right">Amount</th>
+                      <th className="text-center">Tender</th>
+                      <th className="text-right rounded-r">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentTransactions.map((s) => {
+                      const items = s.lines.reduce((n, l) => n + Math.abs(l.qty), 0)
+                      const primaryMethod = s.payments[0]?.method || 'cash'
+                      const methodLabels = [...new Set(s.payments.map((payment) => METHOD_LABEL[payment.method]))]
+                      return (
+                        <tr key={s.id} className="table-row">
+                          <td className="py-2.5">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-mc-body">{s.receiptNo}</span>
+                              <span className="text-[11px] text-mc-muted">{new Date(s.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })} · Shift {s.shiftId || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-mc-body">{getCustomerName(s.customerId)}</span>
+                              <span className="text-[11px] text-mc-muted">{getCustomerAccount(s.customerId)}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 text-center mc-figure text-[13px]">{items}</td>
+                          <td className="py-2.5 text-right mc-figure text-[13px] font-bold">{formatKsh(s.total)}</td>
+                          <td className="py-2.5 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${primaryMethod === 'mpesa' ? 'bg-mc-mpesa-soft text-mc-mpesa-hover' :
+                               primaryMethod === 'cash' ? 'bg-green-100 text-green-700' :
+                               primaryMethod === 'card' ? 'bg-violet-100 text-violet-700' :
+                               'bg-amber-100 text-amber-700'}`}>
+                              {primaryMethod === 'mpesa' && <span className="w-1.5 h-1.5 rounded-full bg-mc-mpesa animate-pulse-dot" />}
+                              {methodLabels.join(' + ')}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <NavLink className="inline-flex rounded p-1 text-mc-muted transition hover:bg-mc-canvas hover:text-mc-body" title="Open sales" to="/sales">
+                              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="6 9 6 2 18 2 18 9" />
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                <rect x="6" y="14" width="12" height="8" />
+                              </svg>
+                            </NavLink>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {recentTransactions.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-mc-muted">No transactions recorded today.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <div className="pt-3 mt-3 border-t border-mc-line flex items-center justify-between text-mc-muted text-sm">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-mc-mpesa animate-pulse-dot" />
+                  <span>{recentTransactions.length} recent transactions shown · {stats.count} tickets today</span>
+                </div>
+                <NavLink to="/sell" className="text-mc-cobalt hover:underline font-semibold">Open Full POS Register →</NavLink>
+              </div>
+            </div>
           </div>
 
-          <Link to="/sell" className="btn-primary hidden w-full py-3 sm:flex">
-            Start a new sale
-          </Link>
-        </div>
+          {/* Quick Operational Shortcuts Bar */}
+          <div className="bg-mc-canvas border border-mc-line rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-mc-body font-medium">
+              <span className="text-mc-cobalt text-lg">⚡</span>
+              <span className="font-semibold">Register Actions:</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/shift" className="mc-btn-primary flex items-center gap-1.5 px-4 py-2">
+                <Receipt size={18} /> End of Day Till Count (Z-Report)
+              </Link>
+              <Link to="/shift" className="mc-btn flex items-center gap-1.5 px-4 py-2">
+                <RotateCcw size={18} /> Open Shift Cash Drawer
+              </Link>
+              <button className="mc-btn flex items-center gap-1.5 px-4 py-2" onClick={() => searchRef.current?.focus()} type="button">
+                <Search size={18} /> Price Lookup Scanner (F4)
+              </button>
+              <Link to="/customers" className="mc-btn flex items-center gap-1.5 px-4 py-2">
+                <Group size={18} /> Customers & Accounts
+              </Link>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useSearchParams } from 'react-router-dom'
 import { PackageCheck, Plus, Trash2, Wand2 } from 'lucide-react'
 import { db } from '../db/db'
 import { createPurchaseOrder, draftReorder, receivePurchaseOrder } from '../db/purchasing'
@@ -19,6 +20,7 @@ const TONE: Record<PurchaseOrderStatus, 'slate' | 'blue' | 'amber' | 'green' | '
 const poTotal = (po: PurchaseOrder) => po.lines.reduce((s, l) => s + l.qty * l.unitCost, 0)
 
 export default function PurchasingPage() {
+  const [searchParams] = useSearchParams()
   const toast = useToast()
   const [tab, setTab] = useState<'orders' | 'suppliers'>('orders')
   const [open, setOpen] = useState<PurchaseOrder | 'new' | null>(null)
@@ -26,6 +28,12 @@ export default function PurchasingPage() {
   const orders = useLiveQuery(() => db.purchaseOrders.orderBy('createdAt').reverse().toArray(), [], [])
   const suppliers = useLiveQuery(() => db.suppliers.toArray(), [], [])
   const supName = Object.fromEntries(suppliers.map((s) => [s.id, s.name]))
+
+  useEffect(() => {
+    if (searchParams.get('view') === 'grn') {
+      // GRN (Goods Received Note) view - could show received orders
+    }
+  }, [searchParams])
 
   const reorder = async () => {
     const po = await draftReorder()

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App'
 import { seedIfEmpty, backfillSampleImages } from './db/seed'
+import { importQuotationProducts } from './db/quotationProducts'
 import { SessionProvider } from './session'
 import { ToastProvider } from './components/ui'
 
@@ -14,6 +15,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 }
 
 seedIfEmpty()
+  .then(() => importQuotationProducts())
   .then(() => backfillSampleImages())
   .finally(() => {
   createRoot(document.getElementById('root')!).render(
