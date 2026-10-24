@@ -584,7 +584,7 @@ function HardwareSettings() {
         </div>
       )}
       <div className="mb-5 flex flex-wrap gap-2">
-        <button className="btn-ghost" disabled={bcCfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), bcCfg, draft.apiUrl), 'Test label sent')}>
+        <button className="btn-ghost" onClick={() => run(() => sendRaw(testPageBytes(draft), bcCfg, draft.apiUrl), 'Test label sent')}>
           Print test label
         </button>
       </div>
