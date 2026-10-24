@@ -121,9 +121,9 @@ export default function LoginPage() {
             {error ? (
               <p className="mt-3 text-center text-xs font-medium text-red-400">Wrong PIN, try again</p>
             ) : help ? (
-              <p className="mt-3 text-center text-xs leading-relaxed text-brand-200/80">
-                First run: owner <b className="text-white">1234</b>, cashier <b className="text-white">0000</b>. Change them in Staff.
-              </p>
+                <p className="mt-3 text-center text-xs leading-relaxed text-brand-200/80">
+                  Enter your staff PIN. Contact your admin if you do not have one.
+                </p>
             ) : null}
 
             {/* Login — dashboard header blue */}
@@ -219,9 +219,9 @@ export default function LoginPage() {
                 {error ? (
                   <p className="mt-2 text-sm font-medium text-red-400">Wrong PIN, try again</p>
                 ) : help ? (
-                  <p className="mt-2 text-xs leading-relaxed text-brand-200/80">
-                    First run: owner <b className="text-white">1234</b>, cashier <b className="text-white">0000</b>. Change them in Staff.
-                  </p>
+                <p className="mt-2 text-xs leading-relaxed text-brand-200/80">
+                  Enter your staff PIN. Contact your admin if you do not have one.
+                </p>
                 ) : (
                   <p className="mt-2 text-xs text-white/55">Enter your {PIN_LENGTH}-digit PIN</p>
                 )}
@@ -260,7 +260,7 @@ export default function LoginPage() {
 
               {/* footer */}
               <p className="mt-6 text-center text-[13px] text-white/60">
-                First run? <span className="font-bold text-cta">OWNER 1234</span>
+                Contact your admin for your staff PIN.
               </p>
             </div>
           </main>
