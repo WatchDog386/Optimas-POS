@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useSearchParams } from 'react-router-dom'
-import { Bike, Download, History, Package, Pencil, Plus, Printer, Search, SlidersHorizontal, Tag, Upload } from 'lucide-react'
+import { Bike, Download, History, Package, Pencil, Plus, Printer, Search, SlidersHorizontal, Tag, Trash2, Upload } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { adjustStock } from '../db/sales'
@@ -67,6 +67,15 @@ export default function InventoryPage() {
       p.cost / 100, p.price / 100, p.stock, p.reorderLevel, p.location, p.taxable ? 1 : 0, p.serialized ? 1 : 0, p.trackStock ? 1 : 0,
     ])
     download(`products-${new Date().toISOString().slice(0, 10)}.csv`, toCsv([CSV_HEADER, ...data]))
+  }
+
+  const clearAllInventory = async () => {
+    if (!confirm('Are you sure you want to delete ALL parts from inventory? This cannot be undone.')) return
+    await db.products.clear()
+    toast('All parts deleted from inventory')
+    setQ('')
+    setCat('all')
+    setLowOnly(false)
   }
 
   const importCsv = async (file: File) => {
@@ -136,6 +145,9 @@ export default function InventoryPage() {
             </button>
             <button className="btn-ghost" onClick={exportCsv}>
               <Download size={16} /> Export
+            </button>
+            <button className="btn-ghost" onClick={() => clearAllInventory()}>
+              <Trash2 size={16} /> Clear all
             </button>
             <button className="btn-primary" onClick={() => setEditing({})}>
               <Plus size={16} /> New part
