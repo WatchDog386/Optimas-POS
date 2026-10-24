@@ -13,6 +13,7 @@ import { printBarcodeLabel } from '../lib/printReceipt'
 import { useSession } from '../session'
 import { Badge, Empty, ListPanel, Modal, PageHeader, errorText, useToast } from '../components/ui'
 import { quotationImportSummary, quotationProductSkus } from '../db/quotationProducts'
+const API_BASE = '/api'
 
 const CSV_HEADER = ['sku', 'name', 'barcode', 'partNumber', 'category', 'brand', 'fitment', 'cost', 'price', 'stock', 'reorderLevel', 'location', 'taxable', 'serialized', 'trackStock']
 
@@ -72,6 +73,12 @@ export default function InventoryPage() {
   const clearAllInventory = async () => {
     if (!confirm('Are you sure you want to delete ALL parts from inventory? This cannot be undone.')) return
     await db.products.clear()
+    // Also clear server-side if available
+    try {
+      await fetch(`${API_BASE}/products`, { method: 'DELETE' })
+    } catch {
+      // Server may not be running; local clear is still effective
+    }
     toast('All parts deleted from inventory')
     setQ('')
     setCat('all')
@@ -413,6 +420,49 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
       } as Product
       if (record.id === undefined) delete record.id
       await db.products.put(record)
+      // Also push to server if available
+      try {
+        const exists = await (await fetch(`${API_BASE}/products/${record.sku}`)).json()
+        if (exists && exists.ok) {
+          await fetch(`${API_BASE}/products/${record.sku}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sku: record.sku,
+              barcode: record.barcode,
+              name: record.name,
+              category_id: record.categoryId,
+              brand: record.brand,
+              part_number: record.partNumber,
+              cost: record.cost,
+              price: record.price,
+              stock: record.stock,
+              reorder_level: record.reorderLevel,
+              active: record.active,
+            }),
+          })
+        } else {
+          await fetch(`${API_BASE}/products`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sku: record.sku,
+              barcode: record.barcode,
+              name: record.name,
+              category_id: record.categoryId,
+              brand: record.brand,
+              part_number: record.partNumber,
+              cost: record.cost,
+              price: record.price,
+              stock: record.stock,
+              reorder_level: record.reorderLevel,
+              active: record.active,
+            }),
+          })
+        }
+      } catch {
+        // Server may not be running; local IndexedDB save is still effective
+      }
       toast(isNew ? 'Part added' : 'Part updated')
       onClose()
     } catch (e) {
