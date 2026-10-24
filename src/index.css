@@ -156,6 +156,7 @@ body,
 
   html {
     font-size: 16px;
+    color-scheme: light;
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
   }
@@ -400,7 +401,7 @@ body,
 .pos-checkout h2,
 .pos-checkout h3 {
   font-family: "Poppins", "Inter", var(--font-sans);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
 }
 
@@ -609,7 +610,7 @@ body,
 .pos-terminal-heading h1 {
   margin: 0;
   font-size: 30px;
-  font-weight: 700;
+  font-weight: 500;
   color: #1f272b;
 }
 
@@ -1822,56 +1823,7 @@ body,
   font-size: 15px;
 }
 
-/* ── Bill-to row sits beside the customer buttons, under the search ─────── */
-.pos-customer-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: start;
-  margin-top: 14px;
-}
-
-.pos-customer-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pos-customer-field > label {
-  font-size: 14px;
-  color: #3c464b;
-}
-
-.pos-customer-row .pos-customer-select {
-  min-height: 48px;
-  width: 100%;
-}
-
-.pos-customer-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pos-customer-actions .pos-register-action {
-  min-height: 46px;
-  padding: 0 20px;
-  font-size: 15px;
-}
-
-@media (max-width: 760px) {
-  .pos-customer-row {
-    grid-template-columns: 1fr;
-  }
-
-  .pos-customer-actions {
-    flex-direction: row;
-  }
-
-  .pos-customer-actions .pos-register-action {
-    flex: 1;
-  }
-}
+/* ── Customer actions: original side-by-side design (grid from main block) ─ */
 
 /* ── Products page dropdown filters ─────────────────────────────────────── */
 .pos-products-filters {
@@ -2346,4 +2298,256 @@ body,
 
 .pos-cart-rowtotal {
   font-weight: 600;
+}
+
+/* ── Products page: compact filters inline with the search bar, right-aligned ── */
+.pos-products-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pos-products-filter {
+  display: flex;
+  align-items: center;
+}
+
+.pos-products-filter select {
+  width: auto;
+  min-width: 0;
+  max-width: 210px;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid #c7ccd0;
+  border-radius: 4px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  color: #2b3337;
+  cursor: pointer;
+}
+
+/* ── Take payment: flat blue WPOS-style tender sheet ────────────────────── */
+.pos-pay {
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-size: 15px;
+  color: #3a4550;
+}
+
+.pos-checkout .modal-card:has(.pos-pay) h2 {
+  color: #4a90c2;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-weight: 400;
+  font-size: 22px;
+}
+
+.pos-pay-due {
+  padding: 16px 20px;
+  border: 1px solid #d6dde3;
+  border-top: 3px solid #4a90c2;
+  background: #fff;
+  color: #2c3e50;
+}
+
+.pos-pay-due-label {
+  color: #8a97a3;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.pos-pay-due-amount {
+  margin-top: 6px;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-size: 40px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.pos-pay-due-sub {
+  color: #8a97a3;
+}
+
+.pos-pay-change {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 6px 14px;
+  background: #5cb85c;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pos-pay-tenders {
+  border: 1px solid #d6dde3;
+}
+
+.pos-pay-tenders-title {
+  padding: 10px 14px;
+  border-bottom: 1px solid #d6dde3;
+  background: #eef1f4;
+  color: #3a4550;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pos-pay-tender-info b {
+  font-weight: 600;
+}
+
+.pos-pay-tender-amount {
+  font-weight: 600;
+}
+
+.pos-pay-complete {
+  min-height: 52px;
+  border: 1px solid #3d7dab;
+  background: #4a90c2;
+  color: #fff;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.pos-pay-complete:hover:not(:disabled) {
+  background: #3d7dab;
+}
+
+.pos-pay-add {
+  border: 1px solid #d9952f;
+  background: #f0ad4e;
+  color: #fff;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-weight: 600;
+}
+
+.pos-pay-add:hover {
+  background: #e09b33;
+}
+
+.pos-pay-mpesa-btn {
+  border: 1px solid #449d44;
+  background: #5cb85c;
+  color: #fff;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+}
+
+.pos-pay-mpesa-btn:hover:not(:disabled) {
+  background: #449d44;
+}
+
+.pos-pay-method {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d6dde3;
+  background: #fff;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-weight: 600;
+  color: #3a4550;
+}
+
+.pos-pay-method:hover {
+  border-color: #4a90c2;
+}
+
+.pos-pay-method.is-active {
+  border-color: #4a90c2;
+  box-shadow: none;
+  background: #eaf3fa;
+  color: #2c6a9e;
+}
+
+.pos-pay-amount {
+  border: 1px solid #d6dde3;
+  border-left: 4px solid #4a90c2;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.pos-pay-quick-note {
+  border: 1px solid #d6dde3;
+  background: #fff;
+  color: #3a4550;
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+}
+
+.pos-pay-quick-note:hover {
+  border-color: #4a90c2;
+  background: #eaf3fa;
+}
+
+.pos-pay-till {
+  border-left: 3px solid #5cb85c;
+  background: #f4faf4;
+  color: #3c763d;
+}
+
+.pos-pay-account {
+  border-left: 3px solid #4a90c2;
+  background: #eef5fb;
+  color: #2c5f8a;
+}
+
+/* ── Checkout right pane: white lower section + colored tool buttons ────── */
+.pos-terminal-tools {
+  background: #fff;
+}
+
+.pos-tool-actions .pos-register-action {
+  color: #fff;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(1) {
+  border-color: #2e8fc4;
+  background: #4a9fd8;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(2) {
+  border-color: #086c70;
+  background: #0c8586;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(3) {
+  border-color: #0f2931;
+  background: #1b3a46;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(4) {
+  border-color: #5c8f31;
+  background: #76b043;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(5) {
+  border-color: #3f8f44;
+  background: #5cb85c;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(6) {
+  border-color: #cc7010;
+  background: #f2891d;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(7) {
+  border-color: #4f46e5;
+  background: #6366f1;
+}
+
+.pos-tool-actions .pos-register-action.is-active {
+  border-color: #a03a37;
+  background: #c0504d;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(8) {
+  border-color: #475569;
+  background: #64748b;
+}
+
+.pos-tool-actions .pos-register-action:nth-child(9) {
+  border-color: #086c70;
+  background: #0c8586;
 }

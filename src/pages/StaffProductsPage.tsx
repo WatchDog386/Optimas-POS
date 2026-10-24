@@ -61,46 +61,43 @@ export default function StaffProductsPage() {
           <h1>Products</h1>
           <p>Live stock levels — check here before promising a part to a customer.</p>
         </div>
-        <div className="pos-products-search">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, part no., SKU or barcode"
-            aria-label="Search products"
-          />
-          {query ? (
-            <button onClick={() => setQuery('')} aria-label="Clear search">
-              <X size={16} />
-            </button>
-          ) : (
-            <span>
-              <Search size={16} />
-            </span>
-          )}
+        <div className="pos-products-tools">
+          <div className="pos-products-search">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name, part no., SKU or barcode"
+              aria-label="Search products"
+            />
+            {query ? (
+              <button onClick={() => setQuery('')} aria-label="Clear search">
+                <X size={16} />
+              </button>
+            ) : (
+              <span>
+                <Search size={16} />
+              </span>
+            )}
+          </div>
+          <label className="pos-products-filter">
+            <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value as StockFilter)}>
+              <option value="all">All ({statusCounts.all})</option>
+              <option value="in">In stock ({statusCounts.in})</option>
+              <option value="low">Low stock ({statusCounts.low})</option>
+              <option value="out">Out of stock ({statusCounts.out})</option>
+            </select>
+          </label>
+          <label className="pos-products-filter">
+            <select value={category} onChange={(event) => setCategory(event.target.value ? Number(event.target.value) : 'all')}>
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-      </div>
-
-      <div className="pos-products-filters">
-        <label className="pos-products-filter">
-          <span>Stock status</span>
-          <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value as StockFilter)}>
-            <option value="all">All ({statusCounts.all})</option>
-            <option value="in">In stock ({statusCounts.in})</option>
-            <option value="low">Low stock ({statusCounts.low})</option>
-            <option value="out">Out of stock ({statusCounts.out})</option>
-          </select>
-        </label>
-        <label className="pos-products-filter">
-          <span>Category</span>
-          <select value={category} onChange={(event) => setCategory(event.target.value ? Number(event.target.value) : 'all')}>
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       <div className="pos-products-body custom-scrollbar">

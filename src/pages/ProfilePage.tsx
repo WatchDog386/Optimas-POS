@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Download, History, ShieldCheck, UserRound } from 'lucide-react'
+import { Download, History, MonitorSpeaker, Power, ShieldCheck, UserRound } from 'lucide-react'
 import { db } from '../db/db'
 import { useSession } from '../session'
 import type { LogEntry, User } from '../db/types'
@@ -123,6 +123,26 @@ export default function ProfilePage() {
     } catch (e) {
       toast(errorText(e), 'error')
     }
+  }
+
+  // Downloads a .bat that opens the till in app mode and copies itself into
+  // Windows' Startup folder, so the POS boots with the computer.
+  const downloadStartupScript = () => {
+    const url = window.location.origin
+    const bat = [
+      '@echo off',
+      'rem Optimas POS — launches the till in app mode and installs itself to run at Windows startup.',
+      'set "LINK=%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Start Optimas POS.bat"',
+      'if not exist "%LINK%" copy "%~f0" "%LINK%"',
+      `start "" msedge.exe --app=${url}`,
+    ].join('\r\n')
+    const blob = new Blob([bat], { type: 'application/bat' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'Start Optimas POS.bat'
+    a.click()
+    URL.revokeObjectURL(a.href)
+    toast('Startup script saved — run it once and the till will boot with this computer')
   }
 
   return (
@@ -266,6 +286,36 @@ export default function ProfilePage() {
               </div>
               <h3 className="mb-3 mt-6 text-sm font-bold uppercase tracking-wide text-slate-600">Change my PIN</h3>
               <ChangePinForm />
+
+              <h3 className="mt-8 text-sm font-bold uppercase tracking-wide text-slate-600">Terminal setup</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <Download size={16} className="text-brand-600" /> Install on this desktop
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Installs the till as a desktop app with its own window and Start-menu entry.
+                  </p>
+                  <button
+                    className="btn-primary mt-3 w-full"
+                    disabled={!appInstall.canInstall || appInstall.installed}
+                    onClick={appInstall.install}
+                  >
+                    {appInstall.installed ? 'Installed' : appInstall.canInstall ? 'Install app' : 'Already available'}
+                  </button>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <MonitorSpeaker size={16} className="text-brand-600" /> Start with the computer
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Downloads a startup script. Run it once — it launches the till at every boot, no browser bars.
+                  </p>
+                  <button className="btn-ghost mt-3 w-full" onClick={downloadStartupScript}>
+                    <Power size={15} /> Download startup script
+                  </button>
+                </div>
+              </div>
             </>
           )}
 

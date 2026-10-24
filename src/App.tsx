@@ -29,6 +29,7 @@ import LoadingScreen from './components/LoadingScreen'
 import DashboardPage from './pages/DashboardPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
 import StaffProductsPage from './pages/StaffProductsPage'
+import CustomerDisplayPage from './pages/CustomerDisplayPage'
 import SellPage from './pages/SellPage'
 import SalesPage from './pages/SalesPage'
 import InventoryPage from './pages/InventoryPage'
@@ -158,6 +159,13 @@ export default function App() {
   // Staff land on the checkout workspace, not the owner's analytics dashboard.
   const navLabel = (label: string) => (label === 'Dashboard' && !isOwner ? 'Checkout' : label)
 
+  // Card colors per top-bar tab, matching the register chrome.
+  const TAB_COLORS: Record<string, { border: string; bg: string }> = {
+    '/dashboard': { border: '#5c8f31', bg: '#76b043' },
+    '/sales': { border: '#2e8fc4', bg: '#4a9fd8' },
+    '/products': { border: '#cc7010', bg: '#f2891d' },
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Cashier navigation follows the white, teal and green register theme. */}
@@ -174,7 +182,7 @@ export default function App() {
 
         <div className={`hidden shrink-0 items-center justify-center px-4 sm:flex ${isCashier ? 'bg-[#2e353b] sm:w-72' : 'bg-white sm:w-56 lg:w-60'}`}>
           <span
-            className={`truncate text-xl font-medium tracking-normal ${isCashier ? 'text-white' : 'text-slate-900'}`}
+            className={`truncate text-2xl font-medium tracking-normal ${isCashier ? 'text-white' : 'text-slate-900'}`}
             style={{ fontFamily: '"Poppins", "Inter", sans-serif' }}
           >
             {settings.shopName}
@@ -183,21 +191,27 @@ export default function App() {
 
         <div className="flex min-w-0 flex-1 items-center gap-1 px-2">
           <nav className="hidden h-full min-w-0 flex-1 items-center justify-end gap-3 overflow-x-auto sm:flex">
-            {topTabs.filter((t) => !t.perm || can(t.perm)).map((tab) => (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                className={({ isActive }) =>
-                  `flex h-11 shrink-0 items-center rounded-[4px] border px-5 text-sm font-semibold transition ${
-                    isActive
-                      ? 'border-[#2e8fc4] bg-[#4a9fd8] text-white shadow-sm'
-                      : 'border-[#b3b9bd] bg-[#f2f4f5] text-[#333b3f] hover:bg-[#e6eaec]'
-                  }`
-                }
-              >
-                {navLabel(tab.label)}
-              </NavLink>
-            ))}
+            {topTabs.filter((t) => !t.perm || can(t.perm)).map((tab) => {
+              const color = TAB_COLORS[tab.to]
+              return (
+                <NavLink
+                  key={tab.to}
+                  to={tab.to}
+                  className={({ isActive }) =>
+                    `flex h-11 shrink-0 items-center rounded-[4px] border px-5 text-sm font-semibold transition ${
+                      color
+                        ? 'text-white shadow-sm hover:brightness-105'
+                        : isActive
+                          ? 'border-[#2e8fc4] bg-[#4a9fd8] text-white shadow-sm'
+                          : 'border-[#b3b9bd] bg-[#f2f4f5] text-[#333b3f] hover:bg-[#e6eaec]'
+                    }`
+                  }
+                  style={color ? { borderColor: color.border, background: color.bg } : undefined}
+                >
+                  {navLabel(tab.label)}
+                </NavLink>
+              )
+            })}
           </nav>
 
           <span className={`min-w-0 flex-1 truncate text-center text-base font-bold tracking-tight text-white sm:hidden`}>
@@ -348,6 +362,7 @@ export default function App() {
             <Route path="/sell" element={isCashier ? <StaffDashboardPage /> : <SellPage />} />
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/products" element={<StaffProductsPage />} />
+            <Route path="/display" element={<CustomerDisplayPage />} />
             <Route path="/service" element={<ServicePage />} />
             <Route path="/inventory" element={<Guard perm="inventory"><InventoryPage /></Guard>} />
             <Route path="/purchasing" element={<Guard perm="purchasing"><PurchasingPage /></Guard>} />
