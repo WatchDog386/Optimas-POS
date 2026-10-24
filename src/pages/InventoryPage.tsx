@@ -434,18 +434,16 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
           <button className="btn-primary" onClick={save}>
             Save part
           </button>
-          {p.barcode && (
-            <button
-              className="btn-ghost"
-              onClick={() => {
-                void printBarcodeLabel(p as Product, settings).then((ok) => {
-                  if (!ok) toast('No barcode printer configured — set one in Settings → Hardware', 'error')
-                })
-              }}
-            >
-              <Printer size={16} /> Print label
-            </button>
-          )}
+          <button
+            className="btn-ghost"
+            onClick={() => {
+              void printBarcodeLabel(p as Product, settings).then((ok) => {
+                if (!ok) toast('No barcode printer configured — set one in Settings → Hardware', 'error')
+              })
+            }}
+          >
+            <Printer size={16} /> Print label
+          </button>
         </>
       }
     >
