@@ -1,6 +1,6 @@
 import { db } from '../db/db'
-import type { Sale, Settings } from '../db/types'
-import { drawerKickBytes, receiptBytes } from './escpos'
+import type { Product, Sale, Settings } from '../db/types'
+import { barcodeLabelBytes, drawerKickBytes, receiptBytes } from './escpos'
 import { loadPrinterConfig, sendRaw } from './printer'
 
 /**
@@ -21,6 +21,18 @@ export async function printReceipt(sale: Sale, settings: Settings, opts: { copy?
     copy: opts.copy,
     kickDrawer: !opts.copy && paidCash && settings.openDrawerOnCash,
   })
+  await sendRaw(bytes, cfg, settings.apiUrl)
+  return true
+}
+
+/**
+ * Print a barcode label for a product on the configured printer. Returns false when no raw
+ * printer is set up (browser mode), in which case the caller should fall back to window.print().
+ */
+export async function printBarcodeLabel(product: Product, settings: Settings): Promise<boolean> {
+  const cfg = loadPrinterConfig()
+  if (cfg.mode === 'browser') return false
+  const bytes = barcodeLabelBytes(product, settings)
   await sendRaw(bytes, cfg, settings.apiUrl)
   return true
 }

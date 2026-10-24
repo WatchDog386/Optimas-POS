@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useSearchParams } from 'react-router-dom'
-import { Bike, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Tag, Upload } from 'lucide-react'
+import { Bike, Download, History, Package, Pencil, Plus, Printer, Search, SlidersHorizontal, Tag, Upload } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { adjustStock } from '../db/sales'
 import type { Product } from '../db/types'
 import { money, toCents } from '../lib/money'
 import { download, parseCsv, toCsv } from '../lib/csv'
+import { printBarcodeLabel } from '../lib/printReceipt'
 import { useSession } from '../session'
 import { Badge, Empty, ListPanel, Modal, PageHeader, errorText, useToast } from '../components/ui'
 import { quotationImportSummary, quotationProductSkus } from '../db/quotationProducts'
@@ -277,6 +278,19 @@ export default function InventoryPage() {
                     <button className="p-1.5 text-slate-500 hover:text-slate-900" title="Stock history" onClick={() => setHistory(p)}>
                       <History size={16} />
                     </button>
+                    {p.barcode && (
+                      <button
+                        className="p-1.5 text-slate-500 hover:text-brand-600"
+                        title="Print barcode label"
+                        onClick={() => {
+                          void printBarcodeLabel(p, settings).then((ok) => {
+                            if (!ok) toast('No barcode printer configured — set one in Settings', 'error')
+                          })
+                        }}
+                      >
+                        <Printer size={16} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               )
@@ -364,8 +378,10 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
       }
       const clash = await db.products.where('sku').equals(p.sku.trim()).first()
       if (clash && clash.id !== p.id) throw new Error(`SKU ${p.sku} is already used by ${clash.name}`)
-      if (p.barcode) {
-        const bc = await db.products.where('barcode').equals(p.barcode.trim()).first()
+      let barcode = p.barcode?.trim()
+      if (isNew && !barcode) barcode = p.sku.trim() // auto-generate a barcode from the SKU so it can be printed & scanned at sale
+      if (barcode) {
+        const bc = await db.products.where('barcode').equals(barcode).first()
         if (bc && bc.id !== p.id) throw new Error(`Barcode already used by ${bc.name}`)
       }
       let categoryId = p.categoryId
@@ -375,7 +391,7 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
         ...p,
         sku: p.sku.trim(),
         name: p.name.trim(),
-        barcode: p.barcode?.trim() || undefined,
+        barcode: barcode || undefined,
         categoryId,
         cost: toCents(cost),
         price: toCents(price),

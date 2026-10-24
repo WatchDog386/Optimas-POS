@@ -1,4 +1,4 @@
-import type { Customer, Sale, Settings } from '../db/types'
+import type { Customer, Product, Sale, Settings } from '../db/types'
 
 // Minimal ESC/POS command builder. Works with the vast majority of 58/80mm thermal
 // printers (Epson TM series, Xprinter, Rongta, HPRT, Sunmi built-ins, etc.).
@@ -59,6 +59,15 @@ export class EscPos {
     this.bytes.push(ESC, 0x70, 0x00, 0x19, 0xfa)
     return this
   }
+  /** Print a CODE128 barcode (alphanumeric, works with most thermal/label printers). */
+  barcode(code: string, opts: { height?: number } = {}) {
+    const h = Math.min(Math.max(opts.height ?? 40, 1), 255)
+    this.bytes.push(GS, 0x68, h) // GS h barcode height
+    this.bytes.push(GS, 0x6b, 73) // GS k 73 = CODE128
+    for (const ch of code) this.bytes.push(ch.charCodeAt(0))
+    this.bytes.push(0) // NUL terminator
+    return this
+  }
   build(): Uint8Array {
     return new Uint8Array(this.bytes)
   }
@@ -113,6 +122,17 @@ export function receiptBytes(
   if (settings.receiptFooter) p.line(settings.receiptFooter)
   p.bold(true).line('Thank you for your business!').bold(false)
   p.feed(3).cut()
+  return p.build()
+}
+
+export function barcodeLabelBytes(product: Product, settings: Settings): Uint8Array {
+  const cols = columnsFor(settings.paperWidth)
+  const p = new EscPos(cols).init()
+  p.align('center')
+  p.bold(true).size(true).line(product.name.slice(0, cols)).size(false).bold(false)
+  p.line(product.sku)
+  p.barcode(product.barcode || product.sku, { height: 50 })
+  p.feed(2).cut()
   return p.build()
 }
 

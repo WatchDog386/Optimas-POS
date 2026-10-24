@@ -1,5 +1,4 @@
 import { db } from './db'
-import type { Product } from './types'
 import { sampleImageFor } from './sampleImages'
 
 /** No-op: the shop starts empty so you can add your own real products. */
