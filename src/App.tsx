@@ -8,6 +8,7 @@ import {
   LogOut,
   Mail,
   Menu,
+  Package,
   Receipt,
   ScrollText,
   Settings as SettingsIcon,
@@ -27,6 +28,7 @@ import LoginPage from './pages/LoginPage'
 import LoadingScreen from './components/LoadingScreen'
 import DashboardPage from './pages/DashboardPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
+import StaffProductsPage from './pages/StaffProductsPage'
 import SellPage from './pages/SellPage'
 import SalesPage from './pages/SalesPage'
 import InventoryPage from './pages/InventoryPage'
@@ -70,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Shop',
     items: [
+      { to: '/products', label: 'Products', icon: Package, iconClass: 'text-emerald-400' },
       { to: '/inventory', label: 'Inventory', icon: Boxes, perm: 'inventory', iconClass: 'text-amber-500' },
       { to: '/purchasing', label: 'Purchasing', icon: Truck, perm: 'purchasing', iconClass: 'text-orange-500' },
       { to: '/customers', label: 'Customers', icon: Users, iconClass: 'text-pink-500' },
@@ -91,6 +94,7 @@ const TOP_TABS: { to: string; label: string; perm?: Permission }[] = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/sell', label: 'Sell' },
   { to: '/sales', label: 'Sales' },
+  { to: '/products', label: 'Products' },
   { to: '/inventory', label: 'Inventory', perm: 'inventory' },
   { to: '/reports', label: 'Reports', perm: 'reports' },
 ]
@@ -141,14 +145,15 @@ export default function App() {
     ...g,
     items: g.items.filter((n) => {
       if (isCashier && n.to === '/sell') return false
+      if (n.to === '/products' && isOwner) return false
       if (isOwner) return true
-      if (!n.perm) return ['/dashboard', '/sell', '/sales', '/inventory', '/notifications'].includes(n.to)
+      if (!n.perm) return ['/dashboard', '/sell', '/sales', '/products', '/inventory', '/notifications'].includes(n.to)
       return can(n.perm)
     }),
   })).filter((g) => g.items.length > 0)
   const topTabs = isCashier
     ? TOP_TABS.filter((tab) => tab.to !== '/sell')
-    : TOP_TABS
+    : TOP_TABS.filter((tab) => tab.to !== '/products')
 
   // Staff land on the checkout workspace, not the owner's analytics dashboard.
   const navLabel = (label: string) => (label === 'Dashboard' && !isOwner ? 'Checkout' : label)
@@ -156,35 +161,37 @@ export default function App() {
   return (
     <div className="flex h-full flex-col">
       {/* Cashier navigation follows the white, teal and green register theme. */}
-      <header className={`relative flex h-16 shrink-0 items-stretch ${isCashier ? 'border-b border-register-border bg-white' : 'bg-[#2f63a8]'}`}>
+      {/* Cashier top bar mirrors the admin sidebar chrome; both sit on the same dark rail. */}
+      <header className={`relative flex h-20 shrink-0 items-stretch ${isCashier ? 'border-b border-black/30 bg-[#2e353b]' : 'bg-[#2f63a8]'}`}>
         <button
           type="button"
           onClick={() => setNavOpen((v) => !v)}
           aria-label="Open menu"
-          className={`flex shrink-0 items-center px-2 transition active:scale-95 sm:hidden ${isCashier ? 'text-register-teal hover:bg-register-canvas' : 'text-white/90 hover:bg-white/15'}`}
+          className={`flex shrink-0 items-center px-2 transition active:scale-95 sm:hidden text-white/90 hover:bg-white/15`}
         >
           <Menu size={22} />
         </button>
 
-        <div className={`hidden shrink-0 items-center border-r border-white/20 bg-white px-4 sm:flex ${isCashier ? 'sm:max-w-[190px]' : 'sm:w-56 lg:w-60'}`}>
-          <span className="truncate text-lg font-bold tracking-tight text-slate-900">{settings.shopName}</span>
+        <div className={`hidden shrink-0 items-center justify-center px-4 sm:flex ${isCashier ? 'bg-[#2e353b] sm:w-72' : 'bg-white sm:w-56 lg:w-60'}`}>
+          <span
+            className={`truncate text-xl font-medium tracking-normal ${isCashier ? 'text-white' : 'text-slate-900'}`}
+            style={{ fontFamily: '"Poppins", "Inter", sans-serif' }}
+          >
+            {settings.shopName}
+          </span>
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-1 px-2">
-          <nav className="hidden h-full min-w-0 flex-1 items-stretch overflow-x-auto sm:flex">
+          <nav className="hidden h-full min-w-0 flex-1 items-center justify-end gap-3 overflow-x-auto sm:flex">
             {topTabs.filter((t) => !t.perm || can(t.perm)).map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
                 className={({ isActive }) =>
-                  `my-2 flex shrink-0 items-center rounded-full px-3.5 text-sm font-semibold transition sm:px-4 ${
-                    isCashier
-                      ? isActive
-                        ? 'bg-register-green-soft text-register-teal'
-                        : 'text-register-muted hover:bg-register-hover hover:text-register-teal'
-                      : isActive
-                        ? 'bg-[#4a83c9] text-white shadow-sm'
-                        : 'text-white/85 hover:bg-white/15 hover:text-white'
+                  `flex h-11 shrink-0 items-center rounded-[4px] border px-5 text-sm font-semibold transition ${
+                    isActive
+                      ? 'border-[#2e8fc4] bg-[#4a9fd8] text-white shadow-sm'
+                      : 'border-[#b3b9bd] bg-[#f2f4f5] text-[#333b3f] hover:bg-[#e6eaec]'
                   }`
                 }
               >
@@ -193,33 +200,33 @@ export default function App() {
             ))}
           </nav>
 
-          <span className={`min-w-0 flex-1 truncate text-center text-base font-bold tracking-tight sm:hidden ${isCashier ? 'text-register-teal' : 'text-white'}`}>
+          <span className={`min-w-0 flex-1 truncate text-center text-base font-bold tracking-tight text-white sm:hidden`}>
             {settings.shopName}
           </span>
 
           <div className="flex shrink-0 items-center gap-1">
-            <span className={`mr-1 hidden items-center gap-1.5 text-sm sm:flex ${isCashier ? 'text-register-muted-soft' : 'text-white/80'}`}>
+            <span className={`mr-1 hidden items-center gap-1.5 text-sm text-white/80 sm:flex`}>
               <span className={`h-2 w-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`} />
               {online ? 'Online' : 'Offline'}
             </span>
             <NavLink
               to="/shift"
-              className={`mr-1 hidden text-sm font-medium md:inline ${isCashier ? (shift ? 'text-register-teal' : 'text-red-600') : (shift ? 'text-white' : 'text-red-300')}`}
+              className={`mr-1 hidden text-sm font-medium md:inline ${shift ? 'text-white' : 'text-red-300'}`}
             >
               {shift
                 ? `Shift · ${new Date(shift.openedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`
                 : 'No shift'}
             </NavLink>
-            <NavLink to="/notifications" className={`relative hidden rounded-lg p-2 transition sm:block ${isCashier ? 'text-register-muted hover:bg-register-hover hover:text-register-teal' : 'text-white/80 hover:bg-white/15 hover:text-white'}`} title="Notifications">
+            <NavLink to="/notifications" className={`relative hidden rounded-lg p-2 transition text-white/80 hover:bg-white/15 hover:text-white sm:block`} title="Notifications">
               <Bell size={18} />
             </NavLink>
-            <NavLink to="/messages" className={`hidden rounded-lg p-2 sm:block ${isCashier ? 'text-register-muted hover:bg-register-hover hover:text-register-teal' : 'text-white/80 hover:bg-white/15 hover:text-white'}`} title="Messages">
+            <NavLink to="/messages" className={`hidden rounded-lg p-2 text-white/80 hover:bg-white/15 hover:text-white sm:block`} title="Messages">
               <Mail size={18} />
             </NavLink>
             {can('settings') && (
               <NavLink
                 to="/settings"
-                className={`hidden rounded-lg p-2 transition sm:block ${isCashier ? 'text-register-muted hover:bg-register-hover hover:text-register-teal' : 'text-white/80 hover:bg-white/15 hover:text-white'}`}
+                className={`hidden rounded-lg p-2 text-white/80 transition hover:bg-white/15 hover:text-white sm:block`}
                 title="Settings"
               >
                 <SettingsIcon size={18} />
@@ -227,17 +234,17 @@ export default function App() {
             )}
 
             {/* User account dropdown */}
-            <div className={`ml-1 flex items-center sm:border-l sm:pl-3 ${isCashier ? 'sm:border-register-border' : 'sm:border-white/25'}`}>
+            <div className={`ml-1 flex items-center sm:border-l sm:border-white/25 sm:pl-3`}>
               <button
                 type="button"
                 onClick={() => setMenuOpen((m) => !m)}
-                className={`flex items-center gap-2 rounded-lg px-1.5 py-1 transition ${isCashier ? 'hover:bg-register-hover' : 'hover:bg-white/15'}`}
+                className={`flex items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-white/15`}
               >
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-2 ${isCashier ? 'ring-register-border' : 'ring-white/40'}`}>
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-2 ring-white/40`}>
                   <img src="avatar.svg" alt={user.name} className="h-full w-full object-cover" />
                 </span>
-                <span className={`hidden text-sm font-semibold xl:block ${isCashier ? 'text-register-teal' : 'text-white'}`}>{user.name}</span>
-                <ChevronDown size={15} className={`${isCashier ? 'text-register-muted-soft' : 'text-white/70'} transition ${menuOpen ? 'rotate-180' : ''}`} />
+                <span className={`hidden text-sm font-semibold text-white xl:block`}>{user.name}</span>
+                <ChevronDown size={15} className={`text-white/70 transition ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
               {menuOpen && (
                 <>
@@ -340,6 +347,7 @@ export default function App() {
             <Route path="/dashboard" element={can('users') ? <DashboardPage /> : <StaffDashboardPage />} />
             <Route path="/sell" element={isCashier ? <StaffDashboardPage /> : <SellPage />} />
             <Route path="/sales" element={<SalesPage />} />
+            <Route path="/products" element={<StaffProductsPage />} />
             <Route path="/service" element={<ServicePage />} />
             <Route path="/inventory" element={<Guard perm="inventory"><InventoryPage /></Guard>} />
             <Route path="/purchasing" element={<Guard perm="purchasing"><PurchasingPage /></Guard>} />

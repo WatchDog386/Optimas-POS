@@ -391,12 +391,17 @@ body,
   min-width: 0;
   color: #173d43;
   background: var(--color-register-canvas);
+  font-family: "Poppins", "Inter", var(--font-sans);
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 .pos-checkout h1,
 .pos-checkout h2,
 .pos-checkout h3 {
-  font-family: "Plus Jakarta Sans", var(--font-sans);
+  font-family: "Poppins", "Inter", var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .pos-checkout .btn-primary {
@@ -563,10 +568,10 @@ body,
 .pos-terminal {
   --term-line: #c7ccd0;
   --term-chrome: #e4e7e9;
-  --term-btn: #d6dadd;
-  --term-btn-hi: #e9ecee;
-  --term-btn-line: #b3b9be;
-  --term-btn-ink: #454d52;
+  --term-btn: #bcc3c8;
+  --term-btn-hi: #d3d9dc;
+  --term-btn-line: #969ea4;
+  --term-btn-ink: #333b3f;
   --term-green: #76b043;
   --term-green-line: #5c8f31;
   --term-red: #c0504d;
@@ -580,7 +585,7 @@ body,
 
 .pos-terminal-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 480px);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: 18px;
   padding: 16px 18px 12px;
   min-height: 0;
@@ -1278,8 +1283,8 @@ body,
 }
 
 .pos-terminal-void {
-  border-color: #cc7010;
-  background: var(--term-orange);
+  border-color: var(--term-red-line);
+  background: var(--term-red);
   color: #fff;
 }
 
@@ -1305,4 +1310,1040 @@ body,
   .pos-tool-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* ── Terminal density pass: 17-inch POS monitor ─────────────────────────── */
+.pos-terminal-workspace {
+  flex: 1;
+}
+
+.pos-terminal {
+  font-size: 17px;
+}
+
+.pos-terminal-heading h1 {
+  font-size: 32px;
+}
+
+.pos-terminal-heading span {
+  font-size: 15px;
+}
+
+.pos-register-action {
+  min-height: 56px;
+  font-size: 18px;
+}
+
+.pos-customer-select {
+  min-height: 82px;
+  font-size: 17px;
+}
+
+.pos-terminal-search-row input {
+  min-height: 54px;
+  font-size: 18px;
+}
+
+.pos-search-submit {
+  flex-basis: 230px;
+  font-size: 19px;
+}
+
+.pos-cart-table {
+  font-size: 16px;
+}
+
+.pos-cart-table th {
+  font-size: 16px;
+  padding: 11px 12px;
+}
+
+.pos-cart-table td {
+  padding: 10px 12px;
+}
+
+.pos-cell-box {
+  min-width: 96px;
+  font-size: 15px;
+}
+
+.pos-qty-control button {
+  width: 30px;
+  height: 30px;
+}
+
+.pos-qty-control span {
+  font-size: 17px;
+}
+
+.pos-cart-remove {
+  width: 34px;
+  height: 34px;
+}
+
+.pos-discount-control {
+  font-size: 17px;
+}
+
+.pos-discount-step {
+  width: 34px;
+  height: 34px;
+  font-size: 19px;
+}
+
+.pos-discount-input {
+  width: 76px;
+  height: 36px;
+  font-size: 17px;
+}
+
+.pos-terminal-summary dt {
+  font-size: 17px;
+}
+
+.pos-terminal-summary dd {
+  font-size: 20px;
+}
+
+.pos-terminal-total dt,
+.pos-terminal-total dd {
+  font-size: 21px;
+}
+
+.pos-category-arrow,
+.pos-category-button {
+  min-height: 56px;
+  font-size: 18px;
+}
+
+.pos-product-information strong {
+  font-size: 18px;
+}
+
+.pos-product-information p {
+  font-size: 16px;
+}
+
+.pos-tool-actions .pos-register-action {
+  min-height: 58px;
+  font-size: 17px;
+}
+
+.pos-product-lookup-title {
+  font-size: 17px;
+}
+
+.pos-product-results b,
+.pos-product-results strong {
+  font-size: 16px;
+}
+
+.pos-product-results small {
+  font-size: 14px;
+}
+
+.pos-terminal-action {
+  min-height: 84px;
+  font-size: 23px;
+}
+
+.pos-terminal-action small {
+  font-size: 15px;
+}
+
+/* ── Terminal status strip ──────────────────────────────────────────────── */
+.pos-terminal-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 18px 0;
+}
+
+.pos-strip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border: 1px solid var(--term-line, #c7ccd0);
+  border-radius: 999px;
+  background: #fff;
+  color: #454d52;
+  font-size: 13px;
+}
+
+.pos-strip-chip b {
+  color: #1f272b;
+}
+
+.pos-strip-chip.is-warn {
+  border-color: #e4c48a;
+  background: #fdf6e7;
+  color: #8a6413;
+}
+
+/* ── Recent receipts panel ──────────────────────────────────────────────── */
+.pos-recent-sales {
+  display: flex;
+  flex-direction: column;
+  min-height: 110px;
+  border: 1px solid var(--term-line, #c7ccd0);
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.pos-recent-title {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e6e9ea;
+  font-size: 16px;
+  font-weight: 700;
+  color: #3c464b;
+}
+
+.pos-recent-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.pos-recent-list p {
+  margin: 0;
+  padding: 14px;
+  font-size: 14px;
+  color: #7d868b;
+}
+
+.pos-recent-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  border: 0;
+  border-bottom: 1px solid #eef0f1;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pos-recent-list button:last-child {
+  border-bottom: 0;
+}
+
+.pos-recent-list button:hover {
+  background: #f2f6f3;
+}
+
+.pos-recent-list span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pos-recent-list b {
+  font-size: 15px;
+}
+
+.pos-recent-list small {
+  font-size: 12px;
+  color: #7d868b;
+}
+
+.pos-recent-list strong {
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+/* ── Staff products (stock) page ────────────────────────────────────────── */
+.pos-products {
+  background: var(--term-chrome, #e4e7e9);
+  color: #2b3337;
+}
+
+.pos-products-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 18px 12px;
+}
+
+.pos-products-head h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: #1f272b;
+}
+
+.pos-products-head p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #5d676c;
+}
+
+.pos-products-search {
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+  flex: 0 1 380px;
+  border: 1px solid #c7ccd0;
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.pos-products-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  font-size: 16px;
+  color: #2b3337;
+}
+
+.pos-products-search input:focus {
+  outline: none;
+}
+
+.pos-products-search button,
+.pos-products-search > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: #5d676c;
+}
+
+.pos-products-search button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.pos-products-search button:hover {
+  color: #c0504d;
+}
+
+.pos-products-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 18px 12px;
+}
+
+.pos-products-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pos-products-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #b3b9be;
+  border-radius: 999px;
+  background: #fff;
+  color: #454d52;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pos-products-chips button b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e4e7e9;
+  font-size: 12px;
+}
+
+.pos-products-chips button:hover {
+  filter: brightness(0.98);
+}
+
+.pos-products-chips button.is-active {
+  border-color: #0f2931;
+  background: #1b3a46;
+  color: #fff;
+}
+
+.pos-products-chips button.is-active b {
+  background: rgb(255 255 255 / 20%);
+  color: #fff;
+}
+
+.pos-products-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0 18px 18px;
+  overflow: auto;
+  border: 1px solid #c7ccd0;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.pos-products-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.pos-products-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 14px;
+  border-bottom: 1px solid #c7ccd0;
+  background: #f4f5f6;
+  font-size: 14px;
+  font-weight: 700;
+  color: #333c40;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pos-products-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef0f1;
+  vertical-align: middle;
+}
+
+.pos-products-table tbody tr:hover {
+  background: #f7faf8;
+}
+
+.pos-products-id {
+  width: 72px;
+  white-space: nowrap;
+  color: #5d676c;
+}
+
+.pos-products-name {
+  font-weight: 600;
+  color: #1f272b;
+}
+
+.pos-products-name + small {
+  display: block;
+  font-size: 12px;
+  color: #7d868b;
+}
+
+.pos-products-price {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pos-products-stock {
+  text-align: center;
+}
+
+.pos-stock-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pos-stock-pill[data-status='in'] {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.pos-stock-pill[data-status='low'] {
+  background: #fdf6e7;
+  color: #b45309;
+}
+
+.pos-stock-pill[data-status='out'] {
+  background: #fdecea;
+  color: #b91c1c;
+}
+
+.pos-stock-pill[data-status='service'] {
+  background: #eef2f6;
+  color: #475569;
+}
+
+.pos-status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pos-status-badge.is-in {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.pos-status-badge.is-low {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.pos-status-badge.is-out {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.pos-status-badge.is-service {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.pos-products-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 44px 12px;
+  color: #7d868b;
+  font-size: 15px;
+}
+
+/* ── Bill-to row sits beside the customer buttons, under the search ─────── */
+.pos-customer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.pos-customer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pos-customer-field > label {
+  font-size: 14px;
+  color: #3c464b;
+}
+
+.pos-customer-row .pos-customer-select {
+  min-height: 48px;
+  width: 100%;
+}
+
+.pos-customer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pos-customer-actions .pos-register-action {
+  min-height: 46px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+@media (max-width: 760px) {
+  .pos-customer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pos-customer-actions {
+    flex-direction: row;
+  }
+
+  .pos-customer-actions .pos-register-action {
+    flex: 1;
+  }
+}
+
+/* ── Products page dropdown filters ─────────────────────────────────────── */
+.pos-products-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 0 18px 12px;
+}
+
+.pos-products-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pos-products-filter > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3c464b;
+}
+
+.pos-products-filter select {
+  min-width: 200px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #c7ccd0;
+  border-radius: 4px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  color: #2b3337;
+  cursor: pointer;
+}
+
+/* ── Take payment: sharp-corner professional tender sheet ───────────────── */
+.pos-checkout .modal-card {
+  border-radius: 0;
+}
+
+.pos-checkout .modal-card,
+.pos-checkout .modal-card * {
+  border-radius: 0 !important;
+}
+
+.pos-checkout .modal-card h2 {
+  font-family: "Poppins", var(--font-sans);
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.pos-checkout .modal-card:has(.pos-pay) {
+  max-width: 72rem;
+}
+
+.pos-checkout .modal-card .tile {
+  height: 3.6rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.pos-pay {
+  font-family: inherit;
+  font-size: 15px;
+  color: #2b3337;
+}
+
+/* Amount due panel */
+.pos-pay-due {
+  padding: 18px 20px;
+  border: 1px solid var(--term-line, #c7ccd0);
+  border-top: 4px solid #1b3a46;
+  background: #1b3a46;
+  color: #fff;
+}
+
+.pos-pay-due-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9fc4d0;
+}
+
+.pos-pay-due-amount {
+  margin-top: 4px;
+  font-family: "Poppins", var(--font-sans);
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.pos-pay-due-sub {
+  margin-top: 2px;
+  font-size: 14px;
+  color: #9fb6c0;
+}
+
+.pos-pay-change {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 4px 12px;
+  background: #76b043;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* Tenders list */
+.pos-pay-tenders {
+  flex: 1;
+  min-height: 120px;
+  margin-top: 14px;
+  overflow: auto;
+  border: 1px solid #c7ccd0;
+  background: #fff;
+}
+
+.pos-pay-tenders-title {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e6e9ea;
+  font-family: "Poppins", var(--font-sans);
+  font-size: 15px;
+  font-weight: 800;
+  color: #1f272b;
+}
+
+.pos-pay-tenders > p {
+  margin: 0;
+  padding: 14px;
+  font-size: 14px;
+  color: #7d868b;
+}
+
+.pos-pay-tender {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef0f1;
+}
+
+.pos-pay-tender-mark {
+  display: flex;
+  align-items: center;
+}
+
+.pos-pay-tender-info {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.pos-pay-tender-info b {
+  font-size: 15px;
+  color: #1f272b;
+}
+
+.pos-pay-tender-info small {
+  font-size: 12px;
+  color: #7d868b;
+  font-family: ui-monospace, monospace;
+  text-transform: uppercase;
+}
+
+.pos-pay-tender-amount {
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pos-pay-tender-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: none;
+  color: #7d868b;
+  cursor: pointer;
+}
+
+.pos-pay-tender-remove:hover {
+  color: #c0504d;
+}
+
+.pos-pay-complete {
+  min-height: 60px;
+  margin-top: 14px;
+  border: 1px solid #5c8f31;
+  background: #76b043;
+  color: #fff;
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pos-pay-complete:hover:not(:disabled) {
+  background: #6da53c;
+}
+
+.pos-pay-complete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pos-pay-error {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #c0504d;
+}
+
+/* Method selector with brand marks */
+.pos-pay-methods {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pos-pay-methods.is-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pos-pay-method {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px 12px;
+  border: 2px solid #d3d9dc;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #3c464b;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.pos-pay-method:hover {
+  border-color: #969ea4;
+}
+
+.pos-pay-method:active {
+  transform: translateY(1px);
+}
+
+.pos-pay-method-cash.is-active {
+  border-color: #1b3a46;
+  box-shadow: inset 0 0 0 1px #1b3a46;
+  background: #f2f6f7;
+  color: #1b3a46;
+}
+
+.pos-pay-method-mpesa.is-active {
+  border-color: #00a859;
+  box-shadow: inset 0 0 0 1px #00a859;
+  background: #edf8f1;
+  color: #00713c;
+}
+
+.pos-pay-method-card.is-active {
+  border-color: #1a1f71;
+  box-shadow: inset 0 0 0 1px #1a1f71;
+  background: #f2f3fa;
+  color: #1a1f71;
+}
+
+.pos-pay-method-account.is-active {
+  border-color: #4f46e5;
+  box-shadow: inset 0 0 0 1px #4f46e5;
+  background: #f3f2fd;
+  color: #3730a3;
+}
+
+/* Amount entry */
+.pos-pay-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #3c464b;
+}
+
+.pos-pay-amount {
+  margin: 6px 0 12px;
+  padding: 12px 16px;
+  border: 2px solid #1b3a46;
+  background: #fff;
+  text-align: right;
+  font-family: "Poppins", var(--font-sans);
+  font-size: 34px;
+  font-weight: 800;
+  color: #1f272b;
+}
+
+.pos-pay-amount-empty {
+  color: #9aa4a8;
+}
+
+.pos-pay-quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pos-pay-quick-note {
+  min-height: 48px;
+  border: 1px solid #969ea4;
+  background: #f4f6f7;
+  color: #333b3f;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pos-pay-quick-note:hover {
+  border-color: #1b3a46;
+  background: #e9eef0;
+}
+
+.pos-pay-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pos-pay-fields .input {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.pos-pay-input-mono {
+  font-family: ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.pos-pay-mpesa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  border: 1px solid #00713c;
+  background: #00a859;
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pos-pay-mpesa-btn:hover:not(:disabled) {
+  background: #00914d;
+}
+
+.pos-pay-mpesa-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pos-pay-hint {
+  margin: 0;
+  font-size: 14px;
+  color: #3c464b;
+}
+
+.pos-pay-note {
+  margin: 0;
+  font-size: 13px;
+  color: #7d868b;
+}
+
+.pos-pay-till {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 4px solid #00a859;
+  background: #edf8f1;
+  font-size: 14px;
+  color: #1f5c3d;
+}
+
+.pos-pay-account {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-left: 4px solid #4f46e5;
+  background: #f3f2fd;
+  font-size: 14px;
+  color: #312e81;
+}
+
+.pos-pay-add {
+  min-height: 52px;
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #0f2931;
+  background: #1b3a46;
+  color: #fff;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pos-pay-add:hover {
+  background: #16313b;
+}
+
+@media (max-width: 900px) {
+  .pos-pay-methods {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pos-pay-due-amount {
+    font-size: 34px;
+  }
+}
+
+/* ── Cart table: matches the inventory table row chrome (striping, borders,
+   fonts) — headers keep their own checkout style ────────────────────────── */
+.pos-cart-table {
+  font-size: 14px;
+}
+
+.pos-cart-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-mc-line);
+  border-right: 1px solid var(--color-mc-line);
+  font-size: 14px;
+  color: var(--color-mc-body);
+}
+
+.pos-cart-table td:last-child {
+  border-right: 0;
+}
+
+.pos-cart-table tbody tr:nth-child(odd) {
+  background: #fff;
+}
+
+.pos-cart-table tbody tr:nth-child(even) {
+  background: var(--color-mc-canvas);
+}
+
+.pos-cart-table tbody tr:hover {
+  background: rgb(231 244 239 / 50%);
+}
+
+.pos-cart-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--color-mc-muted);
+}
+
+.pos-cart-product small {
+  font-size: 12px;
+}
+
+.pos-cart-money {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pos-cart-rowtotal {
+  font-weight: 600;
 }

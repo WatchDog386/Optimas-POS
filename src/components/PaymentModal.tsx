@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
-import { Banknote, CreditCard, Loader2, Smartphone, Trash2, UserRound } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Loader2, Smartphone, Trash2 } from 'lucide-react'
 import { Modal, NumPad, errorText } from './ui'
+import { AccountMark, CardMark, CashMark, MpesaMark } from './PaymentMarks'
 import type { Customer, Payment, PaymentMethod, Settings } from '../db/types'
 import { changeDue, paidAmount, quickCashOptions } from '../lib/cart'
 import { money, toCents } from '../lib/money'
 import { isValidMpesaCode, normalizePhone, stkPush, stkStatus } from '../lib/mpesa'
 
-const METHODS: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
-  { id: 'cash', label: 'Cash', icon: Banknote },
-  { id: 'mpesa', label: 'M-Pesa', icon: Smartphone },
-  { id: 'card', label: 'Card', icon: CreditCard },
-  { id: 'account', label: 'On account', icon: UserRound },
+const METHODS: { id: PaymentMethod; label: string; mark: (p: { size?: number }) => ReactNode }[] = [
+  { id: 'cash', label: 'Cash', mark: CashMark },
+  { id: 'mpesa', label: 'M-Pesa', mark: MpesaMark },
+  { id: 'card', label: 'Card', mark: CardMark },
+  { id: 'account', label: 'On account', mark: AccountMark },
 ]
 
 export default function PaymentModal({
@@ -141,65 +142,76 @@ export default function PaymentModal({
 
   return (
     <Modal title="Take payment" onClose={busy ? () => {} : onClose} wide>
-      <div className="grid gap-5 md:grid-cols-[1fr_1.3fr]">
+      <div className="pos-pay grid gap-6 md:grid-cols-[1fr_1.3fr]">
         {/* Summary */}
         <div className="flex flex-col">
-          <div className="rounded-xl bg-navy-900 p-4 text-white ring-1 ring-black/10">
-            <div className="text-xs uppercase tracking-wide text-brand-400">{done ? 'Paid' : 'Amount due'}</div>
-            <div className="text-3xl font-black">{money(done ? total : remaining, c)}</div>
-            {payments.length > 0 && !done && <div className="mt-1 text-sm text-slate-400">of {money(total, c)}</div>}
-            {change > 0 && <div className="mt-2 text-xl font-bold text-brand-400">Change {money(change, c)}</div>}
+          <div className="pos-pay-due">
+            <div className="pos-pay-due-label">{done ? 'Paid in full' : 'Amount due'}</div>
+            <div className="pos-pay-due-amount">{money(done ? total : remaining, c)}</div>
+            {payments.length > 0 && !done && <div className="pos-pay-due-sub">of {money(total, c)}</div>}
+            {change > 0 && <div className="pos-pay-change">Change {money(change, c)}</div>}
           </div>
-          <div className="mt-3 flex-1 space-y-2">
-            {payments.map((p, i) => (
-              <div key={i} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                <div>
-                  <div className="font-semibold">{METHODS.find((m) => m.id === p.method)?.label}</div>
-                  {p.reference && <div className="text-xs text-slate-500">{p.reference}</div>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{money(p.amount, c)}</span>
-                  <button onClick={() => setPayments((ps) => ps.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-600" aria-label="Remove payment">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {payments.length === 0 && <p className="text-sm text-slate-500">Split payments are supported — add as many tenders as needed.</p>}
+
+          <div className="pos-pay-tenders custom-scrollbar">
+            <div className="pos-pay-tenders-title">Tenders on this sale</div>
+            {payments.length === 0 ? (
+              <p>Split payments are supported — add as many tenders as needed.</p>
+            ) : (
+              payments.map((p, i) => {
+                const entry = METHODS.find((m) => m.id === p.method)
+                const Mark = entry?.mark
+                return (
+                  <div key={i} className="pos-pay-tender">
+                    <span className="pos-pay-tender-mark">{Mark ? <Mark size={40} /> : null}</span>
+                    <span className="pos-pay-tender-info">
+                      <b>{entry?.label}</b>
+                      {p.reference && <small>{p.reference}</small>}
+                    </span>
+                    <span className="pos-pay-tender-amount">{money(p.amount, c)}</span>
+                    <button
+                      onClick={() => setPayments((ps) => ps.filter((_, j) => j !== i))}
+                      className="pos-pay-tender-remove"
+                      aria-label="Remove payment"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )
+              })
+            )}
           </div>
-          <button className="btn-primary mt-4 h-14 text-lg" disabled={!done || busy} onClick={finish}>
+
+          <button className="pos-pay-complete" disabled={!done || busy} onClick={finish}>
             {busy ? <Loader2 className="animate-spin" /> : null}
             {done ? 'Complete sale' : `Remaining ${money(remaining, c)}`}
           </button>
-          {error && <p className="mt-2 text-sm font-medium text-red-600">{error}</p>}
+          {error && <p className="pos-pay-error">{error}</p>}
         </div>
 
         {/* Tender entry */}
         <div className={done ? 'pointer-events-none opacity-40' : ''}>
-          <div className={`mb-3 grid gap-2 ${methods.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
-            {methods.map(({ id, label, icon: Icon }) => (
+          <div className={`pos-pay-methods ${methods.length <= 3 ? 'is-three' : ''}`}>
+            {methods.map(({ id, label, mark: Mark }) => (
               <button
                 key={id}
                 onClick={() => setMethod(id)}
-                className={`flex flex-col items-center gap-1 rounded-xl border py-3 text-xs font-semibold ${
-                  method === id ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600'
-                }`}
+                className={`pos-pay-method pos-pay-method-${id} ${method === id ? 'is-active' : ''}`}
               >
-                <Icon size={20} />
-                {label}
+                <Mark size={56} />
+                <span>{label}</span>
               </button>
             ))}
           </div>
 
-          <label className="label">Amount</label>
-          <div className="mb-3 rounded-lg border border-slate-300 px-3 py-2 text-right text-2xl font-bold">
-            {entry ? money(toCents(entry), c) : <span className="text-slate-400">{money(remaining, c)}</span>}
+          <label className="label pos-pay-label">Amount</label>
+          <div className="pos-pay-amount">
+            {entry ? money(toCents(entry), c) : <span className="pos-pay-amount-empty">{money(remaining, c)}</span>}
           </div>
 
           {method === 'cash' && (
-            <div className="mb-3 grid grid-cols-4 gap-2">
+            <div className="pos-pay-quick">
               {quickCashOptions(remaining).map((v) => (
-                <button key={v} className="btn-ghost px-2" onClick={() => add({ method: 'cash', amount: v })}>
+                <button key={v} className="pos-pay-quick-note" onClick={() => add({ method: 'cash', amount: v })}>
                   {money(v, '')}
                 </button>
               ))}
@@ -207,25 +219,25 @@ export default function PaymentModal({
           )}
 
           {method === 'mpesa' && settings.mpesaMode === 'stk' && (
-            <div className="mb-3 space-y-2">
+            <div className="pos-pay-fields">
               <input className="input" placeholder="Customer phone, e.g. 0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <button className="btn-dark w-full" onClick={sendStk} disabled={busy || !!stk}>
-                {stk ? <Loader2 className="animate-spin" size={16} /> : <Smartphone size={16} />}
+              <button className="pos-pay-mpesa-btn" onClick={sendStk} disabled={busy || !!stk}>
+                {stk ? <Loader2 className="animate-spin" size={18} /> : <Smartphone size={18} />}
                 {stk ? 'Waiting for customer…' : `Send M-Pesa prompt for ${money(amount, c)}`}
               </button>
-              {stk && <p className="text-sm text-slate-600">{stk.message}</p>}
-              <p className="text-xs text-slate-500">Or type the confirmation code from the customer's SMS:</p>
+              {stk && <p className="pos-pay-hint">{stk.message}</p>}
+              <p className="pos-pay-note">Or type the confirmation code from the customer's SMS:</p>
             </div>
           )}
           {method === 'mpesa' && (
-            <div className="mb-3">
+            <div className="pos-pay-fields">
               {settings.mpesaTill && settings.mpesaMode === 'manual' && (
-                <p className="mb-2 rounded-lg bg-navy-50 px-3 py-2 text-sm text-navy-800">
+                <p className="pos-pay-till">
                   Customer pays to Till <b>{settings.mpesaTill}</b>. Check the SMS, then enter the code.
                 </p>
               )}
               <input
-                className="input font-mono uppercase"
+                className="input pos-pay-input-mono"
                 placeholder="M-Pesa code, e.g. SJK7AB12CD"
                 value={reference}
                 maxLength={10}
@@ -234,23 +246,30 @@ export default function PaymentModal({
             </div>
           )}
           {method === 'card' && (
-            <input className="input mb-3" placeholder="Approval code from card terminal (optional)" value={reference} onChange={(e) => setReference(e.target.value)} />
+            <div className="pos-pay-fields">
+              <input
+                className="input pos-pay-input"
+                placeholder="Approval code from card terminal (optional)"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+              />
+            </div>
           )}
           {method === 'account' && (
-            <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+            <div className="pos-pay-account">
               {customer ? (
                 <>
                   <b>{customer.name}</b> currently owes {money(customer.balance, c)}
                   {customer.creditLimit > 0 && <> · limit {money(customer.creditLimit, c)}</>}
                 </>
               ) : (
-                <span className="text-red-600">Attach a customer to the sale to sell on account.</span>
+                <span className="pos-pay-error">Attach a customer to the sale to sell on account.</span>
               )}
             </div>
           )}
 
           <NumPad onKey={pad} />
-          <button className="btn-dark mt-3 h-12 w-full" onClick={addCurrent}>
+          <button className="pos-pay-add" onClick={addCurrent}>
             Add {METHODS.find((m) => m.id === method)?.label} {money(amount, c)}
           </button>
         </div>

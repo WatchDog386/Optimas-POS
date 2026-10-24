@@ -73,6 +73,52 @@ export default function StaffDashboardPage() {
     [cart.customerId],
   )
   const parkedCount = useLiveQuery(() => db.parked.count(), [], 0)
+  const todayStart = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d.getTime()
+  }, [])
+  const todaySales = useLiveQuery(
+    () => db.sales.where('createdAt').above(todayStart).toArray(),
+    [todayStart],
+    [] as Sale[],
+  )
+  const shiftSales = useLiveQuery(
+    () => (shift ? db.sales.where('shiftId').equals(shift.id!).toArray() : Promise.resolve([] as Sale[])),
+    [shift?.id],
+    [] as Sale[],
+  )
+
+  const myToday = useMemo(
+    () => todaySales.filter((s) => s.userId === user?.id && s.status !== 'voided'),
+    [todaySales, user],
+  )
+  const myTodayTotal = myToday.reduce((sum, s) => sum + s.total, 0)
+  const myRecent = useMemo(
+    () =>
+      todaySales
+        .filter((s) => s.userId === user?.id && s.status !== 'voided')
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 5),
+    [todaySales, user],
+  )
+  const cashInDrawer = useMemo(() => {
+    if (!shift) return null
+    let cash = shift.openingFloat
+    for (const s of shiftSales) {
+      if (s.status === 'voided') continue
+      if (s.payments.some((p) => p.method === 'cash')) {
+        cash += s.payments.filter((p) => p.method === 'cash').reduce((sum, p) => sum + p.amount, 0)
+        cash -= s.change
+      }
+    }
+    for (const m of shift.cashMovements) cash += m.type === 'in' ? m.amount : -m.amount
+    return cash
+  }, [shift, shiftSales])
+  const lowStockCount = useMemo(
+    () => products.filter((p) => p.trackStock && p.stock <= p.reorderLevel).length,
+    [products],
+  )
 
   const visible = useMemo(() => {
     const term = query.trim()
@@ -246,42 +292,34 @@ export default function StaffDashboardPage() {
 
   return (
     <div className="pos-checkout pos-terminal flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="pos-terminal-strip">
+        <span className="pos-strip-chip">
+          <b>{user?.name}</b> · <span className="capitalize">{user?.role}</span>
+        </span>
+        {shift ? (
+          <span className="pos-strip-chip">
+            Shift opened{' '}
+            {new Date(shift.openedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        ) : (
+          <span className="pos-strip-chip is-warn">No open shift — one will open when you charge</span>
+        )}
+        {cashInDrawer !== null && (
+          <span className="pos-strip-chip">
+            Cash in drawer <b>{money(cashInDrawer, settings.currency)}</b>
+          </span>
+        )}
+        <span className="pos-strip-chip">
+          Today <b>{myToday.length}</b> sales · <b>{money(myTodayTotal, settings.currency)}</b>
+        </span>
+        {lowStockCount > 0 && <span className="pos-strip-chip is-warn">{lowStockCount} parts low on stock</span>}
+      </div>
+
       <div className="pos-terminal-workspace">
         <section className="pos-terminal-ticket" aria-label="Current sale">
           <div className="pos-terminal-heading">
             <h1>Product</h1>
             <span>{settings.shopName.toUpperCase()} · COUNTER</span>
-          </div>
-
-          <div className="pos-customer-block">
-            <label htmlFor="customer-select">Bill to:</label>
-            <select
-              id="customer-select"
-              className="pos-customer-select"
-              value={cart.customerId ?? ''}
-              onChange={(event) => setCart((current) => ({ ...current, customerId: event.target.value ? Number(event.target.value) : undefined }))}
-            >
-              <option value="">Walk-in customer</option>
-              {customers.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.name}{entry.bikeModel ? ` — ${entry.bikeModel}` : ''}
-                </option>
-              ))}
-            </select>
-            {customer && (
-              <p className="pos-customer-detail">
-                {[customer.phone, customer.plate, customer.bikeModel].filter(Boolean).join(' · ')}
-                {customer.balance > 0 ? ` · Owes ${money(customer.balance, settings.currency)}` : ''}
-              </p>
-            )}
-            <div className="pos-customer-actions">
-              <button className="pos-register-action pos-register-action-green" onClick={() => setDialog('customer')}>
-                Find Customer
-              </button>
-              <button className="pos-register-action pos-register-action-red" onClick={() => setDialog('customer')}>
-                Add Customer
-              </button>
-            </div>
           </div>
 
           <div className="pos-terminal-search">
@@ -305,6 +343,39 @@ export default function StaffDashboardPage() {
               )}
               <button className="pos-register-action pos-search-submit" onClick={runSearch}>
                 <Search size={17} /> Search
+              </button>
+            </div>
+          </div>
+
+          <div className="pos-customer-row">
+            <div className="pos-customer-field">
+              <label htmlFor="customer-select">Bill to:</label>
+              <select
+                id="customer-select"
+                className="pos-customer-select"
+                value={cart.customerId ?? ''}
+                onChange={(event) => setCart((current) => ({ ...current, customerId: event.target.value ? Number(event.target.value) : undefined }))}
+              >
+                <option value="">Walk-in customer</option>
+                {customers.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name}{entry.bikeModel ? ` — ${entry.bikeModel}` : ''}
+                  </option>
+                ))}
+              </select>
+              {customer && (
+                <p className="pos-customer-detail">
+                  {[customer.phone, customer.plate, customer.bikeModel].filter(Boolean).join(' · ')}
+                  {customer.balance > 0 ? ` · Owes ${money(customer.balance, settings.currency)}` : ''}
+                </p>
+              )}
+            </div>
+            <div className="pos-customer-actions">
+              <button className="pos-register-action pos-register-action-green" onClick={() => setDialog('customer')}>
+                Find Customer
+              </button>
+              <button className="pos-register-action pos-register-action-red" onClick={() => setDialog('customer')}>
+                Add Customer
               </button>
             </div>
           </div>
@@ -353,12 +424,8 @@ export default function StaffDashboardPage() {
                             </button>
                           </div>
                         </td>
-                        <td className="pos-cart-money">
-                          <span className="pos-cell-box">{line.discount > 0 ? `−${money(line.discount, settings.currency)}` : '0%'}</span>
-                        </td>
-                        <td className="pos-cart-money">
-                          <span className="pos-cell-box">{money(lineTotal(line), settings.currency)}</span>
-                        </td>
+                        <td className="pos-cart-money">{line.discount > 0 ? `−${money(line.discount, settings.currency)}` : '0%'}</td>
+                        <td className="pos-cart-money pos-cart-rowtotal">{money(lineTotal(line), settings.currency)}</td>
                         <td>
                           <button className="pos-cart-remove" onClick={() => setQty(index, 0)} aria-label={`Remove ${line.name}`}>
                             <Trash2 size={14} />
@@ -466,6 +533,7 @@ export default function StaffDashboardPage() {
             <strong>Product Information</strong>
             <p>{isLookingUp ? `${visible.length} matching product${visible.length === 1 ? '' : 's'} available.` : 'Search by part number, SKU, OEM or barcode.'}</p>
             <p>{category === 'all' ? 'Choose a category or start typing to look up stock.' : 'Use the product list below to add a part.'}</p>
+            {lowStockCount > 0 && <p>{lowStockCount} part{lowStockCount === 1 ? '' : 's'} at or below reorder level — see the Products page.</p>}
           </div>
 
           <div className="pos-tool-actions">
@@ -542,6 +610,34 @@ export default function StaffDashboardPage() {
                 <span>Search for a part, then select it to add it to this sale.</span>
               </button>
             )}
+          </div>
+
+          <div className="pos-recent-sales">
+            <div className="pos-recent-title">Recent receipts</div>
+            <div className="pos-recent-list custom-scrollbar">
+              {myRecent.length === 0 ? (
+                <p>Receipts you charge will appear here for quick reprints.</p>
+              ) : (
+                myRecent.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setReceiptIsNew(false)
+                      setReceipt(s)
+                    }}
+                  >
+                    <span>
+                      <b>{s.receiptNo}</b>
+                      <small>
+                        {new Date(s.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })} ·{' '}
+                        {s.lines.length} line{s.lines.length === 1 ? '' : 's'}
+                      </small>
+                    </span>
+                    <strong>{money(s.total, settings.currency)}</strong>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </aside>
       </div>
