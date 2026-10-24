@@ -145,6 +145,45 @@ export default function ProfilePage() {
     toast('Startup script saved — run it once and the till will boot with this computer')
   }
 
+  // Profile photo: crop to a square and downscale so IndexedDB stays small.
+  const uploadPhoto = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = async () => {
+        try {
+          const size = 256
+          const canvas = document.createElement('canvas')
+          canvas.width = size
+          canvas.height = size
+          const ctx = canvas.getContext('2d')
+          if (!ctx) throw new Error('Canvas is not available in this browser')
+          const scale = Math.max(size / img.width, size / img.height)
+          const w = img.width * scale
+          const h = img.height * scale
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+          const image = canvas.toDataURL('image/jpeg', 0.85)
+          await db.users.update(user.id!, { image })
+          toast('Profile photo updated')
+        } catch (e) {
+          toast(errorText(e), 'error')
+        }
+      }
+      img.onerror = () => toast('That file is not a readable image', 'error')
+      img.src = String(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removePhoto = async () => {
+    try {
+      await db.users.update(user.id!, { image: undefined })
+      toast('Profile photo removed')
+    } catch (e) {
+      toast(errorText(e), 'error')
+    }
+  }
+
   return (
     <div className="p-4 lg:p-6">
       <PageHeader title="Profile" subtitle="Your account on this till — what shows on receipts and the activity log" />
@@ -156,8 +195,8 @@ export default function ProfilePage() {
             <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-500 text-lg font-bold text-white shadow ring-4 ring-white">
               <span>{initials}</span>
               <img
-                src="avatar.svg"
-                alt=""
+                src={user.image ?? 'avatar.svg'}
+                alt={user.name}
                 className="absolute inset-0 h-full w-full object-cover"
                 onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
               />
@@ -219,9 +258,40 @@ export default function ProfilePage() {
         <div className="min-w-0 p-6">
           {section === 'personal' && (
             <>
-              <h2 className="text-sm font-bold text-slate-900 sm:text-xl">Personal information</h2>
+            <h2 className="text-sm font-bold text-slate-900 sm:text-xl">Personal information</h2>
 
-              <h3 className="mt-5 text-sm font-bold text-slate-800">Profile</h3>
+            <div className="mt-4 flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 ring-2 ring-white">
+                {user.image ? (
+                  <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
+                ) : (
+                  <UserRound size={26} className="text-slate-400" />
+                )}
+              </span>
+              <div className="flex flex-col items-start gap-1.5">
+                <label className="btn-ghost cursor-pointer px-3 py-1.5 text-sm">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadPhoto(file)
+                      e.target.value = ''
+                    }}
+                  />
+                  Upload photo
+                </label>
+                {user.image && (
+                  <button className="text-xs font-medium text-red-600 transition hover:underline" onClick={() => void removePhoto()}>
+                    Remove photo
+                  </button>
+                )}
+                <p className="text-[11px] text-slate-400">Shown next to your name on the till header.</p>
+              </div>
+            </div>
+
+            <h3 className="mt-5 text-sm font-bold text-slate-800">Profile</h3>
               <p className="mt-0.5 text-xs text-slate-500">This name is printed on receipts you handle and shown in the activity log.</p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <Field label="First name">

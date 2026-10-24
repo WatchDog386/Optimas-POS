@@ -1,18 +1,17 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2, Smartphone, Trash2 } from 'lucide-react'
 import { Modal, NumPad, errorText } from './ui'
-import { AccountMark, CardMark, CashMark, MpesaMark } from './PaymentMarks'
 import type { Customer, Payment, PaymentMethod, Settings } from '../db/types'
 import { changeDue, paidAmount, quickCashOptions } from '../lib/cart'
 import { money, toCents } from '../lib/money'
 import { isValidMpesaCode, normalizePhone, stkPush, stkStatus } from '../lib/mpesa'
 
-const METHODS: { id: PaymentMethod; label: string; mark: (p: { size?: number }) => ReactNode }[] = [
-  { id: 'cash', label: 'Cash', mark: CashMark },
-  { id: 'mpesa', label: 'M-Pesa', mark: MpesaMark },
-  { id: 'card', label: 'Card', mark: CardMark },
-  { id: 'account', label: 'On account', mark: AccountMark },
+const METHODS: { id: PaymentMethod; label: string; img?: string }[] = [
+  { id: 'cash', label: 'Cash', img: '/cash.png' },
+  { id: 'mpesa', label: 'M-Pesa', img: '/mpesa.png' },
 ]
+
+const CLOSED_LABELS: Partial<Record<PaymentMethod, string>> = { card: 'Card', account: 'On account' }
 
 export default function PaymentModal({
   total,
@@ -70,13 +69,6 @@ export default function PaymentModal({
     if (method === 'mpesa') {
       if (!isValidMpesaCode(reference)) return setError('M-Pesa code should be 10 letters/numbers, e.g. SJK7AB12CD')
       return add({ method, amount, reference: reference.trim().toUpperCase() })
-    }
-    if (method === 'account') {
-      if (!customer) return setError('Attach a customer to the sale first')
-      const after = customer.balance + amount
-      if (customer.creditLimit > 0 && after > customer.creditLimit) {
-        return setError(`Over credit limit (${money(customer.creditLimit, c)})`)
-      }
     }
     add({ method, amount, reference: reference.trim() || undefined })
   }
@@ -158,11 +150,15 @@ export default function PaymentModal({
               <p>Split payments are supported — add as many tenders as needed.</p>
             ) : (
               payments.map((p, i) => {
-                const entry = METHODS.find((m) => m.id === p.method)
-                const Mark = entry?.mark
+                const entry = METHODS.find((m) => m.id === p.method) ?? {
+                  id: p.method,
+                  label: CLOSED_LABELS[p.method] ?? p.method,
+                }
                 return (
                   <div key={i} className="pos-pay-tender">
-                    <span className="pos-pay-tender-mark">{Mark ? <Mark size={40} /> : null}</span>
+                    <span className="pos-pay-tender-mark">
+                      {entry?.img ? <img src={entry.img} alt="" /> : null}
+                    </span>
                     <span className="pos-pay-tender-info">
                       <b>{entry?.label}</b>
                       {p.reference && <small>{p.reference}</small>}
@@ -190,14 +186,14 @@ export default function PaymentModal({
 
         {/* Tender entry */}
         <div className={done ? 'pointer-events-none opacity-40' : ''}>
-          <div className={`pos-pay-methods ${methods.length <= 3 ? 'is-three' : ''}`}>
-            {methods.map(({ id, label, mark: Mark }) => (
+          <div className={`pos-pay-methods ${methods.length === 2 ? 'is-two' : methods.length === 3 ? 'is-three' : ''}`}>
+            {methods.map(({ id, label, img }) => (
               <button
                 key={id}
                 onClick={() => setMethod(id)}
                 className={`pos-pay-method pos-pay-method-${id} ${method === id ? 'is-active' : ''}`}
               >
-                <Mark size={56} />
+                {img ? <img src={img} alt="" /> : <span className="pos-pay-method-fallback">{label.slice(0, 1)}</span>}
                 <span>{label}</span>
               </button>
             ))}
@@ -243,28 +239,6 @@ export default function PaymentModal({
                 maxLength={10}
                 onChange={(e) => setReference(e.target.value.toUpperCase())}
               />
-            </div>
-          )}
-          {method === 'card' && (
-            <div className="pos-pay-fields">
-              <input
-                className="input pos-pay-input"
-                placeholder="Approval code from card terminal (optional)"
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-              />
-            </div>
-          )}
-          {method === 'account' && (
-            <div className="pos-pay-account">
-              {customer ? (
-                <>
-                  <b>{customer.name}</b> currently owes {money(customer.balance, c)}
-                  {customer.creditLimit > 0 && <> · limit {money(customer.creditLimit, c)}</>}
-                </>
-              ) : (
-                <span className="pos-pay-error">Attach a customer to the sale to sell on account.</span>
-              )}
             </div>
           )}
 

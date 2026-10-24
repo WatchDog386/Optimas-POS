@@ -1858,20 +1858,16 @@ body,
   cursor: pointer;
 }
 
-/* ── Take payment: sharp-corner professional tender sheet ───────────────── */
-.pos-checkout .modal-card {
-  border-radius: 0;
-}
-
+/* ── Take payment: professional tender sheet ───────────────────────────── */
 .pos-checkout .modal-card,
-.pos-checkout .modal-card * {
-  border-radius: 0 !important;
+.pos-checkout .modal-card .tile {
+  border-radius: 4px;
 }
 
 .pos-checkout .modal-card h2 {
   font-family: "Poppins", var(--font-sans);
   font-size: 21px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .pos-checkout .modal-card:has(.pos-pay) {
@@ -1885,9 +1881,15 @@ body,
 }
 
 .pos-pay {
-  font-family: inherit;
+  font-family: "Poppins", var(--font-sans);
   font-size: 15px;
+  font-weight: 500;
   color: #2b3337;
+}
+
+.pos-pay h2,
+.pos-pay button {
+  font-family: "Poppins", var(--font-sans);
 }
 
 /* Amount due panel */
@@ -1969,6 +1971,12 @@ body,
   align-items: center;
 }
 
+.pos-pay-tender-mark img {
+  height: 34px;
+  width: 34px;
+  object-fit: contain;
+}
+
 .pos-pay-tender-info {
   display: flex;
   flex: 1;
@@ -2001,6 +2009,7 @@ body,
   width: 30px;
   height: 30px;
   border: 0;
+  border-radius: 4px;
   background: none;
   color: #7d868b;
   cursor: pointer;
@@ -2014,20 +2023,26 @@ body,
   min-height: 60px;
   margin-top: 14px;
   border: 1px solid #5c8f31;
-  background: #76b043;
+  border-radius: 4px;
+  background: linear-gradient(#84bc50, #76b043);
   color: #fff;
   font-family: inherit;
   font-size: 19px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  transition: filter 0.12s ease;
 }
 
 .pos-pay-complete:hover:not(:disabled) {
-  background: #6da53c;
+  filter: brightness(1.05);
+}
+
+.pos-pay-complete:active:not(:disabled) {
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 14%);
 }
 
 .pos-pay-complete:disabled {
@@ -2050,6 +2065,10 @@ body,
   margin-bottom: 14px;
 }
 
+.pos-pay-methods.is-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .pos-pay-methods.is-three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -2061,13 +2080,34 @@ body,
   gap: 8px;
   padding: 14px 8px 12px;
   border: 2px solid #d3d9dc;
+  border-radius: 4px;
   background: #fff;
   font-family: inherit;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: #3c464b;
   cursor: pointer;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.pos-pay-method img {
+  height: 52px;
+  width: 52px;
+  object-fit: contain;
+}
+
+.pos-pay-method .pos-pay-method-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  width: 52px;
+  border: 1px solid #d3d9dc;
+  border-radius: 4px;
+  background: #f3f5f6;
+  font-size: 22px;
+  font-weight: 700;
+  color: #5d686e;
 }
 
 .pos-pay-method:hover {
@@ -2090,20 +2130,6 @@ body,
   box-shadow: inset 0 0 0 1px #00a859;
   background: #edf8f1;
   color: #00713c;
-}
-
-.pos-pay-method-card.is-active {
-  border-color: #1a1f71;
-  box-shadow: inset 0 0 0 1px #1a1f71;
-  background: #f2f3fa;
-  color: #1a1f71;
-}
-
-.pos-pay-method-account.is-active {
-  border-color: #4f46e5;
-  box-shadow: inset 0 0 0 1px #4f46e5;
-  background: #f3f2fd;
-  color: #3730a3;
 }
 
 /* Amount entry */
@@ -2139,12 +2165,14 @@ body,
 .pos-pay-quick-note {
   min-height: 48px;
   border: 1px solid #969ea4;
+  border-radius: 4px;
   background: #f4f6f7;
   color: #333b3f;
   font-family: inherit;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .pos-pay-quick-note:hover {
@@ -2177,12 +2205,14 @@ body,
   gap: 10px;
   min-height: 50px;
   border: 1px solid #00713c;
+  border-radius: 4px;
   background: #00a859;
   color: #fff;
   font-family: inherit;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
+  transition: filter 0.12s ease;
 }
 
 .pos-pay-mpesa-btn:hover:not(:disabled) {
@@ -2215,6 +2245,29 @@ body,
   color: #1f5c3d;
 }
 
+.pos-pay-add {
+  min-height: 52px;
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #0f2931;
+  border-radius: 4px;
+  background: linear-gradient(#1f4655, #1b3a46);
+  color: #fff;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+.pos-pay-add:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.pos-pay-add:active:not(:disabled) {
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 14%);
+}
+
 .pos-pay-account {
   margin-bottom: 12px;
   padding: 12px 14px;
@@ -2222,23 +2275,6 @@ body,
   background: #f3f2fd;
   font-size: 14px;
   color: #312e81;
-}
-
-.pos-pay-add {
-  min-height: 52px;
-  width: 100%;
-  margin-top: 12px;
-  border: 1px solid #0f2931;
-  background: #1b3a46;
-  color: #fff;
-  font-family: inherit;
-  font-size: 17px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.pos-pay-add:hover {
-  background: #16313b;
 }
 
 @media (max-width: 900px) {

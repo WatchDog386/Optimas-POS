@@ -255,7 +255,7 @@ export default function App() {
                 className={`flex items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-white/15`}
               >
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-2 ring-white/40`}>
-                  <img src="avatar.svg" alt={user.name} className="h-full w-full object-cover" />
+                  <img src={user.image ?? 'avatar.svg'} alt={user.name} className="h-full w-full object-cover" />
                 </span>
                 <span className={`hidden text-sm font-semibold text-white xl:block`}>{user.name}</span>
                 <ChevronDown size={15} className={`text-white/70 transition ${menuOpen ? 'rotate-180' : ''}`} />

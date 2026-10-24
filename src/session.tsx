@@ -25,13 +25,19 @@ export const PIN_LENGTH = 4
 
 const SessionContext = createContext<SessionValue | null>(null)
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [authUser, setAuthUser] = useState<User | null>(null)
   const shift = useLiveQuery(() => db.shifts.filter((s) => !s.closedAt).last(), [])
+  // Keep the signed-in user live so profile edits (name, photo) show everywhere.
+  const liveUser = useLiveQuery(
+    () => (authUser?.id ? db.users.get(authUser.id) : undefined),
+    [authUser?.id],
+  )
+  const user = liveUser ?? authUser
 
   const login = useCallback(async (pin: string) => {
     const u = await db.users.where('pin').equals(pin).filter((x) => x.active).first()
     if (u) {
-      setUser(u)
+      setAuthUser(u)
       await logActivity('auth', 'Signed in', { userId: u.id, userName: u.name })
     }
     return !!u
@@ -40,7 +46,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(() => {
     if (!user) return
     void logActivity('auth', 'Till locked', { userId: user.id, userName: user.name })
-    setUser(null)
+    setAuthUser(null)
   }, [user])
   const can = useCallback((a: Permission) => !!user && PERMS[user.role].includes(a), [user])
 

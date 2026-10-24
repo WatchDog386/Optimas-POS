@@ -12,6 +12,8 @@ export interface User {
   email?: string
   phone?: string
   about?: string
+  /** Optional profile photo, stored as a data URL. */
+  image?: string
 }
 
 export interface Category {
