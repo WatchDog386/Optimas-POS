@@ -295,7 +295,7 @@ export default function InventoryPage() {
                         className="p-1.5 text-slate-500 hover:text-brand-600"
                         title="Print barcode label"
                         onClick={() => {
-                          void printBarcodeLabel(p, settings).then((ok) => {
+                          void printBarcodeLabel(p, settings, Math.max(1, p.stock ?? 1)).then((ok) => {
                             if (!ok) toast('No barcode printer configured — set one in Settings', 'error')
                           })
                         }}
@@ -362,6 +362,7 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
     active: true,
     ...initial,
   })
+  const [printCopies, setPrintCopies] = useState(() => Math.max(1, (initial as Product | undefined)?.stock ?? 1))
   const [cost, setCost] = useState(String((p.cost ?? 0) / 100))
   const [price, setPrice] = useState(String((p.price ?? 0) / 100))
   const [newCat, setNewCat] = useState('')
@@ -437,7 +438,7 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
           <button
             className="btn-ghost"
             onClick={() => {
-              void printBarcodeLabel(p as Product, settings).then((ok) => {
+              void printBarcodeLabel(p as Product, settings, printCopies).then((ok) => {
                 if (!ok) toast('No barcode printer configured — set one in Settings → Hardware', 'error')
               })
             }}
@@ -461,6 +462,11 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
             <label className="label">Barcode</label>
             <input className="input font-mono" data-scan="allow" placeholder="Barcode (auto-generated from SKU if blank)" value={p.barcode ?? ''} onChange={(e) => set('barcode', e.target.value)} />
             <span className="text-[10px] text-slate-500">Leave blank to auto-generate from SKU, then print a label to stick on the part.</span>
+          </div>
+          <div>
+            <label className="label">Labels to print</label>
+            <input className="input font-mono" type="number" min={1} value={printCopies} onChange={(e) => setPrintCopies(Number(e.target.value))} />
+            <span className="text-[10px] text-slate-500">Print this many labels (default: stock quantity)</span>
           </div>
           <div>
             <label className="label">OEM / part number</label>
