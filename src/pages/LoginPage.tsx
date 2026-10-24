@@ -163,7 +163,7 @@ export default function LoginPage() {
           ============================================================ */}
       <div className="relative hidden h-full items-center justify-center overflow-hidden bg-mist p-4 sm:p-6 md:flex">
         {/* ===================================================== Auth card */}
-        <div className="grid h-full max-h-[660px] w-full max-w-5xl grid-cols-1 overflow-visible shadow-[0_35px_90px_-20px_rgba(15,39,44,0.45)] md:grid-cols-[45fr_55fr]">
+        <div className="grid h-full max-h-[560px] w-full max-w-5xl grid-cols-1 overflow-visible shadow-[0_35px_90px_-20px_rgba(15,39,44,0.45)] md:grid-cols-[45fr_55fr]">
           {/* ------------------------------------------------- Left: hero art */}
           <aside className="relative hidden items-center justify-center overflow-visible bg-white md:flex">
             {/* background text — sits behind the artwork */}
@@ -176,7 +176,7 @@ export default function LoginPage() {
             <img
               src="login.png"
               alt=""
-              className="absolute bottom-[-7%] left-[-9%] z-10 h-[116%] w-auto max-w-none object-contain"
+              className="absolute bottom-[-4%] left-[-4%] z-10 h-[96%] w-auto max-w-none object-contain"
             />
           </aside>
 
