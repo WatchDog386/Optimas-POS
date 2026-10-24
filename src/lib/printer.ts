@@ -30,6 +30,24 @@ export function savePrinterConfig(cfg: PrinterConfig) {
   }
 }
 
+const BARCODE_CONFIG_KEY = 'optimas.barcodePrinter'
+
+export function loadBarcodePrinterConfig(): PrinterConfig {
+  try {
+    return JSON.parse(localStorage.getItem(BARCODE_CONFIG_KEY) ?? '') as PrinterConfig
+  } catch {
+    return { mode: 'browser' }
+  }
+}
+
+export function saveBarcodePrinterConfig(cfg: PrinterConfig) {
+  try {
+    localStorage.setItem(BARCODE_CONFIG_KEY, JSON.stringify(cfg))
+  } catch {
+    // Storage blocked (private window); config lasts for this page load only.
+  }
+}
+
 // --- minimal typings for WebUSB / Web Serial (not in lib.dom yet) ---
 interface USBEndpointLike {
   direction: 'in' | 'out'

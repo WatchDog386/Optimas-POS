@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { saveSettings, useSettings } from '../db/settings'
 import type { PaymentMethod, Settings } from '../db/types'
-import { loadPrinterConfig, pairPrinter, savePrinterConfig, sendRaw, supports, type PrinterConfig } from '../lib/printer'
+import { loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig } from '../lib/printer'
 import { drawerKickBytes, testPageBytes } from '../lib/escpos'
 import { download } from '../lib/csv'
 import { money, toCents } from '../lib/money'
@@ -447,10 +447,15 @@ function HardwareSettings() {
   const { draft, set, save } = useDraft()
   const toast = useToast()
   const [cfg, setCfg] = useState<PrinterConfig>(loadPrinterConfig)
+  const [bcCfg, setBcCfg] = useState<PrinterConfig>(loadBarcodePrinterConfig)
 
   const update = (c: PrinterConfig) => {
     setCfg(c)
     savePrinterConfig(c)
+  }
+  const updateBc = (c: PrinterConfig) => {
+    setBcCfg(c)
+    saveBarcodePrinterConfig(c)
   }
   const run = async (fn: () => Promise<void>, ok: string) => {
     try {
@@ -531,6 +536,51 @@ function HardwareSettings() {
       <p className="text-sm text-slate-600">
         Any USB or Bluetooth scanner in keyboard (HID) mode works with no setup. Set it to send <b>Enter</b> after each scan. Scan anywhere on the Sell screen to add the part to the sale.
       </p>
+
+      <h3 className="mb-2 mt-6 font-semibold">Barcode label printer</h3>
+      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+        {(
+          [
+            ['browser', 'Browser print'],
+            ['usb', 'USB (WebUSB)'],
+            ['serial', 'Serial / Bluetooth'],
+            ['network', 'Network (LAN)'],
+          ] as const
+        ).map(([m, label]) => (
+          <button key={m} className={bcCfg.mode === m ? 'btn-dark' : 'btn-ghost'} onClick={() => updateBc({ ...bcCfg, mode: m })}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {bcCfg.mode === 'browser' && <p className="mb-3 text-sm text-slate-600">Uses the system print dialog. Works with any installed printer driver.</p>}
+      {(bcCfg.mode === 'usb' || bcCfg.mode === 'serial') && (
+        <div className="mb-3 flex items-center gap-3">
+          <button className="btn-primary" onClick={() => run(() => pairPrinter(bcCfg.mode as 'usb' | 'serial'), 'Barcode printer paired')}>
+            Pair printer
+          </button>
+          <span className="text-sm text-slate-500">
+            {bcCfg.mode === 'usb' ? (supports.usb() ? 'Chrome/Edge required. On Windows install the WinUSB driver with Zadig.' : 'WebUSB not supported in this browser.') : supports.serial() ? 'For USB-serial and paired Bluetooth printers.' : 'Web Serial not supported in this browser.'}
+          </span>
+        </div>
+      )}
+      {bcCfg.mode === 'network' && (
+        <div className="mb-3 grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <Field label="Printer IP address">
+              <input className="input font-mono" placeholder="192.168.1.50" value={bcCfg.host ?? ''} onChange={(e) => updateBc({ ...bcCfg, host: e.target.value })} />
+            </Field>
+          </div>
+          <Field label="Port">
+            <input className="input" type="number" value={bcCfg.port ?? 9100} onChange={(e) => updateBc({ ...bcCfg, port: Number(e.target.value) })} />
+          </Field>
+        </div>
+      )}
+      <div className="mb-5 flex flex-wrap gap-2">
+        <button className="btn-ghost" disabled={bcCfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), bcCfg, draft.apiUrl), 'Test label sent')}>
+          Print test label
+        </button>
+      </div>
+
       <SaveBar onSave={save} />
     </>
   )
@@ -788,7 +838,7 @@ function AboutSettings() {
           <AlertTriangle size={17} /> Factory reset
         </div>
         <p className="mt-1 text-sm text-red-600">
-          Wipes every table and reloads. The sample catalogue and default Owner (PIN 1234) / Cashier (PIN 0000) accounts come back on the next start.
+          Wipes every table and reloads. No demo data is re-added — start by adding your own real products in Inventory.
         </p>
         <button className="btn-ghost mt-3 border-red-300 text-red-600 hover:bg-red-100" onClick={reset}>
           Reset all data…

@@ -1,7 +1,7 @@
 import { db } from '../db/db'
 import type { Product, Sale, Settings } from '../db/types'
 import { barcodeLabelBytes, drawerKickBytes, receiptBytes } from './escpos'
-import { loadPrinterConfig, sendRaw } from './printer'
+import { loadBarcodePrinterConfig, loadPrinterConfig, sendRaw } from './printer'
 
 /**
  * Print a receipt on the configured printer. Returns false when no raw printer is set up,
@@ -30,8 +30,13 @@ export async function printReceipt(sale: Sale, settings: Settings, opts: { copy?
  * printer is set up (browser mode), in which case the caller should fall back to window.print().
  */
 export async function printBarcodeLabel(product: Product, settings: Settings): Promise<boolean> {
-  const cfg = loadPrinterConfig()
-  if (cfg.mode === 'browser') return false
+  let cfg = loadBarcodePrinterConfig()
+  // Fall back to the receipt printer when no dedicated barcode printer is configured.
+  if (cfg.mode === 'browser') {
+    const receiptCfg = loadPrinterConfig()
+    if (receiptCfg.mode !== 'browser') cfg = receiptCfg
+    else return false
+  }
   const bytes = barcodeLabelBytes(product, settings)
   await sendRaw(bytes, cfg, settings.apiUrl)
   return true
