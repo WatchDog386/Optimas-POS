@@ -3007,3 +3007,18 @@ body,
     font-size: 11px;
   }
 }
+
+/* ── Global responsive density: on POS-monitor-sized screens the whole app
+   (all pages + login) scales down via the root font size, since Tailwind
+   spacing and type are rem-based. Desktops above these heights are untouched. */
+@media (max-height: 1050px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-height: 800px) {
+  html {
+    font-size: 13px;
+  }
+}
