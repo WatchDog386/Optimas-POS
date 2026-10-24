@@ -28,8 +28,9 @@ export async function printReceipt(sale: Sale, settings: Settings, opts: { copy?
 /**
  * Print a barcode label for a product on the configured printer. Returns false when no raw
  * printer is set up (browser mode), in which case the caller should fall back to window.print().
+ * @param copies number of duplicate labels to print (default 1)
  */
-export async function printBarcodeLabel(product: Product, settings: Settings): Promise<boolean> {
+export async function printBarcodeLabel(product: Product, settings: Settings, copies: number = 1): Promise<boolean> {
   let cfg = loadBarcodePrinterConfig()
   // Fall back to the receipt printer when no dedicated barcode printer is configured.
   if (cfg.mode === 'browser') {
@@ -38,6 +39,9 @@ export async function printBarcodeLabel(product: Product, settings: Settings): P
     else return false
   }
   const bytes = barcodeLabelBytes(product, settings)
+  for (let i = 1; i < copies; i++) {
+    await sendRaw(bytes, cfg, settings.apiUrl)
+  }
   await sendRaw(bytes, cfg, settings.apiUrl)
   return true
 }
