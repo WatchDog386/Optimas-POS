@@ -10,7 +10,6 @@ export interface PrinterConfig {
   mode: PrinterMode
   host?: string
   port?: number
-  model?: string
 }
 
 const CONFIG_KEY = 'optimas.printer'

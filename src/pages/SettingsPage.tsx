@@ -6,6 +6,7 @@ import { db } from '../db/db'
 import { saveSettings, useSettings } from '../db/settings'
 import type { PaymentMethod, Settings } from '../db/types'
 import { loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig } from '../lib/printer'
+import { printLabelsInBrowser } from '../lib/labelPrint'
 import { drawerKickBytes, testPageBytes } from '../lib/escpos'
 import { download } from '../lib/csv'
 import { money, toCents } from '../lib/money'
@@ -507,20 +508,12 @@ function HardwareSettings() {
         </div>
       )}
       <div className="mb-5 flex flex-wrap gap-2">
-        <button className="btn-ghost disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), cfg, draft.apiUrl), 'Test page sent')}>
+        <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), cfg, draft.apiUrl), 'Test page sent')}>
           Print test page
         </button>
-        <button className="btn-ghost disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(drawerKickBytes(), cfg, draft.apiUrl), 'Drawer kick sent')}>
+        <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(drawerKickBytes(), cfg, draft.apiUrl), 'Drawer kick sent')}>
           Test cash drawer
         </button>
-      </div>
-
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <select className="input" value={cfg.model ?? 'Xprinter XB-330B'} onChange={(e) => update({ ...cfg, model: e.target.value })}>          <option value="Xprinter XB-330B">Xprinter XB-330B</option>
-          <option value="Epson TM-T88IV">Epson TM-T88IV</option>
-          <option value="HP RT307">HP RT307</option>
-          <option value="Generic">Generic ESC/POS</option>
-        </select>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -540,7 +533,7 @@ function HardwareSettings() {
         </div>
       </div>
 
-      <h3 className="mb-1 mt-6 font-semibold">Barcode label printer</h3>
+      <h3 className="mb-1 mt-6 font-semibold">Barcode scanner</h3>
       <p className="text-sm text-slate-600">
         Any USB or Bluetooth scanner in keyboard (HID) mode works with no setup. Set it to send <b>Enter</b> after each scan. Scan anywhere on the Sell screen to add the part to the sale.
       </p>
@@ -560,7 +553,7 @@ function HardwareSettings() {
           </button>
         ))}
       </div>
-      {bcCfg.mode === 'browser' && <p className="mb-3 text-sm text-slate-600">Uses the system print dialog. Works with any installed printer driver.</p>}
+      {bcCfg.mode === 'browser' && <p className="mb-3 text-sm text-slate-600">Prints labels through the browser's print dialog. For sticky thermal labels choose USB or Network below.</p>}
       {(bcCfg.mode === 'usb' || bcCfg.mode === 'serial') && (
         <div className="mb-3 flex items-center gap-3">
           <button className="btn-primary" onClick={() => run(() => pairPrinter(bcCfg.mode as 'usb' | 'serial'), 'Barcode printer paired')}>
@@ -584,21 +577,18 @@ function HardwareSettings() {
         </div>
       )}
       <div className="mb-5 flex flex-wrap gap-2">
-        <button className="btn-ghost" onClick={() => run(() => sendRaw(testPageBytes(draft), bcCfg, draft.apiUrl), 'Test label sent')}>
-          Print test label
-        </button>
-      </div>
-
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <select className="input" value={bcCfg.model ?? 'Xprinter XB-330B'} onChange={(e) => updateBc({ ...bcCfg, model: e.target.value })}>          <option value="Xprinter XB-330B">Xprinter XB-330B</option>
-          <option value="Epson TM-T88IV">Epson TM-T88IV</option>
-          <option value="HP RT307">HP RT307</option>
-          <option value="Generic">Generic ESC/POS</option>
-        </select>
-      </div>
-
-      <div className="mb-5 flex flex-wrap gap-2">
-        <button className="btn-ghost" disabled={bcCfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), bcCfg, draft.apiUrl), 'Test label sent')}>
+        <button
+          className="btn-ghost"
+          onClick={() =>
+            run(
+              async () => {
+                if (bcCfg.mode === 'browser') printLabelsInBrowser({ name: 'Test part', sku: 'TEST-001', barcode: 'TEST001' })
+                else await sendRaw(testPageBytes(draft), bcCfg, draft.apiUrl)
+              },
+              'Test label sent',
+            )
+          }
+        >
           Print test label
         </button>
       </div>

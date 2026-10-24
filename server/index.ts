@@ -300,8 +300,10 @@ app.get('/api/products', (_req, res) => {
 })
 
 app.post('/api/products', (req, res) => {
-  const body = req.body
-  if (!body.sku || !body.name) {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const sku = String(body.sku ?? '').trim()
+  const name = String(body.name ?? '').trim()
+  if (!sku || !name) {
     res.status(400).json({ error: 'sku and name are required' })
     return
   }
@@ -322,26 +324,28 @@ app.post('/api/products', (req, res) => {
        active = excluded.active,
        updated_at = excluded.updated_at`,
   ).run({
-    sku: body.sku,
-    barcode: body.barcode,
-    name: body.name,
-    category_id: body.category_id,
-    brand: body.brand,
-    part_number: body.part_number,
-    cost: body.cost ?? 0,
-    price: body.price ?? 0,
-    stock: body.stock ?? 0,
-    reorder_level: body.reorder_level ?? 2,
-    active: body.active ?? 1,
+    sku,
+    barcode: body.barcode == null || body.barcode === '' ? null : String(body.barcode),
+    name,
+    category_id: typeof body.category_id === 'number' ? body.category_id : null,
+    brand: body.brand == null || body.brand === '' ? null : String(body.brand),
+    part_number: body.part_number == null || body.part_number === '' ? null : String(body.part_number),
+    cost: Number(body.cost ?? 0) || 0,
+    price: Number(body.price ?? 0) || 0,
+    stock: Number(body.stock ?? 0) || 0,
+    reorder_level: Number(body.reorder_level ?? 2) || 0,
+    // Booleans can't be bound to SQLite — coerce to 0/1.
+    active: body.active === false || body.active === 0 ? 0 : 1,
     updated_at: now,
   })
   res.json({ ok: true })
 })
 
 app.delete('/api/products', (_req, res) => {
+  // sql.transaction() returns a function — it must be invoked.
   sql.transaction(() => {
     sql.prepare('DELETE FROM products').run()
-  })
+  })()
   res.json({ ok: true })
 })
 

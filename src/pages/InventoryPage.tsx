@@ -303,7 +303,7 @@ export default function InventoryPage() {
                         title="Print barcode label"
                         onClick={() => {
                           void printBarcodeLabel(p, settings, Math.max(1, p.stock ?? 1)).then((ok) => {
-                            if (!ok) toast('No barcode printer configured — set one in Settings', 'error')
+                            if (!ok) toast('Could not open the print window — allow popups for this site', 'error')
                           })
                         }}
                       >
@@ -420,49 +420,25 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
       } as Product
       if (record.id === undefined) delete record.id
       await db.products.put(record)
-      // Also push to server if available
-      try {
-        const exists = await (await fetch(`${API_BASE}/products/${record.sku}`)).json()
-        if (exists && exists.ok) {
-          await fetch(`${API_BASE}/products/${record.sku}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sku: record.sku,
-              barcode: record.barcode,
-              name: record.name,
-              category_id: record.categoryId,
-              brand: record.brand,
-              part_number: record.partNumber,
-              cost: record.cost,
-              price: record.price,
-              stock: record.stock,
-              reorder_level: record.reorderLevel,
-              active: record.active,
-            }),
-          })
-        } else {
-          await fetch(`${API_BASE}/products`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sku: record.sku,
-              barcode: record.barcode,
-              name: record.name,
-              category_id: record.categoryId,
-              brand: record.brand,
-              part_number: record.partNumber,
-              cost: record.cost,
-              price: record.price,
-              stock: record.stock,
-              reorder_level: record.reorderLevel,
-              active: record.active,
-            }),
-          })
-        }
-      } catch {
-        // Server may not be running; local IndexedDB save is still effective
-      }
+      // Mirror to the server database (durable backup). The endpoint is an
+      // upsert on sku; if the server is offline the till keeps working.
+      void fetch(`${API_BASE}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sku: record.sku,
+          barcode: record.barcode ?? null,
+          name: record.name,
+          category_id: record.categoryId ?? null,
+          brand: record.brand ?? null,
+          part_number: record.partNumber ?? null,
+          cost: record.cost ?? 0,
+          price: record.price ?? 0,
+          stock: record.stock ?? 0,
+          reorder_level: record.reorderLevel ?? 2,
+          active: record.active === false ? 0 : 1,
+        }),
+      }).catch(() => {})
       toast(isNew ? 'Part added' : 'Part updated')
       onClose()
     } catch (e) {
@@ -489,7 +465,7 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
             className="btn-ghost"
             onClick={() => {
               void printBarcodeLabel(p as Product, settings, printCopies).then((ok) => {
-                if (!ok) toast('No barcode printer configured — set one in Settings → Hardware', 'error')
+                if (!ok) toast('Could not open the print window — allow popups for this site', 'error')
               })
             }}
           >
