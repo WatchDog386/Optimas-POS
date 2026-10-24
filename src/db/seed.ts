@@ -1,9 +1,14 @@
 import { db } from './db'
 import { sampleImageFor } from './sampleImages'
 
-/** No-op: the shop starts empty so you can add your own real products. */
+/** Default staff so the till can be used on day one. Change their PINs in Staff. No products are pre-loaded. */
 export async function seedIfEmpty(): Promise<void> {
-  return
+  if ((await db.users.count()) > 0) return
+
+  await db.users.bulkAdd([
+    { name: 'Owner', pin: '1234', role: 'owner', active: true },
+    { name: 'Cashier', pin: '0000', role: 'cashier', active: true },
+  ])
 }
 
 /** Backfill sample Unsplash photos on products that have none (existing installs). */

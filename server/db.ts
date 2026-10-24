@@ -61,3 +61,17 @@ export function isMigrated(version: string): boolean {
   const row = sql.prepare('SELECT 1 AS ok FROM schema_migrations WHERE version = ?').get(version)
   return !!row
 }
+
+/** Ensure the two default staff accounts exist so the till can log in on the server DB. */
+export function seedDefaultUsers(): void {
+  const count = sql.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }
+  if (count.n > 0) return
+  const insert = sql.prepare(
+    `INSERT INTO users (id, name, pin, role, active, updated_at)
+     VALUES (@id, @name, @pin, @role, @active, @updated_at)`
+  )
+  sql.transaction(() => {
+    insert.run({ id: 1, name: 'Owner', pin: '1234', role: 'owner', active: 1, updated_at: Date.now() })
+    insert.run({ id: 2, name: 'Cashier', pin: '0000', role: 'cashier', active: 1, updated_at: Date.now() })
+  })()
+}

@@ -316,6 +316,7 @@ if (existsSync(dist)) {
 
 const migrated = migrate()
 if (migrated.length) console.log(`DB migrations applied: ${migrated.join(', ')}`)
+seedDefaultUsers()
 
 app.listen(PORT, () => {
   console.log(`Optimas POS server on http://localhost:${PORT}`)
