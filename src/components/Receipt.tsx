@@ -4,67 +4,143 @@ import { money } from '../lib/money'
 
 const METHOD_LABEL = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', account: 'On account' } as const
 
-/** On-screen / browser-print receipt. Mirrors the ESC/POS layout in lib/escpos.ts. */
+/**
+ * On-screen / browser-print receipt. A full sales document: header, meta,
+ * itemised table, totals block, payments and footer. Mirrors the ESC/POS
+ * layout in lib/escpos.ts for thermal printing.
+ */
 export function Receipt({ sale, settings, cashier, customer }: { sale: Sale; settings: Settings; cashier?: string; customer?: Customer }) {
   const c = settings.currency
+  const pieces = sale.lines.reduce((sum, l) => sum + l.qty, 0)
   return (
-    <div className="mx-auto font-mono text-[12px] leading-snug text-black" style={{ width: settings.paperWidth === 58 ? '48mm' : '72mm' }}>
-      <div className="text-center">
-        <div className="text-[16px] font-bold">{settings.shopName}</div>
-        {settings.address && <div>{settings.address}</div>}
-        {settings.phone && <div>Tel: {settings.phone}</div>}
-        {settings.kraPin && <div>KRA PIN: {settings.kraPin}</div>}
-        {sale.refundOf && <div className="mt-1 font-bold">REFUND</div>}
-      </div>
-      <hr className="my-1 border-dashed border-black" />
-      <div>Receipt: {sale.receiptNo}</div>
-      <div>{new Date(sale.createdAt).toLocaleString('en-KE')}</div>
-      {cashier && <div>Served by: {cashier}</div>}
-      {customer && <div>Customer: {customer.name}</div>}
-      <hr className="my-1 border-dashed border-black" />
-      {sale.lines.map((l, i) => (
-        <div key={i} className="mb-1">
-          <div>{l.name}</div>
-          <div className="flex justify-between pl-2">
-            <span>
-              {l.qty} × {money(l.unitPrice, '')}
-              {l.discount ? ` −${money(l.discount, '')}` : ''}
-            </span>
-            <span>{money(l.qty * l.unitPrice - l.discount, '')}</span>
-          </div>
-          {(l.sku || l.serial) && (
-            <div className="pl-2 text-[10px]">
-              {l.sku}
-              {l.serial && ` S/N ${l.serial}`}
-            </div>
-          )}
-        </div>
-      ))}
-      <hr className="my-1 border-dashed border-black" />
-      <Row k="Subtotal" v={money(sale.subtotal, c)} />
-      {sale.discount !== 0 && <Row k="Discount" v={`−${money(sale.discount, c)}`} />}
-      <Row k={`VAT ${settings.vatRate}%${settings.pricesIncludeVat ? ' (incl.)' : ''}`} v={money(sale.tax, c)} />
-      <div className="my-1 flex justify-between text-[16px] font-bold">
-        <span>TOTAL</span>
-        <span>{money(sale.total, c)}</span>
-      </div>
-      <hr className="my-1 border-dashed border-black" />
-      {sale.payments.map((p, i) => (
-        <Row key={i} k={`${METHOD_LABEL[p.method]}${p.reference ? ` ${p.reference}` : ''}`} v={money(p.amount, c)} />
-      ))}
-      {sale.change > 0 && <Row k="Change" v={money(sale.change, c)} />}
-      {settings.mpesaTill && <div>M-Pesa Till: {settings.mpesaTill}</div>}
-      <hr className="my-1 border-dashed border-black" />
-      <div className="text-center">{settings.receiptFooter}</div>
-    </div>
-  )
-}
+    <div
+      className="receipt mx-auto bg-white p-3 text-[11.5px] leading-snug text-black"
+      style={{ width: settings.paperWidth === 58 ? '54mm' : '78mm' }}
+    >
+      <header className="receipt-head">
+        <h1>{settings.shopName}</h1>
+        {settings.address && <p>{settings.address}</p>}
+        {settings.phone && <p>Tel: {settings.phone}</p>}
+        {settings.kraPin && <p>KRA PIN: {settings.kraPin}</p>}
+        <p className="receipt-flag">{sale.refundOf ? 'REFUND RECEIPT' : 'SALES RECEIPT'}</p>
+      </header>
 
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex justify-between gap-2">
-      <span>{k}</span>
-      <span className="whitespace-nowrap">{v}</span>
+      <div className="receipt-meta">
+        <div>
+          <span>Receipt</span>
+          <b>{sale.receiptNo}</b>
+        </div>
+        <div>
+          <span>Date</span>
+          <b>{new Date(sale.createdAt).toLocaleString('en-KE')}</b>
+        </div>
+        {cashier && (
+          <div>
+            <span>Served by</span>
+            <b>{cashier}</b>
+          </div>
+        )}
+        {customer && (
+          <div>
+            <span>Customer</span>
+            <b>{customer.name}</b>
+          </div>
+        )}
+      </div>
+
+      <table className="receipt-items">
+        <thead>
+          <tr>
+            <th className="qty">Qty</th>
+            <th>Item</th>
+            <th className="num">Unit</th>
+            <th className="num">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sale.lines.map((l, i) => (
+            <tr key={i}>
+              <td className="qty">{l.qty}</td>
+              <td>
+                <div className="name">{l.name}</div>
+                {(l.sku || l.serial) && (
+                  <div className="sub">
+                    {l.sku}
+                    {l.serial ? ` · S/N ${l.serial}` : ''}
+                  </div>
+                )}
+                {l.discount > 0 && <div className="sub">Discount −{money(l.discount, '')}</div>}
+              </td>
+              <td className="num">{money(l.unitPrice, '')}</td>
+              <td className="num strong">{money(l.qty * l.unitPrice - l.discount, '')}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={2}>
+              {sale.lines.length} line{sale.lines.length === 1 ? '' : 's'} · {pieces} pc{pieces === 1 ? '' : 's'}
+            </td>
+            <td className="sub" colSpan={2}>
+              Subtotal
+            </td>
+          </tr>
+          <tr className="subtotal-row">
+            <td colSpan={2}></td>
+            <td colSpan={2} className="num strong">
+              {money(sale.subtotal, c)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div className="receipt-totals">
+        {sale.discount !== 0 && (
+          <div>
+            <span>Discount</span>
+            <b>−{money(sale.discount, c)}</b>
+          </div>
+        )}
+        <div>
+          <span>
+            VAT {settings.vatRate}%{settings.pricesIncludeVat ? ' (incl.)' : ''}
+          </span>
+          <b>{money(sale.tax, c)}</b>
+        </div>
+        <div className="receipt-total">
+          <span>TOTAL</span>
+          <b>{money(sale.total, c)}</b>
+        </div>
+      </div>
+
+      <div className="receipt-payments">
+        <div className="receipt-sec-title">Payments</div>
+        {sale.payments.map((p, i) => (
+          <div key={i} className="receipt-pay">
+            <span>
+              {METHOD_LABEL[p.method]}
+              {p.reference && <small> {p.reference}</small>}
+            </span>
+            <b>{money(p.amount, c)}</b>
+          </div>
+        ))}
+        {sale.change > 0 && (
+          <div className="receipt-pay receipt-change">
+            <span>Change</span>
+            <b>{money(sale.change, c)}</b>
+          </div>
+        )}
+        {settings.mpesaTill && (
+          <div className="receipt-till">
+            M-Pesa Till: <b>{settings.mpesaTill}</b>
+          </div>
+        )}
+      </div>
+
+      <footer className="receipt-foot">
+        {settings.receiptFooter && <p>{settings.receiptFooter}</p>}
+        <p className="receipt-thanks">Thank you for your business!</p>
+      </footer>
     </div>
   )
 }

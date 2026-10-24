@@ -2551,3 +2551,459 @@ body,
   border-color: #086c70;
   background: #0c8586;
 }
+
+/* ── Receipt document styling (screen + browser print) ──────────────────── */
+.receipt {
+  font-family: "Segoe UI", "Open Sans", Arial, sans-serif;
+}
+
+.receipt-head {
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid #000;
+  text-align: center;
+}
+
+.receipt-head h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.receipt-head p {
+  margin: 1px 0;
+  font-size: 11px;
+}
+
+.receipt-flag {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border: 1px solid #000;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.receipt-meta {
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed #000;
+}
+
+.receipt-meta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.receipt-meta span {
+  color: #555;
+}
+
+.receipt-meta b {
+  font-weight: 600;
+  text-align: right;
+}
+
+.receipt-items {
+  width: 100%;
+  margin-bottom: 8px;
+  border-collapse: collapse;
+}
+
+.receipt-items th {
+  padding: 3px 5px;
+  border: solid #000;
+  border-width: 1px 0;
+  background: #f0f0f0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.receipt-items th.num,
+.receipt-items td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt-items td {
+  padding: 4px 5px;
+  border-bottom: 1px dotted #999;
+  vertical-align: top;
+}
+
+.receipt-items td.qty {
+  width: 26px;
+  text-align: center;
+}
+
+.receipt-items td .name {
+  font-weight: 600;
+}
+
+.receipt-items td .sub {
+  font-size: 10px;
+  color: #444;
+}
+
+.receipt-items td.strong {
+  font-weight: 700;
+}
+
+.receipt-items tfoot td {
+  padding-top: 5px;
+  border-bottom: 0;
+  font-size: 10px;
+  color: #444;
+}
+
+.receipt-items tfoot .subtotal-row td {
+  padding-top: 0;
+  border-top: 1px solid #000;
+  color: #000;
+  font-size: 12px;
+}
+
+.receipt-totals {
+  margin-bottom: 8px;
+}
+
+.receipt-totals > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.receipt-total {
+  margin-top: 3px;
+  padding: 5px 0;
+  border-top: 1px solid #000;
+  border-bottom: 3px double #000;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.receipt-sec-title {
+  padding: 3px 5px;
+  margin-bottom: 4px;
+  border: solid #000;
+  border-width: 1px 0;
+  background: #f0f0f0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.receipt-pay {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.receipt-pay small {
+  color: #444;
+  font-family: ui-monospace, monospace;
+}
+
+.receipt-change {
+  margin-top: 3px;
+  padding-top: 4px;
+  border-top: 1px dotted #999;
+  font-weight: 700;
+}
+
+.receipt-till {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.receipt-foot {
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px dashed #000;
+  text-align: center;
+}
+
+.receipt-foot p {
+  margin: 2px 0;
+}
+
+.receipt-thanks {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ── Checkout polish pass: crisper surfaces, depth, cleaner chrome ──────── */
+.pos-terminal {
+  --term-chrome: #eef1f3;
+  --term-line: #d4dadd;
+}
+
+.pos-terminal-tools,
+.pos-cart-scroll,
+.pos-terminal-summary dl,
+.pos-product-information,
+.pos-product-lookup,
+.pos-recent-sales {
+  box-shadow: 0 1px 3px rgb(15 23 42 / 7%);
+}
+
+.pos-terminal-tools {
+  border-color: #dde2e6;
+}
+
+.pos-cart-table th {
+  background: #f6f7f8;
+}
+
+.pos-terminal-summary dl > div:last-child {
+  background: #f4f7f4;
+}
+
+.pos-product-information,
+.pos-product-lookup,
+.pos-recent-sales {
+  border-color: #dde2e6;
+}
+
+
+/* ── Responsive terminal density: compact only on POS-monitor-size screens
+   (17-inch all-in-one at 1280x1024 / 1366x768); desktops keep full sizing ── */
+@media (max-height: 1050px) {
+  .pos-terminal {
+    font-size: 15px;
+  }
+
+  .pos-terminal-workspace {
+    gap: 12px;
+    padding: 10px 14px 8px;
+  }
+
+  .pos-terminal-heading h1 {
+    font-size: 22px;
+  }
+
+  .pos-terminal-heading span {
+    font-size: 12px;
+  }
+
+  .pos-customer-block {
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .pos-customer-select {
+    min-height: 52px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .pos-register-action {
+    min-height: 42px;
+    padding: 0 12px;
+    font-size: 15px;
+  }
+
+  .pos-customer-actions {
+    gap: 10px;
+  }
+
+  .pos-terminal-search {
+    gap: 5px;
+    margin-top: 10px;
+  }
+
+  .pos-terminal-search label {
+    font-size: 12px;
+  }
+
+  .pos-terminal-search-row input {
+    min-height: 42px;
+    padding: 0 10px;
+    font-size: 15px;
+  }
+
+  .pos-search-clear {
+    width: 38px;
+  }
+
+  .pos-search-submit {
+    flex-basis: 150px;
+    font-size: 16px;
+  }
+
+  .pos-cart {
+    margin-top: 10px;
+    min-height: 120px;
+  }
+
+  .pos-cart-table {
+    font-size: 13px;
+  }
+
+  .pos-cart-table th {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .pos-cart-table td {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .pos-qty-control {
+    gap: 4px;
+  }
+
+  .pos-qty-control button {
+    width: 20px;
+    height: 20px;
+  }
+
+  .pos-qty-control span {
+    min-width: 20px;
+    font-size: 13px;
+  }
+
+  .pos-cart-remove {
+    width: 24px;
+    height: 24px;
+  }
+
+  .pos-terminal-summary {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 290px);
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .pos-discount-control {
+    gap: 6px;
+    padding-bottom: 4px;
+    font-size: 14px;
+  }
+
+  .pos-discount-step {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+  }
+
+  .pos-discount-input {
+    width: 54px;
+    height: 26px;
+    font-size: 14px;
+  }
+
+  .pos-terminal-summary dl > div {
+    padding: 4px 10px;
+  }
+
+  .pos-terminal-summary dt {
+    font-size: 13px;
+  }
+
+  .pos-terminal-summary dd {
+    font-size: 15px;
+  }
+
+  .pos-terminal-total dt,
+  .pos-terminal-total dd {
+    font-size: 17px;
+  }
+
+  .pos-terminal-tools {
+    gap: 8px;
+    padding: 8px;
+    overflow: auto;
+  }
+
+  .pos-category-pager {
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .pos-category-arrow,
+  .pos-category-button {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .pos-product-information {
+    gap: 3px;
+    padding: 8px 10px;
+  }
+
+  .pos-product-information strong {
+    font-size: 14px;
+  }
+
+  .pos-product-information p {
+    font-size: 12px;
+  }
+
+  .pos-tool-actions {
+    gap: 8px;
+  }
+
+  .pos-tool-actions .pos-register-action {
+    min-height: 40px;
+    font-size: 13px;
+  }
+
+  .pos-product-lookup {
+    min-height: 90px;
+  }
+
+  .pos-product-lookup-title {
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+
+  .pos-lookup-title-actions button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .pos-product-results button {
+    padding: 6px 10px;
+  }
+
+  .pos-recent-sales {
+    min-height: 80px;
+  }
+
+  .pos-recent-title {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .pos-recent-list button {
+    padding: 5px 10px;
+  }
+
+  .pos-recent-list b,
+  .pos-recent-list strong {
+    font-size: 12px;
+  }
+
+  .pos-terminal-actions {
+    gap: 8px;
+    padding: 8px 14px 10px;
+  }
+
+  .pos-terminal-action {
+    min-height: 52px;
+    font-size: 16px;
+  }
+
+  .pos-terminal-action small {
+    font-size: 11px;
+  }
+}

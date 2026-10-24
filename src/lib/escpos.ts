@@ -111,6 +111,7 @@ export function receiptBytes(
   if (settings.mpesaTill) p.line(`M-Pesa Till: ${settings.mpesaTill}`)
   p.rule().align('center')
   if (settings.receiptFooter) p.line(settings.receiptFooter)
+  p.bold(true).line('Thank you for your business!').bold(false)
   p.feed(3).cut()
   return p.build()
 }
