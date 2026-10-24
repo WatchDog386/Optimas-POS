@@ -10,6 +10,7 @@ import type { Customer, Product, Sale, SaleLine } from '../db/types'
 import { computeTotals, lineTotal } from '../lib/cart'
 import { money, toCents } from '../lib/money'
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
+import { setFullscreenPref } from '../lib/fullscreen'
 import { useSession } from '../session'
 import { Modal, useToast } from '../components/ui'
 import PaymentModal from '../components/PaymentModal'
@@ -109,7 +110,6 @@ export default function StaffDashboardPage() {
   const categoryPages = Math.max(1, Math.ceil(categories.length / 2))
   const visibleCategories = categories.slice(categoryPage * 2, categoryPage * 2 + 2)
   const isLookingUp = query.trim().length > 0 || category !== 'all'
-  const latestLineIndex = cart.lines.length - 1
 
   useEffect(() => {
     setCategoryPage((page) => Math.min(page, categoryPages - 1))
@@ -141,11 +141,6 @@ export default function StaffDashboardPage() {
       return { ...current, lines: [...current.lines, lineFromProduct(product)] }
     })
   }
-
-  const taxExempt = cart.lines.length > 0 && cart.lines.every((line) => !line.taxable)
-
-  const toggleTaxExempt = () =>
-    setCart((current) => ({ ...current, lines: current.lines.map((line) => ({ ...line, taxable: taxExempt })) }))
 
   const applyDiscountPercent = (percent: number) => {
     const clamped = Math.max(0, Math.min(100, Math.round(percent)))
@@ -243,8 +238,12 @@ export default function StaffDashboardPage() {
 
   const toggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement) await document.exitFullscreen()
-      else await document.documentElement.requestFullscreen()
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else {
+        setFullscreenPref('on')
+        await document.documentElement.requestFullscreen()
+      }
     } catch {
       toast('Full screen is not available in this browser', 'error')
     }
@@ -489,16 +488,6 @@ export default function StaffDashboardPage() {
           </div>
 
           <div className="pos-tool-actions">
-            <button className="pos-register-action" onClick={() => searchRef.current?.focus()}>
-              Add product
-            </button>
-            <button
-              className="pos-register-action"
-              onClick={() => latestLineIndex >= 0 && setDialog({ line: latestLineIndex })}
-              disabled={latestLineIndex < 0}
-            >
-              Edit product
-            </button>
             <button className="pos-register-action" onClick={() => void park()} disabled={!cart.lines.length}>
               Save sale
             </button>
@@ -514,14 +503,6 @@ export default function StaffDashboardPage() {
               disabled={!cart.lines.length || !can('discount')}
             >
               Add coupons
-            </button>
-            <button
-              className={`pos-register-action ${taxExempt ? 'is-active' : ''}`}
-              onClick={toggleTaxExempt}
-              disabled={!cart.lines.length}
-              title="Remove VAT from every line on this sale"
-            >
-              {taxExempt ? 'Tax charged' : 'Tax exempt'}
             </button>
             <button className="pos-register-action" onClick={() => void toggleFullscreen()}>
               Full screen {isFullscreen ? 'OFF' : 'ON'}

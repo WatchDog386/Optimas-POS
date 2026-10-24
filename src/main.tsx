@@ -7,6 +7,9 @@ import { seedIfEmpty, backfillSampleImages } from './db/seed'
 import { importQuotationProducts } from './db/quotationProducts'
 import { SessionProvider } from './session'
 import { ToastProvider } from './components/ui'
+import { initAutoFullscreen } from './lib/fullscreen'
+
+initAutoFullscreen()
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {

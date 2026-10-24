@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Boxes, Search, X } from 'lucide-react'
+import { Boxes, Search, ShoppingCart, X } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import type { Product } from '../db/types'
-import { Badge, Empty, ListPanel, PageHeader, Segmented } from '../components/ui'
+import { Badge, ListPanel, PageHeader, Segmented } from '../components/ui'
 import { money } from '../lib/money'
 import { matchesSearch } from './SellPage'
 
@@ -76,7 +76,7 @@ export default function StaffProductsPage() {
               <div className="relative">
                 <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  className="w-60 rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-8 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20"
+                  className="w-60 rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-8 text-sm text-slate-700 outline-none transition focus:border-slate-500"
                   placeholder="Search name, part no., SKU or barcode"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -93,7 +93,7 @@ export default function StaffProductsPage() {
                 )}
               </div>
               <select
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-400"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-500"
                 value={stockFilter}
                 onChange={(event) => setStockFilter(event.target.value as StockFilter)}
                 aria-label="Filter by stock status"
@@ -104,7 +104,7 @@ export default function StaffProductsPage() {
                 <option value="out">Out of stock ({statusCounts.out})</option>
               </select>
               <select
-                className="max-w-[200px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-400"
+                className="max-w-[200px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-500"
                 value={category}
                 onChange={(event) => setCategory(event.target.value ? Number(event.target.value) : 'all')}
                 aria-label="Filter by category"
@@ -194,7 +194,15 @@ export default function StaffProductsPage() {
             })}
           </div>
         )}
-        {visible.length === 0 && <Empty>No products match this filter.</Empty>}
+        {visible.length === 0 && (
+          <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
+            <ShoppingCart size={44} strokeWidth={1.5} className="text-slate-300" />
+            <div className="text-sm font-semibold text-slate-600">No products found</div>
+            <p className="max-w-xs text-xs text-slate-400">
+              Nothing matches this search or filter. Try a different name or part number, or reset the filters above.
+            </p>
+          </div>
+        )}
       </ListPanel>
     </div>
   )
