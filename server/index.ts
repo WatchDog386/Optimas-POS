@@ -11,7 +11,7 @@ import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createDaraja, type StkCallbackBody } from './daraja'
-import { dbPath, migrate, sql } from './db'
+import { dbPath, migrate, seedDefaultUsers, sql } from './db'
 import * as pinpay from './pinpay'
 
 try {

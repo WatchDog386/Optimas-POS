@@ -422,6 +422,18 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
           <button className="btn-primary" onClick={save}>
             Save part
           </button>
+          {p.barcode && (
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                void printBarcodeLabel(p as Product, settings).then((ok) => {
+                  if (!ok) toast('No barcode printer configured — set one in Settings → Hardware', 'error')
+                })
+              }}
+            >
+              <Printer size={16} /> Print label
+            </button>
+          )}
         </>
       }
     >
@@ -437,7 +449,8 @@ function ProductForm({ initial, onClose }: { initial: Partial<Product>; onClose:
           </div>
           <div>
             <label className="label">Barcode</label>
-            <input className="input font-mono" data-scan="allow" placeholder="Scan the box" value={p.barcode ?? ''} onChange={(e) => set('barcode', e.target.value)} />
+            <input className="input font-mono" data-scan="allow" placeholder="Barcode (auto-generated from SKU if blank)" value={p.barcode ?? ''} onChange={(e) => set('barcode', e.target.value)} />
+            <span className="text-[10px] text-slate-500">Leave blank to auto-generate from SKU, then print a label to stick on the part.</span>
           </div>
           <div>
             <label className="label">OEM / part number</label>
