@@ -276,6 +276,75 @@ app.put('/api/settings', (req, res) => {
   res.json({ ok: true })
 })
 
+// --- Products (mirror of till IndexedDB products) -------------------------
+
+app.get('/api/products', (_req, res) => {
+  const rows = sql.prepare(
+    `SELECT id, sku, barcode, name, category_id, brand, part_number, cost, price, stock, reorder_level, active, updated_at FROM products ORDER BY sku`
+  ).all() as {
+    id: number
+    sku: string
+    barcode: string | null
+    name: string
+    category_id: number | null
+    brand: string | null
+    part_number: string | null
+    cost: number
+    price: number
+    stock: number
+    reorder_level: number
+    active: number
+    updated_at: number
+  }[]
+  res.json(rows)
+})
+
+app.post('/api/products', (req, res) => {
+  const body = req.body
+  if (!body.sku || !body.name) {
+    res.status(400).json({ error: 'sku and name are required' })
+    return
+  }
+  const now = Date.now()
+  sql.prepare(
+    `INSERT INTO products (sku, barcode, name, category_id, brand, part_number, cost, price, stock, reorder_level, active, updated_at)
+     VALUES (@sku, @barcode, @name, @category_id, @brand, @part_number, @cost, @price, @stock, @reorder_level, @active, @updated_at)
+     ON CONFLICT(sku) DO UPDATE SET
+       barcode = excluded.barcode,
+       name = excluded.name,
+       category_id = excluded.category_id,
+       brand = excluded.brand,
+       part_number = excluded.part_number,
+       cost = excluded.cost,
+       price = excluded.price,
+       stock = excluded.stock,
+       reorder_level = excluded.reorder_level,
+       active = excluded.active,
+       updated_at = excluded.updated_at`,
+  ).run({
+    sku: body.sku,
+    barcode: body.barcode,
+    name: body.name,
+    category_id: body.category_id,
+    brand: body.brand,
+    part_number: body.part_number,
+    cost: body.cost ?? 0,
+    price: body.price ?? 0,
+    stock: body.stock ?? 0,
+    reorder_level: body.reorder_level ?? 2,
+    active: body.active ?? 1,
+    updated_at: now,
+  })
+  res.json({ ok: true })
+})
+
+app.delete('/api/products', (_req, res) => {
+  sql.transaction(() => {
+    sql.prepare('DELETE FROM products').run()
+  })
+  res.json({ ok: true })
+})
+
 // --- Network printer relay -----------------------------------------------
 
 const PRIVATE_IP = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.)/

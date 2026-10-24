@@ -45,3 +45,25 @@ CREATE TABLE IF NOT EXISTS settings (
   json       TEXT NOT NULL,
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
 );
+
+-- Products — mirror of the till's IndexedDB `products` table, for server-side
+-- persistence and till-push sync.  `sku` is the natural key; `id` auto‑increments
+-- for the server row but the till always references by `sku`.
+CREATE TABLE IF NOT EXISTS products (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  sku         TEXT    NOT NULL UNIQUE,
+  barcode     TEXT,
+  name        TEXT    NOT NULL,
+  category_id INTEGER,
+  brand       TEXT,
+  part_number TEXT,
+  cost        INTEGER NOT NULL DEFAULT 0,   -- whole shillings on wire
+  price       INTEGER NOT NULL DEFAULT 0,
+  stock       INTEGER NOT NULL DEFAULT 0,
+  reorder_level INTEGER DEFAULT 2,
+  active      INTEGER NOT NULL DEFAULT 1,
+  updated_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_sku ON products (sku);
+CREATE INDEX IF NOT EXISTS idx_products_active ON products (active);
