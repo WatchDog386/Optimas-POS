@@ -17,6 +17,10 @@ export interface DeviceId {
   vendorId?: number
   productId?: number
   serialNumber?: string
+  /** Name the printer reports, e.g. "XP-330B" — tells apart models that share USB IDs. */
+  productName?: string
+  /** Position among granted devices when paired — last-resort tie-breaker for identical printers. */
+  index?: number
 }
 
 export interface PrinterConfig {
@@ -29,6 +33,8 @@ export interface PrinterConfig {
   device?: DeviceId
   /** Friendly name shown in Settings. */
   deviceName?: string
+  /** Printer model picked in Settings (applies its defaults), e.g. "xp-80c", "xp-330b". */
+  model?: string
 }
 
 const KEYS: Record<PrinterSlot, string> = { receipt: 'optimas.printer', label: 'optimas.barcodePrinter' }
@@ -107,7 +113,14 @@ async function prepareUsb(dev: USBDeviceLike): Promise<number> {
 }
 
 const sameUsb = (d: USBDeviceLike, id?: DeviceId) =>
-  !!id && d.vendorId === id.vendorId && d.productId === id.productId && (!id.serialNumber || d.serialNumber === id.serialNumber)
+  !!id &&
+  d.vendorId === id.vendorId &&
+  d.productId === id.productId &&
+  (!id.serialNumber || d.serialNumber === id.serialNumber) &&
+  (!id.productName || d.productName === id.productName)
+
+const otherSlot = (slot: PrinterSlot): PrinterSlot => (slot === 'receipt' ? 'label' : 'receipt')
+const SLOT_NAME: Record<PrinterSlot, string> = { receipt: 'receipt printer', label: 'label printer' }
 
 /**
  * Ask the user to pick a printer for a slot. Must be called from a click
@@ -117,17 +130,25 @@ export async function pairPrinter(slot: PrinterSlot, cfg: PrinterConfig): Promis
   if (cfg.mode === 'usb') {
     if (!nav.usb) throw new Error('WebUSB is not available in this browser (use Chrome or Edge)')
     const dev = await nav.usb.requestDevice({ filters: [] })
+    // Picking the printer the other slot already uses is the classic mix-up.
+    if (usbOpen[otherSlot(slot)]?.dev === dev) {
+      throw new Error(`That device is already set up as the ${SLOT_NAME[otherSlot(slot)]}. Pick the other printer.`)
+    }
     const endpoint = await prepareUsb(dev)
     usbOpen[slot] = { dev, endpoint }
+    const index = (await nav.usb.getDevices()).indexOf(dev)
     return {
       ...cfg,
-      device: { vendorId: dev.vendorId, productId: dev.productId, serialNumber: dev.serialNumber },
+      device: { vendorId: dev.vendorId, productId: dev.productId, serialNumber: dev.serialNumber, productName: dev.productName, index: index >= 0 ? index : undefined },
       deviceName: [dev.manufacturerName, dev.productName].filter(Boolean).join(' ') || `USB ${hex(dev.vendorId)}:${hex(dev.productId)}`,
     }
   }
   if (cfg.mode === 'serial') {
     if (!nav.serial) throw new Error('Web Serial is not available in this browser (use Chrome or Edge)')
     const port = await nav.serial.requestPort()
+    if (serialOpen[otherSlot(slot)] === port) {
+      throw new Error(`That port is already set up as the ${SLOT_NAME[otherSlot(slot)]}. Pick the other printer.`)
+    }
     if (!port.writable) await port.open({ baudRate: cfg.baudRate ?? 9600 })
     serialOpen[slot] = port
     const info = port.getInfo?.() ?? {}
@@ -145,12 +166,18 @@ const hex = (n: number) => n.toString(16).padStart(4, '0')
 /** Browsers remember granted devices, so after a reload we reopen the right one without a prompt. */
 async function reconnect(slot: PrinterSlot, cfg: PrinterConfig) {
   if (cfg.mode === 'usb' && !usbOpen[slot] && nav.usb) {
-    const devices = await nav.usb.getDevices()
-    const dev = devices.find((d) => sameUsb(d, cfg.device)) ?? (cfg.device ? undefined : devices.length === 1 ? devices[0] : undefined)
+    // Never reopen the device the other printer slot is using.
+    const taken = usbOpen[otherSlot(slot)]?.dev
+    const all = await nav.usb.getDevices()
+    const devices = all.filter((d) => d !== taken)
+    const matches = devices.filter((d) => sameUsb(d, cfg.device))
+    const byIndex = matches.find((d) => cfg.device?.index !== undefined && all.indexOf(d) === cfg.device.index)
+    const dev = byIndex ?? matches[0] ?? (cfg.device ? undefined : devices.length === 1 ? devices[0] : undefined)
     if (dev) usbOpen[slot] = { dev, endpoint: await prepareUsb(dev) }
   }
   if (cfg.mode === 'serial' && !serialOpen[slot] && nav.serial) {
-    const ports = await nav.serial.getPorts()
+    const taken = serialOpen[otherSlot(slot)]
+    const ports = (await nav.serial.getPorts()).filter((p) => p !== taken)
     const match = ports.find((p) => {
       const info = p.getInfo?.() ?? {}
       return cfg.device?.vendorId !== undefined && info.usbVendorId === cfg.device.vendorId && info.usbProductId === cfg.device.productId
@@ -163,12 +190,24 @@ async function reconnect(slot: PrinterSlot, cfg: PrinterConfig) {
   }
 }
 
+/** Open both paired printers in a fixed order, so neither can take the other's device. */
+export async function connectPrinters(): Promise<void> {
+  for (const slot of ['receipt', 'label'] as const) {
+    try {
+      await reconnect(slot, load(slot))
+    } catch {
+      // Unplugged or busy — sending a print will report it.
+    }
+  }
+}
+
 /** Large jobs (dozens of labels) go out in chunks so small printer buffers keep up. */
 const CHUNK = 16 * 1024
 
 export async function sendRaw(bytes: Uint8Array, cfg = loadPrinterConfig(), apiUrl = '/api', slot: PrinterSlot = 'receipt'): Promise<void> {
   switch (cfg.mode) {
     case 'usb': {
+      if (!usbOpen[slot]) await connectPrinters()
       await reconnect(slot, cfg)
       const usb = usbOpen[slot]
       if (!usb) throw new Error(`${slot === 'label' ? 'Label' : 'Receipt'} printer not paired. Open Settings → Hardware and press Pair.`)

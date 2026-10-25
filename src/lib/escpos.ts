@@ -171,7 +171,8 @@ export function drawerKickBytes(): Uint8Array {
 
 export function testPageBytes(settings: Settings): Uint8Array {
   const p = new EscPos(columnsFor(settings.paperWidth)).init()
-  p.align('center').bold(true).size(true).line('PRINTER OK').size(false).bold(false)
+  p.align('center').bold(true).size(true).line('RECEIPT PRINTER OK').size(false).bold(false)
+  p.line('Receipts print here. Labels go to the label printer.')
   p.line(settings.shopName).line(new Date().toLocaleString('en-KE')).align('left').rule()
   p.pair('Left', 'Right').line('0123456789'.repeat(5).slice(0, columnsFor(settings.paperWidth)))
   return p.feed(3).cut().build()

@@ -9,6 +9,7 @@ import { api, pushUsers, reconnectServer, registerWithServer, serverLink, type S
 import { redownloadAll, syncNow, useSyncStatus } from '../lib/sync'
 import { ago, syncLabel } from '../components/SyncStatus'
 import { currentTill } from '../db/till'
+import { lookupCode } from '../db/units'
 import { saveSettings, useSettings } from '../db/settings'
 import type { PaymentMethod, Settings, User } from '../db/types'
 import { loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig, type PrinterSlot } from '../lib/printer'
@@ -535,6 +536,12 @@ function PrinterConnection({
           )}
         </div>
       )}
+      {cfg.mode === 'network' && !shopNetworkServer() && (
+        <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+          <b>This won't reach your printer.</b> Network printing is relayed by the shop server, and this till uses an online server ({window.location.hostname}) that
+          can't see printers on the shop's network. Connect the printer by <b>USB</b> instead.
+        </p>
+      )}
       {cfg.mode === 'network' && (
         <div className="mb-3 grid grid-cols-3 gap-3">
           <div className="col-span-2">
@@ -548,6 +555,47 @@ function PrinterConnection({
         </div>
       )}
     </>
+  )
+}
+
+/** True when the app is served from the shop's own network (a server that can reach LAN printers). */
+function shopNetworkServer(): boolean {
+  const h = window.location.hostname
+  return h === 'localhost' || h === '127.0.0.1' || /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)
+}
+
+const RECEIPT_MODELS = [
+  { id: 'xp-80c', label: 'Xprinter XP-80C — 80 mm', paper: 80 as const },
+  { id: 'xp-58', label: 'Xprinter XP-58 — 58 mm', paper: 58 as const },
+  { id: 'other-80', label: 'Other ESC/POS printer — 80 mm', paper: 80 as const },
+  { id: 'other-58', label: 'Other ESC/POS printer — 58 mm', paper: 58 as const },
+]
+
+const LABEL_MODELS = [
+  { id: 'xp-330b', label: 'Xprinter XP-330B', lang: 'tspl' as const },
+  { id: 'xp-365b', label: 'Xprinter XP-365B / XP-420B / XP-460B', lang: 'tspl' as const },
+  { id: 'other-tspl', label: 'Other TSPL label printer (TSC, Gprinter…)', lang: 'tspl' as const },
+  { id: 'escpos', label: 'Receipt-type printer printing on a roll (ESC/POS)', lang: 'escpos' as const },
+]
+
+/** Step-by-step connection guide shown under each printer. */
+function ConnectGuide({ model }: { model: 'XP-80C' | 'XP-330B' }) {
+  return (
+    <details className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <summary className="cursor-pointer font-semibold text-slate-800">How to connect the {model} (USB, Chrome or Edge)</summary>
+      <ol className="mt-2 list-decimal space-y-1 pl-5">
+        {model === 'XP-330B' && <li>Load the 40 × 30 mm label roll. Switch on while holding <b>FEED</b> until it beeps — it measures the labels.</li>}
+        <li>Plug the {model} into the till by USB and switch it on.</li>
+        <li>
+          On Windows, give it the WinUSB driver once: run <b>Zadig</b>, choose <b>Options → List all devices</b>, select the {model}, choose <b>WinUSB</b>, press{' '}
+          <b>Replace driver</b>. (Not needed on Linux, ChromeOS or Android.)
+        </li>
+        <li>
+          Choose <b>USB (WebUSB)</b> above, press <b>Pair printer</b> and pick the {model} in the list — not the other printer.
+        </li>
+        <li>Press {model === 'XP-330B' ? <b>Print test label</b> : <b>Print test page</b>}. It should come out of the {model} only.</li>
+      </ol>
+    </details>
   )
 }
 
@@ -574,7 +622,7 @@ function HardwareSettings() {
     }
   }
 
-  const sample: LabelJob = { name: 'Brake pads (front)', sku: 'BRK-PAD-F', code: '2100000000014', price: 85000 }
+  const sample: LabelJob = { name: 'LABEL PRINTER TEST', sku: 'TEST-001', code: '2100000000014', price: 85000 }
   const testLabel = () =>
     run(async () => {
       // Print with the values on screen, so the test reflects unsaved changes.
@@ -586,9 +634,35 @@ function HardwareSettings() {
 
   return (
     <>
-      <Section title="Receipt printer" desc="58/80 mm ESC/POS thermal printers — Xprinter XP-58/XP-80, Epson TM and compatibles.">
+      <Section title="Receipt printer — receipts only" desc="Prints customer receipts, Z-reports and opens the cash drawer. Barcode labels never go to this printer.">
+        <div className="mb-3 max-w-md">
+          <Field label="Printer model">
+            <select
+              className="input"
+              value={cfg.model ?? ''}
+              onChange={(e) => {
+                const m = RECEIPT_MODELS.find((x) => x.id === e.target.value)
+                update({ ...cfg, model: e.target.value || undefined })
+                if (m) set('paperWidth', m.paper)
+              }}
+            >
+              <option value="">Choose your receipt printer…</option>
+              {RECEIPT_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <PrinterConnection slot="receipt" cfg={cfg} onChange={update} onPaired={update} run={run} />
-        {cfg.mode === 'browser' && <p className="mb-3 text-sm text-slate-600">Uses the system print dialog with an 80 mm layout. Works with any installed driver but cannot open the cash drawer.</p>}
+        {cfg.mode === 'browser' && (
+          <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+            Browser print uses the system print dialog: choose the <b>XP-80C</b> there each time — Chrome remembers the last printer used, which may be the label printer.
+            It also cannot open the cash drawer. <b>USB</b> sends receipts straight to the XP-80C.
+          </p>
+        )}
+        {cfg.mode !== 'network' && <ConnectGuide model="XP-80C" />}
         <div className="mb-4 flex flex-wrap gap-2">
           <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), cfg, draft.apiUrl, 'receipt'), 'Test page sent')}>
             Print test page
@@ -615,13 +689,42 @@ function HardwareSettings() {
         </div>
       </Section>
 
-      <Section title="Barcode label printer" desc="Each unit you add to stock gets its own serial barcode label. Xprinter XP-235B / 365B / 420B / 460B / 470B use TSPL.">
+      <Section title="Barcode label printer — labels only" desc="Prints one serial barcode label per unit when stock is added. Receipts never go to this printer. The scanner reads these labels at the till.">
+        <div className="mb-3 max-w-md">
+          <Field label="Printer model">
+            <select
+              className="input"
+              value={bcCfg.model ?? ''}
+              onChange={(e) => {
+                const m = LABEL_MODELS.find((x) => x.id === e.target.value)
+                updateBc({ ...bcCfg, model: e.target.value || undefined })
+                if (m) {
+                  set('labelLanguage', m.lang)
+                  if (m.lang === 'tspl' && !LABEL_PRESETS.some((p) => `${p.w}x${p.h}` === presetKey)) {
+                    set('labelWidthMm', 40)
+                    set('labelHeightMm', 30)
+                    set('labelGapMm', 2)
+                  }
+                }
+              }}
+            >
+              <option value="">Choose your label printer…</option>
+              {LABEL_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <PrinterConnection slot="label" cfg={bcCfg} onChange={updateBc} onPaired={updateBc} run={run} />
         {bcCfg.mode === 'browser' && (
           <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-            Labels open in the browser print dialog with real, scannable barcodes. For a thermal label printer, pick USB, Serial or Network above.
+            Browser print opens the system print dialog: choose the <b>XP-330B</b> there and set its paper size to the label size — Chrome remembers the last printer used,
+            which may be the receipt printer. <b>USB</b> sends labels straight to the XP-330B.
           </p>
         )}
+        {bcCfg.mode !== 'network' && <ConnectGuide model="XP-330B" />}
 
         <div className="grid gap-4 md:grid-cols-3">
           <Field label="Printer language" hint="Label printers (gap-sensing rolls) use TSPL.">
@@ -685,8 +788,8 @@ function HardwareSettings() {
           </div>
           <div className="space-y-2 text-sm text-slate-600">
             <p>
-              <b>Setting up an Xprinter label printer:</b> load the label roll, switch on while holding <b>FEED</b> until it beeps (auto-calibration), connect by USB or LAN, choose
-              the matching label size here, then press <b>Print test label</b>.
+              The XP-330B speaks <b>TSPL</b>. Match the label size to the roll you loaded, press <b>Print test label</b>, then scan the printed barcode at the till — it should
+              read <b>2100000000014</b>. If labels drift or skip, press <b>Calibrate gap sensor</b>.
             </p>
             <p className="text-xs text-slate-500">Serials are in-store EAN-13 numbers (prefix 21) printed as Code 128 — every USB/Bluetooth scanner reads them out of the box.</p>
             <div className="flex flex-wrap gap-2 pt-1">
@@ -710,10 +813,46 @@ function HardwareSettings() {
           Set the scanner to send <b>Enter</b> after each scan. Scanning a unit's serial label at the till adds that exact item to the sale and marks the label sold, so a copied
           or reused label is caught.
         </p>
+        <ScannerTest />
       </Section>
 
       <SaveBar onSave={save} />
     </>
+  )
+}
+
+/** Scan a printed label here to check printer → scanner → till end to end. */
+function ScannerTest() {
+  const [result, setResult] = useState<{ code: string; ok: boolean; text: string } | null>(null)
+  const check = async (code: string) => {
+    const c = code.trim()
+    if (!c) return
+    if (c === '2100000000014') return setResult({ code: c, ok: true, text: 'Test label read correctly — the scanner and label printer are working.' })
+    const products = await db.products.filter((p) => p.active).toArray()
+    const m = await lookupCode(c, products)
+    setResult('product' in m ? { code: c, ok: true, text: m.serial ? `${m.product.name} — serial label, ready to sell` : `${m.product.name} — product barcode` } : { code: c, ok: false, text: m.error })
+  }
+  return (
+    <div className="mt-3 max-w-xl">
+      <label className="label">Scanner test — click here and scan a label</label>
+      <input
+        className="input font-mono"
+        data-scan="allow"
+        placeholder="Waiting for a scan…"
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          void check(e.currentTarget.value)
+          e.currentTarget.value = ''
+        }}
+      />
+      {result && (
+        <p className={`mt-2 rounded-lg px-3 py-2 text-sm ${result.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>
+          <span className="font-mono font-semibold">{result.code}</span> — {result.text}
+        </p>
+      )}
+      <p className="mt-1 text-xs text-slate-500">Nothing appears? Set the scanner to keyboard (HID) mode with an Enter suffix — see its setup barcodes in the manual.</p>
+    </div>
   )
 }
 
