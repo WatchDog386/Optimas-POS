@@ -189,8 +189,9 @@ while ($true) {
   $stream = $null
   $origin = ''
   try {
-    $client.ReceiveTimeout = 10000
-    $client.SendTimeout = 10000
+    # Short timeouts: one idle browser connection must not hold up the next print.
+    $client.ReceiveTimeout = 3000
+    $client.SendTimeout = 5000
     $stream = $client.GetStream()
     $req = Read-Request $stream
     if ($null -eq $req) { continue }

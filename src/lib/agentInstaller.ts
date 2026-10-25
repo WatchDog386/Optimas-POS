@@ -11,7 +11,7 @@ export function agentInstallerCmd(origin: string): string {
     'echo Installing the Optimas Print Agent...',
     'set "DIR=%LOCALAPPDATA%\\OptimasPrintAgent"',
     'if not exist "%DIR%" mkdir "%DIR%"',
-    `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '${o}/print-agent/optimas-print-agent.ps1' -OutFile \\"$env:LOCALAPPDATA\\OptimasPrintAgent\\optimas-print-agent.ps1\\""`,
+    `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '${o}/print-agent/optimas-print-agent.ps1' -OutFile (Join-Path $env:LOCALAPPDATA 'OptimasPrintAgent\\optimas-print-agent.ps1')"`,
     'if errorlevel 1 (',
     '  echo Could not download the agent. Check the internet connection and try again.',
     '  pause',

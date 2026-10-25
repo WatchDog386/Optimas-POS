@@ -45,6 +45,11 @@ echo "==> health check"
 sleep 2
 curl -s http://localhost:8787/api/health || echo "server not answering yet — check: pm2 logs optimas-pos --lines 30"
 echo
+if curl -sf -o /dev/null http://localhost:8787/print-agent/optimas-print-agent.ps1; then
+  echo "    print agent installer file: OK"
+else
+  echo "    print agent file not served — check that dist/print-agent exists after the build"
+fi
 if curl -s http://localhost:8787/api/auth/status | grep -q '"setup":true'; then
   echo "==> No staff registered on the server yet."
   echo "    On the shop till: sign in as the owner, open Settings → Security → Shop server"
