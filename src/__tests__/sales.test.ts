@@ -15,7 +15,7 @@ describe('sales', () => {
   it('completes a sale, deducts stock and numbers receipts', async () => {
     const pads = (await db.products.where('sku').equals('BRK-PAD-F').first())!
     const sale = await completeSale({ lines: [lineFor(pads, 2)], discount: 0, payments: [{ method: 'cash', amount: 2_000_00 }], userId: 1 })
-    expect(sale.receiptNo).toBe('R-000001')
+    expect(sale.receiptNo).toMatch(/^R\d{2}-000001$/)
     expect(sale.total).toBe(1_700_00)
     expect(sale.change).toBe(300_00)
     expect((await db.products.get(pads.id!))!.stock).toBe(pads.stock - 2)

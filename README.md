@@ -20,8 +20,8 @@ Point-of-sale and inventory system for a **motorbike / e-bike spare parts shop**
 | **Shifts** | Open with a float, record cash in/out, blind cash-up with over/short, printed Z report. |
 | **Reports** | Net sales, gross profit and margin, VAT collected (for KRA), takings by payment method, daily trend, top sellers, sales by category, reorder list. CSV export. |
 | **Staff & security** | Tap-your-name + private 4–6 digit PIN, stored as salted PBKDF2 hashes. Lockout after repeated wrong PINs, auto-lock when idle, forced PIN change for PINs set by the owner. Owner, manager and cashier roles, enforced on the server API with signed tokens. |
-| **Owner dashboard** | Setup checklist, today vs yesterday, 7-day trend, best sellers, stock health (out/low/unlabelled/dead stock), loss-prevention watch (refunds, discounts, voids, wrong PINs) and takings by staff. |
-| **Data** | Stored on the till itself (IndexedDB), so it keeps selling through internet and power cuts. One-click JSON backup and restore. |
+| **Data & sync** | Every till works on its own copy (IndexedDB), so it keeps selling through internet and power cuts. Every change — sales, stock movements, serial labels, parts, customers, settings, deletions — is queued and synced to the shop server within seconds, and other tills pull it back. *Settings → Sync* shows this till against the server. One-click JSON backup and restore. |
+| **Admin portal** | Owner/manager portal from the Stitch "Store Executive Dashboard" design: grouped sidebar, part search (Ctrl+K), New Sale (F1), Add Part (F3), live sync status, executive KPIs, hourly revenue by tender, category movement, low-stock alerts with one-click POs, live counter transactions, Vehicle Fit Matrix and a stock movements log. |
 
 More screens: [payment](docs/screenshots/payment.png) · [receipt](docs/screenshots/receipt.png) · [inventory](docs/screenshots/inventory.png) · [reports](docs/screenshots/reports.png) · [shift](docs/screenshots/shift.png) · [service](docs/screenshots/service.png)
 
@@ -56,7 +56,8 @@ npm run typecheck
 ```
 Browser (Chrome/Edge, installable PWA)        server/ (Node + Express, on the shop PC)
  ├─ React + Tailwind UI                         ├─ serves dist/
- ├─ Dexie (IndexedDB)  ← all shop data          ├─ /api/auth/*   staff sign-in (PBKDF2, signed tokens, lockouts)
+ ├─ Dexie (IndexedDB)  ← till's copy + outbox   ├─ /api/auth/*   staff sign-in (PBKDF2, signed tokens, lockouts)
+ ├─ sync loop (push/pull every 15 s)  ⇄         ├─ /api/sync/*   shared copy of all shop data (SQLite, tombstones)
  ├─ ESC/POS + TSPL    → WebUSB / Web Serial      ├─ /api/mpesa/*  STK Push + callback + query
  └─ HID barcode-scanner listener                 └─ /api/print    relays printer bytes to LAN printers :9100
 ```
@@ -66,12 +67,21 @@ Browser (Chrome/Edge, installable PWA)        server/ (Node + Express, on the sh
 - `src/pages/`: one file per screen
 - `server/`: auth, Daraja/pay-gateway client, printer relay and SQLite migrations
 
+### How sync works
+
+- A database middleware writes every create, update and delete on a synced table to an **outbox** in the same transaction, so no change can be missed — including deletes, which reach the server as tombstones and remove the record on every other till.
+- While a staff member is signed in, the till pushes the outbox and pulls newer changes every 15 seconds, a moment after any local change, and as soon as the connection returns. Offline changes simply wait in the outbox.
+- New records get IDs that encode the till, and receipt/PO/job numbers carry the till number (`R07-000123`), so tills never clash.
+- **Stock is rebuilt from stock movements** after each pull, so two tills selling the same part both count.
+- Cashier tills cannot change the catalogue, settings or delete records on the server; owners and managers can.
+- *Settings → Sync* shows the live state, this till's record counts beside the server's, the connected tills, and repair buttons (re-upload / re-download).
+
 Money is stored as integer cents. Every stock change goes through a logged movement (sale, refund, receive, adjust, damage, count), and every labelled unit is tracked from shelf to receipt.
 
 ## Roadmap / not yet built
 
 - **KRA eTIMS** electronic tax invoices (needed for VAT-registered businesses). The receipt and VAT data are already in place; the next step is an eTIMS OSCU/VSCU integration on the server.
-- Multi-till / multi-branch sync (today each till keeps its own data; back up daily).
+- Multi-branch reporting (several shops on one server). Several tills in one shop already sync.
 - Customer SMS (Africa's Talking) for "your bike is ready" and receipts.
 
 See [docs/UX-RESEARCH.md](docs/UX-RESEARCH.md) for the retail POS patterns this design draws on.

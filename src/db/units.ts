@@ -1,5 +1,6 @@
 import { db } from './db'
 import { inStoreEan13 } from '../lib/barcode'
+import { currentTill } from './till'
 import type { Product, StockUnit } from './types'
 
 async function nextCounter(key: string): Promise<number> {
@@ -9,14 +10,8 @@ async function nextCounter(key: string): Promise<number> {
   return next
 }
 
-/** This till's two-digit number, picked at random once and kept (part of every generated barcode). */
-async function tillNumber(): Promise<number> {
-  const row = await db.kv.get('till:number')
-  if (typeof row?.value === 'number') return row.value
-  const n = 10 + Math.floor(Math.random() * 90)
-  await db.kv.put({ key: 'till:number', value: n })
-  return n
-}
+/** This till's number (see till.ts) — part of every barcode it generates. */
+const tillNumber = async () => currentTill()
 
 /** A fresh in-store EAN-13 (prefix 20) for a product that came without a barcode. */
 export async function nextProductBarcode(): Promise<string> {

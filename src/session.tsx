@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db/db'
 import { logActivity } from './db/logs'
 import { useSettings } from './db/settings'
+import { isOpenHere } from './db/shifts'
 import { verifyPin } from './lib/pinHash'
 import { serverSignIn, setToken } from './lib/api'
+import { startSync, stopSync } from './lib/sync'
 import type { Role, Shift, User } from './db/types'
 
 export type LoginResult = { ok: true } | { ok: false; error: string; lockedMs?: number }
@@ -68,7 +70,7 @@ const SessionContext = createContext<SessionValue | null>(null)
 export function SessionProvider({ children }: { children: ReactNode }) {
   const settings = useSettings()
   const [authUser, setAuthUser] = useState<User | null>(null)
-  const shift = useLiveQuery(() => db.shifts.filter((s) => !s.closedAt).last(), [])
+  const shift = useLiveQuery(() => db.shifts.filter(isOpenHere).last(), [])
   // Keep the signed-in user live so profile edits (name, photo, PIN flag) show everywhere.
   const liveUser = useLiveQuery(() => (authUser?.id ? db.users.get(authUser.id) : undefined), [authUser?.id])
   const user = liveUser ?? authUser
@@ -78,7 +80,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await db.kv.delete(lockKey(u.id!))
     setAuthUser(u)
     await logActivity('auth', 'Signed in', { userId: u.id, userName: u.name })
-    void serverSignIn(u, pin)
+    void serverSignIn(u, pin).then(startSync)
   }, [])
 
   const login = useCallback(
@@ -108,6 +110,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(() => {
     if (!user) return
     void logActivity('auth', 'Till locked', { userId: user.id, userName: user.name })
+    stopSync()
     setToken(null)
     setAuthUser(null)
   }, [user])

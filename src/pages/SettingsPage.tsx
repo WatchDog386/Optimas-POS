@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { AlertTriangle, Banknote, Bell, Bike, CreditCard, Database, Download, Info, Loader2, PackageSearch, Percent, Printer, Save, ShieldCheck, Smartphone, Store, Trash2, UserRound } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { RefreshCw, AlertTriangle, Banknote, Bell, Bike, CreditCard, Database, Download, Info, Loader2, PackageSearch, Percent, Printer, Save, ShieldCheck, Smartphone, Store, Trash2, UserRound } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, PRE_PRODUCTION_ARCHIVE } from '../db/db'
+import { db, PRE_PRODUCTION_ARCHIVE, queueAllForUpload } from '../db/db'
 import { logActivity } from '../db/logs'
 import { hashPin, isPinHash, verifyPin } from '../lib/pinHash'
-import { pushUsers, reconnectServer, registerWithServer, serverLink, type ServerLink } from '../lib/api'
+import { api, pushUsers, reconnectServer, registerWithServer, serverLink, type ServerLink } from '../lib/api'
+import { redownloadAll, syncNow, useSyncStatus } from '../lib/sync'
+import { ago, syncLabel } from '../components/SyncStatus'
+import { currentTill } from '../db/till'
 import { saveSettings, useSettings } from '../db/settings'
 import type { PaymentMethod, Settings, User } from '../db/types'
 import { loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig, type PrinterSlot } from '../lib/printer'
@@ -18,7 +21,7 @@ import { useSession } from '../session'
 import { PageHeader, errorText, useToast } from '../components/ui'
 import ChangePinForm from '../components/ChangePinForm'
 
-const TABS = ['Shop & receipt', 'Taxes', 'Payments', 'Hardware', 'Bike models', 'Notifications', 'Security', 'Backup', 'About'] as const
+const TABS = ['Shop & receipt', 'Taxes', 'Payments', 'Hardware', 'Bike models', 'Notifications', 'Security', 'Sync', 'Backup', 'About'] as const
 type Tab = (typeof TABS)[number]
 
 const APP_VERSION = '1.0.0'
@@ -39,6 +42,7 @@ const SECTIONS: { group: string; items: { id: Tab; icon: typeof Store; tint: str
     items: [
       { id: 'Notifications', icon: Bell, tint: 'bg-rose-100 text-rose-600', desc: 'Choose which alert groups appear on the Notifications page.' },
       { id: 'Security', icon: ShieldCheck, tint: 'bg-indigo-100 text-indigo-600', desc: 'Your PIN and how this till locks.' },
+      { id: 'Sync', icon: RefreshCw, tint: 'bg-emerald-100 text-emerald-700', desc: 'Keep every till and the shop server in step.' },
       { id: 'Backup', icon: Download, tint: 'bg-teal-100 text-teal-600', desc: 'Download, restore and protect your data.' },
       { id: 'About', icon: Info, tint: 'bg-cyan-100 text-cyan-700', desc: 'Version, storage usage and factory reset.' },
     ],
@@ -49,7 +53,12 @@ const ALL_ITEMS = SECTIONS.flatMap((s) => s.items)
 const DESCS = Object.fromEntries(ALL_ITEMS.map((i) => [i.id, i.desc])) as Record<Tab, string>
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>('Shop & receipt')
+  const [params] = useSearchParams()
+  const asked = params.get('tab') as Tab | null
+  const [tab, setTab] = useState<Tab>(asked && (TABS as readonly string[]).includes(asked) ? asked : 'Shop & receipt')
+  useEffect(() => {
+    if (asked && (TABS as readonly string[]).includes(asked)) setTab(asked)
+  }, [asked])
   const active = ALL_ITEMS.find((i) => i.id === tab)!
 
   return (
@@ -116,6 +125,7 @@ export default function SettingsPage() {
           {tab === 'Bike models' && <BikeSettings />}
           {tab === 'Notifications' && <NotifySettings />}
           {tab === 'Security' && <SecuritySettings />}
+          {tab === 'Sync' && <SyncSettings />}
           {tab === 'Backup' && <BackupSettings />}
           {tab === 'About' && <AboutSettings />}
         </div>
@@ -923,6 +933,148 @@ function ServerLinkCard() {
   )
 }
 
+// ---------------------------------------------------------------- Sync
+
+const SYNC_ROWS: [string, string][] = [
+  ['products', 'Parts'],
+  ['units', 'Serial labels'],
+  ['movements', 'Stock movements'],
+  ['sales', 'Sales & refunds'],
+  ['customers', 'Customers'],
+  ['purchaseOrders', 'Purchase orders'],
+  ['suppliers', 'Suppliers'],
+  ['jobs', 'Service jobs'],
+  ['shifts', 'Shifts'],
+  ['logs', 'Activity log'],
+]
+
+function SyncSettings() {
+  const toast = useToast()
+  const { user } = useSession()
+  const s = useSyncStatus()
+  const [server, setServer] = useState<{ counts: Record<string, number>; tills: { number: number; label: string | null; last_seen: number }[] } | null>(null)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const local = useLiveQuery(async () => {
+    const out: Record<string, number> = {}
+    for (const [t] of SYNC_ROWS) out[t] = await db.table(t).count()
+    return out
+  }, [], null)
+  const label = syncLabel(s)
+
+  const loadServer = async () => {
+    try {
+      setServer(await api('/sync/status'))
+      setErr('')
+    } catch (e) {
+      setServer(null)
+      setErr(errorText(e))
+    }
+  }
+  useEffect(() => {
+    void loadServer()
+  }, [s.lastSync])
+
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    setBusy(true)
+    try {
+      await fn()
+      await loadServer()
+      toast(ok)
+    } catch (e) {
+      toast(errorText(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const allSynced = s.state === 'idle' && s.pending === 0
+
+  return (
+    <>
+      <div className={`mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${allSynced ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+        <div>
+          <div className={`text-base font-bold ${allSynced ? 'text-emerald-800' : 'text-amber-900'}`}>
+            {allSynced ? 'Everything on this till is on the shop server' : label.text}
+          </div>
+          <div className="mt-0.5 text-sm text-slate-600">
+            Last synced {ago(s.lastSync)} · this is till <b>#{currentTill()}</b>
+            {s.error ? ` · ${s.error}` : ''}
+          </div>
+        </div>
+        <button className="btn-primary" disabled={busy || s.state === 'syncing'} onClick={() => run(syncNow, 'Sync finished')}>
+          <RefreshCw size={16} className={s.state === 'syncing' ? 'animate-spin' : ''} /> Sync now
+        </button>
+      </div>
+
+      {s.state === 'signed-out' && (
+        <p className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+          This till is not connected to the shop server. {user?.role === 'owner' ? 'Connect it under Security → Shop server, or lock the till and sign in again while online.' : 'Lock the till and sign in again while online.'}
+        </p>
+      )}
+
+      <Section title="This till vs the shop server" desc="Counts should match once everything has synced (the server also holds other tills' records).">
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Records</th>
+                <th className="px-3 py-2 text-right">This till</th>
+                <th className="px-3 py-2 text-right">Shop server</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {SYNC_ROWS.map(([t, name]) => {
+                const a = local?.[t]
+                const b = server?.counts[t] ?? (server ? 0 : undefined)
+                return (
+                  <tr key={t}>
+                    <td className="px-3 py-2 text-slate-700">{name}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{a ?? '…'}</td>
+                    <td className={`px-3 py-2 text-right tabular-nums ${a !== undefined && b !== undefined && b < a ? 'font-semibold text-amber-700' : ''}`}>{b ?? '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        {err && <p className="mt-2 text-xs text-red-600">Server: {err}</p>}
+      </Section>
+
+      {server && server.tills.length > 0 && (
+        <Section title="Tills connected to this shop">
+          <div className="flex flex-wrap gap-2">
+            {server.tills.map((t) => (
+              <span key={t.number} className={`rounded-lg px-3 py-1.5 text-sm ring-1 ${t.number === currentTill() ? 'bg-brand-50 text-brand-700 ring-brand-200' : 'bg-white text-slate-700 ring-slate-200'}`}>
+                Till #{t.number}
+                {t.number === currentTill() && ' (this one)'} · seen {ago(t.last_seen)}
+              </span>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      <Section title="Repair" desc="Only needed if counts above don't line up after a sync.">
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-ghost" disabled={busy} onClick={() => run(async () => (await queueAllForUpload(), await syncNow()), 'Everything on this till was sent again')}>
+            Upload everything on this till again
+          </button>
+          <button className="btn-ghost" disabled={busy} onClick={() => run(redownloadAll, "Downloaded the server's copy again")}>
+            Download everything from the server again
+          </button>
+        </div>
+      </Section>
+
+      <ul className="space-y-1.5 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+        <li>• Every sale, stock change, part, customer and setting is queued the moment it happens and sent within seconds; nothing is lost while offline — it goes when the connection returns.</li>
+        <li>• Deleting a part deletes it on every till. A factory reset only clears this till; its data comes back from the server at the next sign-in.</li>
+        <li>• Stock is rebuilt from stock movements, so two tills selling the same part never overwrite each other's counts.</li>
+        <li>• The server keeps its copy in <code>data/optimas.db</code> — back that file up together with the daily JSON backup.</li>
+      </ul>
+    </>
+  )
+}
+
 // ---------------------------------------------------------------- Backup
 
 function BackupSettings() {
@@ -955,13 +1107,22 @@ function BackupSettings() {
         return { ...rest, pinHash: hashPin(pin ?? ''), mustChangePin: true }
       })
       if (!users.some((u) => u.role === 'owner' && u.active)) throw new Error('The backup has no active owner account — restoring it would lock you out')
+      // Local restore (the transaction includes syncstate, so nothing is queued
+      // as it happens); restored records are then queued for upload — puts only,
+      // so restoring on one till never deletes data other tills put on the server.
+      const keepTill = (await db.kv.toArray()).filter((r) => String(r.key).startsWith('till:'))
       await db.transaction('rw', db.tables, async () => {
         for (const t of db.tables) {
+          if (t.name === 'syncstate') continue
           await t.clear()
-          const rows = t.name === 'users' ? users : data[t.name]
+          if (t.name === 'outbox') continue
+          let rows = t.name === 'users' ? users : data[t.name]
+          if (t.name === 'kv') rows = [...(Array.isArray(rows) ? rows : []).filter((r) => !String((r as { key: string }).key).startsWith('till:')), ...keepTill]
           if (Array.isArray(rows) && rows.length) await t.bulkAdd(rows)
         }
+        await db.syncstate.delete('pull:rev')
       })
+      await queueAllForUpload()
       toast('Backup restored — sign in again')
       setTimeout(() => window.location.reload(), 800)
     } catch (e) {
@@ -1133,7 +1294,8 @@ function AboutSettings() {
           <AlertTriangle size={17} /> Factory reset
         </div>
         <p className="mt-1 text-sm text-red-600">
-          Wipes every table and reloads. No demo data is re-added — start by adding your own real products in Inventory.
+          Wipes everything stored on this till and reloads. The shop server is not touched: after signing in again, the till downloads the shop's data from it.
+          To remove a part from every till, delete it in Inventory instead.
         </p>
         <button className="btn-ghost mt-3 border-red-300 text-red-600 hover:bg-red-100" onClick={reset}>
           Reset all data…

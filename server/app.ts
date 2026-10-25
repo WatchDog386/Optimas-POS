@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { createDaraja, type StkCallbackBody } from './daraja'
 import { sql } from './db'
 import * as pinpay from './pinpay'
+import { registerSyncRoutes } from './sync'
 import {
   clearFailures,
   isPinHash,
@@ -47,10 +48,10 @@ export function createApp() {
   // Behind nginx on the same box: trust X-Forwarded-For from loopback only.
   app.set('trust proxy', 'loopback')
   app.use(securityHeaders)
-  app.use(express.json({ limit: '2mb' }))
+  // /api/sync/push parses its own (larger) body.
+  app.use((req, res, next) => (req.path === '/api/sync/push' ? next() : express.json({ limit: '2mb' })(req, res, next)))
 
   const staff = requireAuth()
-  const managers = requireAuth(['owner', 'manager'])
   const owner = requireAuth(['owner'])
   const daraja = createDaraja(process.env)
 
@@ -428,80 +429,9 @@ export function createApp() {
     res.json({ ok: true })
   })
 
-  // --- Settings (server copy) --------------------------------------------------
+  // --- Data sync (sales, stock, catalogue, customers, settings…) ---------------
 
-  app.get('/api/settings', staff, (_req, res) => {
-    const row = sql.prepare('SELECT json, updated_at FROM settings WHERE id = 1').get() as { json: string; updated_at: number } | undefined
-    res.json(row ? { ...JSON.parse(row.json), updatedAt: row.updated_at } : {})
-  })
-
-  app.put('/api/settings', owner, (req, res) => {
-    const body = req.body
-    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
-      res.status(400).json({ error: 'expected a settings object' })
-      return
-    }
-    sql.prepare(
-      `INSERT INTO settings (id, json, updated_at) VALUES (1, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at`,
-    ).run(JSON.stringify(body), Date.now())
-    res.json({ ok: true })
-  })
-
-  // --- Products (mirror of till IndexedDB products) -------------------------
-
-  app.get('/api/products', staff, (_req, res) => {
-    const rows = sql
-      .prepare(
-        'SELECT id, sku, barcode, name, category_id, brand, part_number, cost, price, stock, reorder_level, active, updated_at FROM products ORDER BY sku',
-      )
-      .all()
-    res.json(rows)
-  })
-
-  app.post('/api/products', managers, (req, res) => {
-    const body = (req.body ?? {}) as Record<string, unknown>
-    const sku = String(body.sku ?? '').trim().slice(0, 64)
-    const name = String(body.name ?? '').trim().slice(0, 200)
-    if (!sku || !name) {
-      res.status(400).json({ error: 'sku and name are required' })
-      return
-    }
-    const int = (v: unknown, d = 0) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : d)
-    const opt = (v: unknown) => (v == null || v === '' ? null : String(v).slice(0, 200))
-    sql.prepare(
-      `INSERT INTO products (sku, barcode, name, category_id, brand, part_number, cost, price, stock, reorder_level, active, updated_at)
-       VALUES (@sku, @barcode, @name, @category_id, @brand, @part_number, @cost, @price, @stock, @reorder_level, @active, @updated_at)
-       ON CONFLICT(sku) DO UPDATE SET
-         barcode = excluded.barcode, name = excluded.name, category_id = excluded.category_id, brand = excluded.brand,
-         part_number = excluded.part_number, cost = excluded.cost, price = excluded.price, stock = excluded.stock,
-         reorder_level = excluded.reorder_level, active = excluded.active, updated_at = excluded.updated_at`,
-    ).run({
-      sku,
-      barcode: opt(body.barcode),
-      name,
-      category_id: typeof body.category_id === 'number' ? body.category_id : null,
-      brand: opt(body.brand),
-      part_number: opt(body.part_number),
-      cost: int(body.cost),
-      price: int(body.price),
-      stock: int(body.stock),
-      reorder_level: int(body.reorder_level, 2),
-      active: body.active === false || body.active === 0 ? 0 : 1,
-      updated_at: Date.now(),
-    })
-    res.json({ ok: true })
-  })
-
-  app.delete('/api/products/:sku', managers, (req, res) => {
-    sql.prepare('DELETE FROM products WHERE sku = ?').run(String(req.params.sku))
-    res.json({ ok: true })
-  })
-
-  app.delete('/api/products', owner, (_req, res) => {
-    sql.prepare('DELETE FROM products').run()
-    res.json({ ok: true })
-  })
+  registerSyncRoutes(app, staff)
 
   // --- Network printer relay -----------------------------------------------
 

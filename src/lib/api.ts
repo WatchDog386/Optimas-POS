@@ -205,9 +205,3 @@ export async function pushOwnPin(currentPin: string, pinHash: string): Promise<b
     return false
   }
 }
-
-/** Fire-and-forget mirror calls; failures never block the till. */
-export function mirror(path: string, init: RequestInit & { json?: unknown }) {
-  if (!token) return
-  void api(path, init).catch(() => {})
-}

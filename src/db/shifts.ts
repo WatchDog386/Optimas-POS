@@ -1,17 +1,21 @@
 import { db } from './db'
+import { currentTill } from './till'
 import { getSettings } from './settings'
 import { logActivity, userName } from './logs'
 import { money } from '../lib/money'
 import type { PaymentMethod, Sale, Shift } from './types'
 
+/** An open shift on this till (shifts from other tills arrive through sync). */
+export const isOpenHere = (s: Shift) => !s.closedAt && (s.till === undefined || s.till === currentTill())
+
 export async function currentShift(): Promise<Shift | undefined> {
-  return db.shifts.filter((s) => !s.closedAt).last()
+  return db.shifts.filter(isOpenHere).last()
 }
 
 export async function openShift(userId: number, openingFloat: number): Promise<Shift> {
   const existing = await currentShift()
   if (existing) return existing
-  const shift: Shift = { userId, openedAt: Date.now(), openingFloat, cashMovements: [] }
+  const shift: Shift = { till: currentTill(), userId, openedAt: Date.now(), openingFloat, cashMovements: [] }
   shift.id = await db.shifts.add(shift)
   const s = await getSettings()
   await logActivity('shift', 'Shift opened', {

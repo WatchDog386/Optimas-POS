@@ -154,4 +154,48 @@ describe('production migration (v2 → v3)', () => {
     upgraded.close()
     await Dexie.delete(name)
   })
+
+  it('v3 → v4: gives stock a movement baseline and queues existing data for upload', async () => {
+    const name = 'migration-v4-test'
+    await Dexie.delete(name)
+    const v3 = new Dexie(name)
+    v3.version(3).stores({
+      users: '++id, role',
+      categories: '++id, name',
+      suppliers: '++id, name',
+      products: '++id, &sku, barcode, name, categoryId, partNumber, *fitment, supplierId, active',
+      customers: '++id, name, phone, plate, balance',
+      sales: '++id, &receiptNo, createdAt, customerId, userId, shiftId, status',
+      parked: '++id, createdAt',
+      movements: '++id, productId, at, reason',
+      purchaseOrders: '++id, &poNo, supplierId, status, createdAt',
+      shifts: '++id, userId, openedAt, closedAt',
+      jobs: '++id, &jobNo, customerId, status, createdAt',
+      logs: '++id, at, kind, userId',
+      units: '++id, &serial, productId, status, saleId',
+      kv: 'key',
+    })
+    await v3.open()
+    await v3.table('products').bulkAdd([
+      { id: 1, sku: 'A', name: 'Opening stock part', fitment: [], stock: 4, trackStock: true },
+      { id: 2, sku: 'B', name: 'CSV part', fitment: [], stock: 7, trackStock: true },
+      { id: 3, sku: 'L', name: 'Labour', fitment: [], stock: 0, trackStock: false },
+    ])
+    await v3.table('movements').add({ productId: 1, change: 4, reason: 'count', at: 1 })
+    await v3.table('kv').bulkPut([{ key: 'settings', value: { shopName: 'S' } }, { key: 'seq:R', value: 3 }])
+    v3.close()
+
+    const up = new PosDB(name)
+    await up.open()
+    const moves = await up.movements.where('productId').equals(2).toArray()
+    expect(moves.map((m) => m.change)).toEqual([7])
+    expect(await up.movements.where('productId').equals(1).count()).toBe(1)
+    const queued = (await up.outbox.toArray()).map((e) => e.id)
+    expect(queued).toContain('products|1')
+    expect(queued).toContain('kv|"settings"')
+    expect(queued).not.toContain('kv|"seq:R"')
+    expect(queued.filter((q) => q.startsWith('movements|'))).toHaveLength(2)
+    up.close()
+    await Dexie.delete(name)
+  })
 })

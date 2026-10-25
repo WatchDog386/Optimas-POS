@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { logActivity } from './logs'
+import { tillTag } from './till'
 import type { Settings } from './types'
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -56,13 +57,14 @@ export function useSettings(): Settings {
   return useLiveQuery(getSettings, [], DEFAULT_SETTINGS)
 }
 
-/** Sequential, human-friendly document numbers stored in the kv table. */
+/** Sequential, human-friendly document numbers, per till, stored in the kv table. */
 export async function nextNumber(prefix: string): Promise<string> {
   return db.transaction('rw', db.kv, async () => {
     const key = `seq:${prefix}`
     const row = await db.kv.get(key)
     const next = ((row?.value as number) ?? 0) + 1
     await db.kv.put({ key, value: next })
-    return `${prefix}-${String(next).padStart(6, '0')}`
+    // The till number keeps receipts from different tills distinct: R07-000123.
+    return `${prefix}${tillTag()}-${String(next).padStart(6, '0')}`
   })
 }

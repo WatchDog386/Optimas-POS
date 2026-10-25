@@ -127,6 +127,26 @@
   --shadow-float: 0 2px 4px rgb(16 24 40 / 0.03), 0 14px 36px rgb(16 24 40 / 0.09);
   --shadow-modal: 0 10px 25px -5px rgb(15 23 42 / 0.15);
 
+  /* ── Admin portal (from the Stitch "Store Executive Dashboard" export) ── */
+  --color-adm-primary: #000e23;
+  --color-adm-navy: #14243a;
+  --color-adm-navy-ink: #b7c7e4;
+  --color-adm-surface: #faf8ff;
+  --color-adm-low: #f2f3ff;
+  --color-adm-mid: #eaedff;
+  --color-adm-high: #e2e7ff;
+  --color-adm-highest: #dae2fd;
+  --color-adm-blue: #0051d5;
+  --color-adm-blue-soft: #dbe1ff;
+  --color-adm-ink: #131b2e;
+  --color-adm-muted: #44474d;
+  --color-adm-faint: #75777d;
+  --color-adm-line: #c5c6cd;
+  --color-adm-green: #009f54;
+  --color-adm-green-soft: #d8f8e3;
+  --color-adm-red: #ba1a1a;
+  --color-adm-red-soft: #ffdad6;
+
   /* ── Cashier register palette ────────────────────────────────────────── */
   --color-register-teal: #0b3039;
   --color-register-teal-raised: #16454b;

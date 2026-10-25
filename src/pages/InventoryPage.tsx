@@ -12,14 +12,13 @@ import { download, parseCsv, toCsv } from '../lib/csv'
 import { labelJobs, printLabels } from '../lib/printReceipt'
 import { createUnits, nextProductBarcode, unlabelledCount, writeOffUnits } from '../db/units'
 import { logActivity } from '../db/logs'
-import { mirror } from '../lib/api'
 import { useSession } from '../session'
 import { Badge, Empty, ListPanel, Modal, PageHeader, errorText, useToast } from '../components/ui'
 
 const CSV_HEADER = ['sku', 'name', 'barcode', 'partNumber', 'category', 'brand', 'fitment', 'cost', 'price', 'stock', 'reorderLevel', 'location', 'taxable', 'serialized', 'trackStock']
 
 export default function InventoryPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const settings = useSettings()
   const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -34,14 +33,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     setQ(searchParams.get('q') ?? '')
-    const view = searchParams.get('view')
-    if (view === 'compatibility') {
-      // Could add a compatibility view in the future
-    } else if (view === 'adjustments') {
-      // Could add stock adjustments view in the future
-    } else if (view === 'lowstock') {
-      setLowOnly(true)
-    }
+    setLowOnly(searchParams.get('view') === 'lowstock')
     if (searchParams.get('new') === '1') {
       setEditing({})
     }
@@ -81,7 +73,6 @@ export default function InventoryPage() {
       await db.movements.clear()
       await db.units.clear()
     })
-    mirror('/products', { method: 'DELETE' })
     await logActivity('stock', 'Inventory cleared', { detail: `${products.length} parts removed`, userId: user?.id, userName: user?.name })
     toast('All parts deleted from inventory')
     setQ('')
@@ -98,7 +89,7 @@ export default function InventoryPage() {
       const flag = (v: string | undefined, dflt: boolean) => (v === undefined || v === '' ? dflt : ['1', 'true', 'yes', 'y'].includes(v.toLowerCase()))
       let added = 0
       let updated = 0
-      await db.transaction('rw', db.products, db.categories, async () => {
+      await db.transaction('rw', [db.products, db.categories, db.movements], async () => {
         for (const r of lines) {
           const sku = get(r, 'sku')
           if (!sku) continue
@@ -132,7 +123,10 @@ export default function InventoryPage() {
             createdAt: prev?.createdAt ?? now,
             updatedAt: now,
           }
-          await db.products.put(p)
+          const id = (await db.products.put(p)) as number
+          // Stock only ever changes through movements (they are what syncs between tills).
+          const delta = p.trackStock ? p.stock - (prev?.trackStock ? prev.stock : 0) : 0
+          if (delta !== 0) await db.movements.add({ productId: id, change: delta, reason: 'count', note: 'CSV import', userId: user?.id, at: now })
           if (prev) updated++
           else added++
         }
@@ -319,7 +313,21 @@ export default function InventoryPage() {
         )}
       </ListPanel>
 
-      {editing && <ProductForm initial={editing} onClose={() => setEditing(null)} onLabels={(prod) => setLabelling(prod)} />}
+      {editing && (
+        <ProductForm
+          initial={editing}
+          onClose={() => {
+            setEditing(null)
+            // Drop ?new=1 so F3 / "Add part" opens the form again next time.
+            if (searchParams.has('new')) {
+              const next = new URLSearchParams(searchParams)
+              next.delete('new')
+              setSearchParams(next, { replace: true })
+            }
+          }}
+          onLabels={(prod) => setLabelling(prod)}
+        />
+      )}
       {adjusting && <AdjustModal product={adjusting} onClose={() => setAdjusting(null)} />}
       {labelling && <LabelsModal product={labelling} onClose={() => setLabelling(null)} />}
       {history && <HistoryModal product={history} onClose={() => setHistory(null)} />}
@@ -450,22 +458,6 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
         return { id, units }
       })
       const saved = (await db.products.get(id)) ?? { ...record, id }
-      mirror('/products', {
-        method: 'POST',
-        json: {
-          sku: saved.sku,
-          barcode: saved.barcode ?? null,
-          name: saved.name,
-          category_id: saved.categoryId ?? null,
-          brand: saved.brand ?? null,
-          part_number: saved.partNumber ?? null,
-          cost: saved.cost,
-          price: saved.price,
-          stock: saved.stock,
-          reorder_level: saved.reorderLevel,
-          active: saved.active !== false,
-        },
-      })
       await logActivity('stock', `${isNew ? 'Part added' : 'Part updated'}: ${saved.name}`, {
         detail: opening ? `${opening} opening stock · ${units.length} serial labels` : saved.sku,
         userId: user?.id,
@@ -491,6 +483,29 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
     }
   }
 
+  /** Delete a part that was never sold; parts with sales history are deactivated instead. */
+  const remove = async () => {
+    if (!p.id) return
+    const sold = await db.sales.filter((sale) => sale.lines.some((l) => l.productId === p.id)).first()
+    if (sold) {
+      if (!p.active) return toast(`${p.name} has sales history, so it stays in the records — it is already inactive`, 'error')
+      if (!confirm(`${p.name} appears on receipt ${sold.receiptNo}, so it can't be deleted without breaking your sales records.\n\nMark it inactive instead? It disappears from the sell screens but stays in reports.`)) return
+      await db.products.update(p.id, { active: false, updatedAt: Date.now() })
+      await logActivity('stock', `Part deactivated: ${p.name}`, { detail: p.sku, userId: user?.id, userName: user?.name })
+      toast(`${p.name} is now inactive`)
+      return onClose()
+    }
+    if (!confirm(`Delete ${p.name} (${p.sku}) for good? Its stock history and serial labels are deleted too, on every till.`)) return
+    await db.transaction('rw', [db.products, db.movements, db.units], async () => {
+      await db.movements.where('productId').equals(p.id!).delete()
+      await db.units.where('productId').equals(p.id!).delete()
+      await db.products.delete(p.id!)
+    })
+    await logActivity('stock', `Part deleted: ${p.name}`, { detail: p.sku, userId: user?.id, userName: user?.name })
+    toast(`${p.name} deleted`)
+    onClose()
+  }
+
   const toggleFit = (m: string) => set('fitment', p.fitment!.includes(m) ? p.fitment!.filter((x) => x !== m) : [...p.fitment!, m])
 
   return (
@@ -504,9 +519,14 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
             Cancel
           </button>
           {!isNew && (
-            <button className="btn-ghost mr-auto" onClick={() => onLabels(p as Product)}>
-              <Printer size={16} /> Labels
-            </button>
+            <>
+              <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => void remove()} disabled={saving}>
+                <Trash2 size={16} /> Delete
+              </button>
+              <button className="btn-ghost mr-auto" onClick={() => onLabels(p as Product)}>
+                <Printer size={16} /> Labels
+              </button>
+            </>
           )}
           <button className="btn-primary" onClick={save} disabled={saving}>
             {isNew && p.trackStock !== false && (p.stock ?? 0) > 0 && settings.autoPrintLabels ? (

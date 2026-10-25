@@ -199,6 +199,8 @@ export interface CashMovement {
 
 export interface Shift {
   id?: number
+  /** Till the shift runs on; each till has its own drawer and its own open shift. */
+  till?: number
   userId: number
   openedAt: number
   closedAt?: number

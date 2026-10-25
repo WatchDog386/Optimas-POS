@@ -25,7 +25,8 @@ afterAll(() => {
 beforeEach(() => {
   resetFailures()
   sql.prepare('DELETE FROM users').run()
-  sql.prepare('DELETE FROM products').run()
+  sql.prepare('DELETE FROM sync_records').run()
+  sql.prepare('DELETE FROM tills').run()
 })
 
 const staff = [
@@ -92,8 +93,8 @@ describe('server auth', () => {
 
   it('protects data, printing and payments behind a token', async () => {
     expect((await call('/users')).status).toBe(401)
-    expect((await call('/products', { method: 'DELETE' })).status).toBe(401)
-    expect((await call('/settings', { method: 'PUT', body: {} })).status).toBe(401)
+    expect((await call('/sync/push', { method: 'POST', body: { till: 1, changes: [] } })).status).toBe(401)
+    expect((await call('/sync/pull')).status).toBe(401)
     expect((await call('/print', { method: 'POST', body: { host: '192.168.1.5', data: '' } })).status).toBe(401)
     expect((await call('/mpesa/stkpush', { method: 'POST', body: { phone: '254712345678', amount: 10 } })).status).toBe(401)
     expect((await call('/users', { token: 'forged.token' })).status).toBe(401)
@@ -104,11 +105,25 @@ describe('server auth', () => {
   it('enforces roles', async () => {
     const cashier = await registerAndLogin(2, '739104')
     expect((await call('/users', { token: cashier })).status).toBe(200)
-    expect((await call('/products', { method: 'POST', token: cashier, body: { sku: 'A', name: 'B' } })).status).toBe(403)
-    expect((await call('/products', { method: 'DELETE', token: cashier })).status).toBe(403)
     expect((await call('/users', { method: 'PUT', token: cashier, body: staff })).status).toBe(403)
+    // Cashier tills may send sales, but not catalogue, settings or deletions.
+    const r = await call('/sync/push', {
+      method: 'POST',
+      token: cashier,
+      body: {
+        till: 2,
+        changes: [
+          { t: 'sales', k: 10, d: { id: 10, receiptNo: 'R02-000001' } },
+          { t: 'products', k: 5, d: { id: 5, sku: 'X', price: 1 } },
+          { t: 'kv', k: 'settings', d: { key: 'settings', value: { vatRate: 0 } } },
+          { t: 'sales', k: 11, d: null },
+        ],
+      },
+    })
+    expect(r.body).toMatchObject({ stored: 1, ignored: 3 })
     const owner = (await call('/auth/login', { method: 'POST', body: { userId: 1, pin: '582193' } })).body.token
-    expect((await call('/products', { method: 'POST', token: owner, body: { sku: 'A', name: 'B', price: 100 } })).status).toBe(200)
+    const o = await call('/sync/push', { method: 'POST', token: owner, body: { till: 1, changes: [{ t: 'products', k: 5, d: { id: 5, sku: 'X' } }] } })
+    expect(o.body).toMatchObject({ stored: 1, ignored: 0 })
   })
 
   it('locks an account after repeated wrong PINs', async () => {
@@ -168,5 +183,51 @@ describe('server auth', () => {
     expect(r.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
     expect(r.headers.get('x-powered-by')).toBeNull()
     expect(r.body).not.toHaveProperty('db')
+  })
+})
+
+describe('server sync', () => {
+  it('relays changes between tills, including deletes', async () => {
+    const owner = await registerAndLogin()
+    const push = (till: number, changes: unknown[]) => call('/sync/push', { method: 'POST', token: owner, body: { till, changes } })
+    await push(1, [
+      { t: 'products', k: 100, d: { id: 100, sku: 'BRK-1', name: 'Pads' } },
+      { t: 'movements', k: 101, d: { id: 101, productId: 100, change: 5 } },
+    ])
+    // Till 2 sees till 1's records; till 1 does not get its own back.
+    const p2 = await call('/sync/pull?since=0&till=2', { token: owner })
+    expect(p2.body.changes.map((c: { t: string; k: number }) => `${c.t}:${c.k}`)).toEqual(['products:100', 'movements:101'])
+    const p1 = await call('/sync/pull?since=0&till=1', { token: owner })
+    expect(p1.body.changes).toEqual([])
+    expect(p1.body.last).toBe(p2.body.last)
+
+    // Deleting the part on till 1 reaches till 2 as a tombstone.
+    await push(1, [{ t: 'products', k: 100, d: null }])
+    const after = await call(`/sync/pull?since=${p2.body.last}&till=2`, { token: owner })
+    expect(after.body.changes).toEqual([{ rev: expect.any(Number), t: 'products', k: 100, d: null }])
+
+    const status = await call('/sync/status', { token: owner })
+    expect(status.body.counts).toEqual({ movements: 1 })
+  })
+
+  it('rejects malformed changes', async () => {
+    const owner = await registerAndLogin()
+    const r = await call('/sync/push', {
+      method: 'POST',
+      token: owner,
+      body: { till: 1, changes: [{ t: 'users', k: 1, d: { id: 1 } }, { t: 'sales', k: 1, d: { id: 2 } }, { t: 'sales', k: [1], d: null }] },
+    })
+    expect(r.body.stored).toBe(0)
+    expect(r.body.rejected.map((x: { error: string }) => x.error)).toEqual(['unknown table', 'record key does not match', 'bad key'])
+  })
+
+  it('gives every till its own number', async () => {
+    const owner = await registerAndLogin()
+    const a = await call('/sync/till', { method: 'POST', token: owner, body: { till: 7 } })
+    const b = await call('/sync/till', { method: 'POST', token: owner, body: { till: 7 } })
+    const again = await call('/sync/till', { method: 'POST', token: owner, body: { till: 7, known: true } })
+    expect(a.body.till).toBe(7)
+    expect(b.body.till).not.toBe(7)
+    expect(again.body.till).toBe(7)
   })
 })
