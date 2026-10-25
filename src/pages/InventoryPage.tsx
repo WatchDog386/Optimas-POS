@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { DEFAULT_BRAND, DEFAULT_PART_NUMBER, DEFAULT_SKU, nextCode } from '../lib/partCodes'
 import type { ComponentType, ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useSearchParams } from 'react-router-dom'
@@ -108,7 +109,7 @@ export default function InventoryPage() {
             name: get(r, 'name') || prev?.name || sku,
             barcode: get(r, 'barcode') || prev?.barcode,
             partNumber: get(r, 'partNumber') || prev?.partNumber,
-            brand: get(r, 'brand') || prev?.brand,
+            brand: get(r, 'brand') || prev?.brand || DEFAULT_BRAND,
             categoryId: categoryId ?? prev?.categoryId,
             fitment: get(r, 'fitment') ? get(r, 'fitment')!.split('|').map((s) => s.trim()).filter(Boolean) : prev?.fitment ?? [],
             cost: num('cost') !== undefined ? toCents(num('cost')!) : prev?.cost ?? 0,
@@ -378,8 +379,27 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
     serialized: false,
     trackStock: true,
     active: true,
+    ...(initial.id === undefined ? { brand: DEFAULT_BRAND } : {}),
     ...initial,
   })
+  // New parts: suggest the next SKU / part number in the shop's own numbering.
+  const [autoCodes, setAutoCodes] = useState<{ sku?: string; partNumber?: string }>({})
+  const suggestCodes = async () => {
+    const all = await db.products.toArray()
+    all.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+    return {
+      sku: nextCode(all.map((x) => x.sku), DEFAULT_SKU),
+      partNumber: nextCode(all.map((x) => x.partNumber), DEFAULT_PART_NUMBER),
+    }
+  }
+  useEffect(() => {
+    if (initial.id !== undefined) return
+    void suggestCodes().then((codes) => {
+      setAutoCodes(codes)
+      setP((x) => ({ ...x, sku: x.sku || codes.sku, partNumber: x.partNumber || codes.partNumber }))
+    })
+    // Once, when the form opens.
+  }, [])
   const [cost, setCost] = useState(String((p.cost ?? 0) / 100))
   const [price, setPrice] = useState(String((p.price ?? 0) / 100))
   const [newCat, setNewCat] = useState('')
@@ -407,7 +427,9 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
       if (toCents(cost) < 0 || toCents(price) < 0) throw new Error('Prices cannot be negative')
       const opening = isNew && p.trackStock !== false ? Math.max(0, Math.floor(Number(p.stock) || 0)) : 0
       if (opening > 5000) throw new Error('Opening stock above 5,000 — enter it in batches')
-      const sku = p.sku.trim().toUpperCase()
+      let sku = p.sku.trim().toUpperCase()
+      // Another till may have taken the suggested code meanwhile — move to the next one.
+      if (isNew && sku === autoCodes.sku && (await db.products.where('sku').equals(sku).first())) sku = (await suggestCodes()).sku
       const clash = await db.products.where('sku').equals(sku).first()
       if (clash && clash.id !== p.id) throw new Error(`SKU ${sku} is already used by ${clash.name}`)
       let barcode = p.barcode?.trim()
@@ -549,6 +571,7 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
           <div>
             <label className="label">SKU *</label>
             <input className="input font-mono uppercase" value={p.sku ?? ''} onChange={(e) => set('sku', e.target.value.toUpperCase())} />
+            {isNew && p.sku && p.sku === autoCodes.sku && <span className="text-[10px] text-slate-500">Next in your numbering — edit if needed.</span>}
           </div>
           <div>
             <label className="label">Product barcode</label>
@@ -557,11 +580,12 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
           </div>
           <div>
             <label className="label">OEM / part number</label>
-            <input className="input font-mono" value={p.partNumber ?? ''} onChange={(e) => set('partNumber', e.target.value)} />
+            <input className="input font-mono uppercase" value={p.partNumber ?? ''} onChange={(e) => set('partNumber', e.target.value.toUpperCase())} />
+            {isNew && p.partNumber && p.partNumber === autoCodes.partNumber && <span className="text-[10px] text-slate-500">Auto-filled — replace with the OEM number if the box has one.</span>}
           </div>
           <div>
             <label className="label">Brand</label>
-            <input className="input" value={p.brand ?? ''} onChange={(e) => set('brand', e.target.value)} />
+            <input className="input" value={p.brand ?? ''} placeholder={DEFAULT_BRAND} onChange={(e) => set('brand', e.target.value)} />
           </div>
           <div>
             <label className="label">Category</label>
@@ -576,9 +600,11 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
             <input className="input mt-1" placeholder="…or new category" value={newCat} onChange={(e) => setNewCat(e.target.value)} />
           </div>
           <div>
-            <label className="label">Supplier</label>
+            <label className="label">
+              Supplier <span className="font-normal normal-case text-slate-400">(optional)</span>
+            </label>
             <select className="input" value={p.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value ? Number(e.target.value) : undefined)}>
-              <option value="">—</option>
+              <option value="">None</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
