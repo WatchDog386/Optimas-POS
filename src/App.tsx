@@ -1,6 +1,8 @@
 import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import {
   Bell,
+  Bike,
+  ClipboardList,
   BarChart3,
   Boxes,
   ChevronDown,
@@ -23,6 +25,8 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSession, type Permission } from './session'
+import { useSyncStatus } from './lib/sync'
+import { syncLabel } from './components/SyncStatus'
 import { useSettings } from './db/settings'
 import LoginPage, { PinChangeGate } from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -76,6 +80,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/products', label: 'Products', icon: Package, iconClass: 'text-emerald-400' },
       { to: '/inventory', label: 'Inventory', icon: Boxes, perm: 'inventory', iconClass: 'text-amber-500' },
+      { to: '/fitment', label: 'Fit matrix', icon: Bike, perm: 'inventory', iconClass: 'text-sky-400' },
+      { to: '/stock', label: 'Stock log', icon: ClipboardList, perm: 'inventory', iconClass: 'text-violet-400' },
       { to: '/purchasing', label: 'Purchasing', icon: Truck, perm: 'purchasing', iconClass: 'text-orange-500' },
       { to: '/customers', label: 'Customers', icon: Users, iconClass: 'text-pink-500' },
     ],
@@ -114,6 +120,28 @@ function useOnline() {
     }
   }, [])
   return online
+}
+
+/** "Synced · 2 min ago" / "3 waiting" beside Online — opens Settings → Sync for the owner. */
+function SyncNote() {
+  const s = useSyncStatus()
+  const { can } = useSession()
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 15_000)
+    return () => clearInterval(t)
+  }, [])
+  const { text, tone } = syncLabel(s)
+  const cls = `mr-1 hidden text-sm lg:inline ${tone === 'ok' ? 'text-white/80' : 'text-amber-300'}`
+  return can('settings') ? (
+    <Link to="/settings?tab=Sync" className={`${cls} hover:text-white`} title={s.error ?? 'Sync with the shop server'}>
+      {text}
+    </Link>
+  ) : (
+    <span className={cls} title={s.error}>
+      {text}
+    </span>
+  )
 }
 
 function Guard({ perm, children }: { perm?: Permission; children: ReactNode }) {
@@ -215,6 +243,7 @@ export default function App() {
               <span className={`h-2 w-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`} />
               {online ? 'Online' : 'Offline'}
             </span>
+            <SyncNote />
             <NavLink
               to="/shift"
               className={`mr-1 hidden text-sm font-medium md:inline ${shift ? 'text-white' : 'text-red-300'}`}
