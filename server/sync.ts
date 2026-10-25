@@ -61,6 +61,12 @@ export function registerSyncRoutes(app: Express, staff: RequestHandler) {
      VALUES (@tbl, @key, @data, @till, @user_id, @updated_at)`,
   )
 
+  const current = sql.prepare('SELECT data FROM sync_records WHERE tbl = ? AND key = ?')
+  const keepDeleted = sql.prepare(
+    `INSERT INTO sync_deleted (tbl, key, data, deleted_at, deleted_by_till, deleted_by_user)
+     VALUES (@tbl, @key, @data, @deleted_at, @till, @user_id)`,
+  )
+
   // Big limit: product photos travel as data URLs.
   app.post('/api/sync/push', express.json({ limit: '25mb' }), staff, (req: AuthedRequest, res) => {
     const { till, changes } = (req.body ?? {}) as { till?: unknown; changes?: unknown }
@@ -78,9 +84,15 @@ export function registerSyncRoutes(app: Express, staff: RequestHandler) {
         const verdict = checkChange(c, req.auth!.role)
         if (verdict === 'ignore') return void ignored++
         if (verdict !== 'store') return void rejected.push({ index, error: verdict })
+        const key = JSON.stringify(c.k)
+        if (c.d === null) {
+          // A delete: keep what is being deleted so it can be restored.
+          const prev = current.get(c.t, key) as { data: string | null } | undefined
+          if (prev?.data) keepDeleted.run({ tbl: c.t, key, data: prev.data, deleted_at: now, till, user_id: req.auth!.uid })
+        }
         push.run({
           tbl: c.t,
-          key: JSON.stringify(c.k),
+          key,
           data: c.d === null ? null : JSON.stringify(c.d),
           till,
           user_id: req.auth!.uid,

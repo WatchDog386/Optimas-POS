@@ -10,6 +10,10 @@ import { initAutoFullscreen } from './lib/fullscreen'
 
 initAutoFullscreen()
 
+// Ask the browser never to clear this app's data to free up space (parts, sales
+// and labels made offline live only here until they reach the server).
+void navigator.storage?.persist?.().catch(() => {})
+
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {})

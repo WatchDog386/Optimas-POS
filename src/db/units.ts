@@ -1,5 +1,5 @@
 import { db } from './db'
-import { inStoreEan13 } from '../lib/barcode'
+import { inStoreEan13, isValidEan13 } from '../lib/barcode'
 import { currentTill } from './till'
 import type { Product, StockUnit } from './types'
 
@@ -88,6 +88,64 @@ export async function cancelSurplusUnits(productId: number, stock: number): Prom
     for (const u of cancel) await db.units.update(u.id!, { status: 'cancelled' })
     return cancel.map((u) => u.serial)
   })
+}
+
+/**
+ * Register labels that were already printed (e.g. after the part was lost from
+ * this till) as in-stock units of `productId`, keeping their exact barcodes.
+ * Adds one stock unit per new label. Returns what happened to each serial.
+ */
+export async function attachPrintedLabels(
+  productId: number,
+  serials: string[],
+  userId?: number,
+): Promise<{ added: string[]; skipped: { serial: string; reason: string }[] }> {
+  const added: string[] = []
+  const skipped: { serial: string; reason: string }[] = []
+  const clean = [...new Set(serials.map((s) => s.trim()).filter(Boolean))]
+  await db.transaction('rw', [db.products, db.units, db.movements, db.kv], async () => {
+    const product = await db.products.get(productId)
+    if (!product) throw new Error('Part not found')
+    const till = await tillNumber()
+    const now = Date.now()
+    for (const serial of clean) {
+      if (!/^\d{13}$/.test(serial) || !isValidEan13(serial)) {
+        skipped.push({ serial, reason: 'not a valid label barcode' })
+        continue
+      }
+      const existing = await db.units.where('serial').equals(serial).first()
+      if (existing) {
+        if (existing.productId !== productId) {
+          const other = await db.products.get(existing.productId)
+          skipped.push({ serial, reason: `already belongs to ${other?.name ?? 'another part'}` })
+          continue
+        }
+        if (existing.status === 'in_stock') {
+          skipped.push({ serial, reason: 'already on the shelf' })
+          continue
+        }
+        if (existing.status === 'sold') {
+          skipped.push({ serial, reason: `already sold on ${existing.receiptNo ?? 'an earlier receipt'}` })
+          continue
+        }
+        await db.units.update(existing.id!, { status: 'in_stock' })
+      } else {
+        await db.units.add({ serial, productId, status: 'in_stock', source: 'Recovered label', createdAt: now })
+      }
+      // Never hand out this number again from this till's counter.
+      if (serial.startsWith('21') && Number(serial.slice(2, 4)) === till) {
+        const n = Number(serial.slice(4, 12))
+        const row = await db.kv.get('seq:barcode:unit')
+        if (((row?.value as number) ?? 0) < n) await db.kv.put({ key: 'seq:barcode:unit', value: n })
+      }
+      added.push(serial)
+    }
+    if (added.length && product.trackStock) {
+      await db.products.update(productId, { stock: product.stock + added.length, updatedAt: now })
+      await db.movements.add({ productId, change: added.length, reason: 'count', note: `Recovered ${added.length} printed label${added.length === 1 ? '' : 's'}`, userId, at: now })
+    }
+  })
+  return { added, skipped }
 }
 
 export type ScanMatch = { product: Product; serial?: string } | { error: string }

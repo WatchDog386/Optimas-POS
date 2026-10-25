@@ -11,7 +11,8 @@ import type { Product, StockUnit } from '../db/types'
 import { money, toCents } from '../lib/money'
 import { download, parseCsv, toCsv } from '../lib/csv'
 import { labelJobs, printLabels } from '../lib/printReceipt'
-import { cancelSurplusUnits, createUnits, nextProductBarcode, unlabelledCount, writeOffUnits } from '../db/units'
+import { trashProducts } from '../db/recovery'
+import { attachPrintedLabels, cancelSurplusUnits, createUnits, nextProductBarcode, unlabelledCount, writeOffUnits } from '../db/units'
 import { logActivity } from '../db/logs'
 import { useSession } from '../session'
 import { Badge, Empty, ListPanel, Modal, PageHeader, errorText, useToast } from '../components/ui'
@@ -66,10 +67,12 @@ export default function InventoryPage() {
 
   const clearAllInventory = async () => {
     const typed = prompt(
-      `This deletes ALL ${products.length} parts, their stock history and serial labels from this till. Sales receipts are kept.\n\nType DELETE to confirm.`,
+      `This deletes ALL ${products.length} parts, their stock history and serial labels from this till. Sales receipts are kept.\n\nThey stay in Settings → Sync → Recover lost parts, so they can be restored.\n\nType DELETE to confirm.`,
     )
     if (typed?.trim() !== 'DELETE') return
-    await db.transaction('rw', [db.products, db.movements, db.units], async () => {
+    await db.transaction('rw', [db.products, db.movements, db.units, db.kv], async () => {
+      // Kept in Settings → Sync → Recover lost parts.
+      await trashProducts((await db.products.toCollection().primaryKeys()) as number[], user?.name)
       await db.products.clear()
       await db.movements.clear()
       await db.units.clear()
@@ -538,8 +541,9 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
       toast(`${p.name} is now inactive`)
       return onClose()
     }
-    if (!confirm(`Delete ${p.name} (${p.sku}) for good? Its stock history and serial labels are deleted too, on every till.`)) return
-    await db.transaction('rw', [db.products, db.movements, db.units], async () => {
+    if (!confirm(`Delete ${p.name} (${p.sku}) for good? Its stock history and serial labels are deleted too, on every till.\n\nIt can be restored from Settings → Sync → Recover lost parts.`)) return
+    await db.transaction('rw', [db.products, db.movements, db.units, db.kv], async () => {
+      await trashProducts([p.id!], user?.name)
       await db.movements.where('productId').equals(p.id!).delete()
       await db.units.where('productId').equals(p.id!).delete()
       await db.products.delete(p.id!)
@@ -936,6 +940,28 @@ function LabelsModal({ product: initial, onClose }: { product: Product; onClose:
   }
 
   const selected = inStock.filter((u) => picked.has(u.id!))
+  const [attach, setAttach] = useState('')
+  const attachLabels = async () => {
+    const serials = attach.split(/[\s,;]+/).filter(Boolean)
+    if (!serials.length) return
+    setBusy(true)
+    try {
+      const r = await attachPrintedLabels(product.id!, serials, user?.id)
+      if (r.added.length) {
+        await logActivity('stock', `Printed labels re-attached: ${product.name}`, { detail: `${r.added.length} labels`, userId: user?.id, userName: user?.name })
+      }
+      const why = r.skipped.slice(0, 3).map((x) => `${x.serial}: ${x.reason}`).join('; ')
+      toast(
+        `${r.added.length} label${r.added.length === 1 ? '' : 's'} attached · stock +${r.added.length}${r.skipped.length ? ` · ${r.skipped.length} skipped (${why})` : ''}`,
+        r.added.length ? undefined : 'error',
+      )
+      setAttach('')
+    } catch (e) {
+      toast(errorText(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <Modal
@@ -1001,6 +1027,27 @@ function LabelsModal({ product: initial, onClose }: { product: Product; onClose:
           {sold.length} labelled unit{sold.length === 1 ? '' : 's'} sold — last on {sold[sold.length - 1].receiptNo}.
         </p>
       )}
+
+      <div className="mt-5 border-t border-hairline pt-4">
+        <label className="label">Attach printed labels</label>
+        <p className="mb-1.5 text-xs text-slate-500">
+          Labels already printed for this part that the system no longer knows (e.g. the part was lost). Scan each label here — they sell again with the same barcode
+          and stock goes up by one per label.
+        </p>
+        <div className="flex flex-wrap items-start gap-2">
+          <textarea
+            className="input min-h-[2.75rem] flex-1 font-mono"
+            data-scan="allow"
+            rows={2}
+            placeholder="Scan labels, one after another…"
+            value={attach}
+            onChange={(e) => setAttach(e.target.value)}
+          />
+          <button className="btn-ghost" disabled={busy || !attach.trim()} onClick={() => void attachLabels()}>
+            <Barcode size={16} /> Attach {attach.split(/[\s,;]+/).filter(Boolean).length || ''}
+          </button>
+        </div>
+      </div>
 
       <div className="mt-5 flex flex-wrap items-end gap-3 border-t border-hairline pt-4">
         <div>

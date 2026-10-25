@@ -15,6 +15,7 @@ import { applyingRemote, db, outboxId, SYNC_TABLES, SYNCED_KV_KEYS, type OutboxE
 import { currentTill, setCurrentTill } from '../db/till'
 import type { Product, StockMovement } from '../db/types'
 import { api, ApiError, hasServerSession } from './api'
+import { trashProducts } from '../db/recovery'
 
 export type SyncState = 'idle' | 'syncing' | 'offline' | 'signed-out' | 'error'
 
@@ -126,6 +127,12 @@ export async function applyChanges(changes: PulledChange[] | WireChange[], last?
   await applyingRemote([...SYNC_TABLES], async () => {
     const pending = new Set((await db.outbox.toCollection().primaryKeys()) as string[])
     const touched = new Set<number>()
+    // Parts deleted on another till: keep a copy (with labels and stock history)
+    // in this till's recycle bin before anything in this batch removes them.
+    const removed = changes
+      .filter((c) => c.t === 'products' && (c.d === null || c.d === undefined) && !pending.has(outboxId(c.t, c.k)))
+      .map((c) => c.k as number)
+    if (removed.length) await trashProducts(removed, 'another till')
     for (const c of changes) {
       if (!SYNCED.has(c.t)) continue
       if (c.t === 'kv' && !SYNCED_KV_KEYS.has(String(c.k))) continue

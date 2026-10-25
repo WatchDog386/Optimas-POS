@@ -10,6 +10,7 @@ import { redownloadAll, syncNow, useSyncStatus } from '../lib/sync'
 import { ago, syncLabel } from '../components/SyncStatus'
 import { currentTill } from '../db/till'
 import { lookupCode } from '../db/units'
+import { findOrphans, listTrash, rebuildOrphans, restoreFromTrash } from '../db/recovery'
 import { saveSettings, useSettings } from '../db/settings'
 import type { PaymentMethod, Settings, User } from '../db/types'
 import { agentPrinters, agentStatus, guessPrinter, loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig, type PrinterSlot } from '../lib/printer'
@@ -1175,6 +1176,92 @@ const SYNC_ROWS: [string, string][] = [
   ['logs', 'Activity log'],
 ]
 
+/** Recycle bin and orphaned labels: bring lost parts back. */
+function RecoveryCard() {
+  const toast = useToast()
+  const { user } = useSession()
+  const trash = useLiveQuery(listTrash, [], [])
+  const orphans = useLiveQuery(findOrphans, [], [])
+  const [busy, setBusy] = useState(false)
+  const run = async (fn: () => Promise<string>) => {
+    setBusy(true)
+    try {
+      toast(await fn())
+    } catch (e) {
+      toast(errorText(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const restore = (ids: number[]) =>
+    run(async () => {
+      const n = await restoreFromTrash(ids)
+      await logActivity('stock', `Restored ${n} deleted part${n === 1 ? '' : 's'}`, { userId: user?.id, userName: user?.name })
+      return `${n} part${n === 1 ? '' : 's'} restored with their labels and stock`
+    })
+
+  return (
+    <Section
+      title="Recover lost parts"
+      desc="Deleted parts are kept here and can be put back with the same barcodes. If parts are missing but their serial labels are still known, they can be rebuilt."
+    >
+      {orphans.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p>
+            <b>{orphans.length}</b> missing part{orphans.length === 1 ? '' : 's'} still {orphans.length === 1 ? 'has' : 'have'} serial labels on this till (
+            {orphans.reduce((a, o) => a + o.units.length, 0)} labels).
+          </p>
+          <button
+            className="btn-dark mt-2"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                const n = await rebuildOrphans(orphans)
+                await logActivity('stock', `Rebuilt ${n} missing part${n === 1 ? '' : 's'} from serial labels`, { userId: user?.id, userName: user?.name })
+                return `${n} part${n === 1 ? '' : 's'} rebuilt — open each in Inventory, enter its name and price, and tick Active`
+              })
+            }
+          >
+            Rebuild {orphans.length} part{orphans.length === 1 ? '' : 's'} from their labels
+          </button>
+        </div>
+      )}
+      {trash.length === 0 ? (
+        <p className="text-sm text-slate-500">The recycle bin is empty. Parts deleted from now on are kept here.</p>
+      ) : (
+        <>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-semibold text-slate-700">Recycle bin ({trash.length})</span>
+            <button className="btn-ghost" disabled={busy} onClick={() => restore(trash.map((e) => e.product.id!))}>
+              Restore all
+            </button>
+          </div>
+          <div className="max-h-72 divide-y divide-hairline overflow-y-auto rounded-lg border border-hairline bg-white">
+            {trash.map((e) => (
+              <div key={`${e.product.id}-${e.deletedAt}`} className="flex items-center gap-3 px-3 py-2 text-sm">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-slate-800">{e.product.name}</div>
+                  <div className="text-xs text-slate-500">
+                    SKU {e.product.sku} · {e.units.filter((u) => u.status === 'in_stock').length} labels · deleted {ago(e.deletedAt)}
+                    {e.deletedBy ? ` by ${e.deletedBy}` : ''}
+                  </div>
+                </div>
+                <button className="btn-ghost" disabled={busy} onClick={() => restore([e.product.id!])}>
+                  Restore
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <p className="mt-3 text-xs text-slate-500">
+        Labels already printed for a part that is gone: recreate the part (same name and price), open its <b>Labels</b> button and use <b>Attach printed labels</b> —
+        scan each label and it sells again with the same barcode.
+      </p>
+    </Section>
+  )
+}
+
 function SyncSettings() {
   const toast = useToast()
   const { user } = useSession()
@@ -1280,6 +1367,8 @@ function SyncSettings() {
           </div>
         </Section>
       )}
+
+      <RecoveryCard />
 
       <Section title="Repair" desc="Only needed if counts above don't line up after a sync.">
         <div className="flex flex-wrap gap-2">
