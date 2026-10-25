@@ -11,7 +11,7 @@ import type { Product, StockUnit } from '../db/types'
 import { money, toCents } from '../lib/money'
 import { download, parseCsv, toCsv } from '../lib/csv'
 import { labelJobs, printLabels } from '../lib/printReceipt'
-import { createUnits, nextProductBarcode, unlabelledCount, writeOffUnits } from '../db/units'
+import { cancelSurplusUnits, createUnits, nextProductBarcode, unlabelledCount, writeOffUnits } from '../db/units'
 import { logActivity } from '../db/logs'
 import { useSession } from '../session'
 import { Badge, Empty, ListPanel, Modal, PageHeader, errorText, useToast } from '../components/ui'
@@ -402,6 +402,11 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
   const imageRef = useRef<HTMLInputElement>(null)
   const set = <K extends keyof Product>(k: K, v: Product[K]) => setP((x) => ({ ...x, [k]: v }))
   const isNew = p.id === undefined
+  // Editing: the stock box can be changed; the difference to the live stock is logged on save.
+  const liveStock = useLiveQuery(async () => (p.id === undefined ? undefined : (await db.products.get(p.id))?.stock), [p.id])
+  const [stockTouched, setStockTouched] = useState(false)
+  const stockNow = liveStock ?? initial.stock ?? 0
+  const stockDelta = !isNew && stockTouched && p.trackStock !== false ? Math.floor(Number(p.stock) || 0) - stockNow : 0
 
   const onImage = (file?: File) => {
     if (!file) return
@@ -456,7 +461,7 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
       if (record.id === undefined) delete record.id
 
       // Save the part, log the opening stock and give every unit its own serial label — atomically.
-      const { id, units } = await db.transaction('rw', [db.products, db.movements, db.units, db.kv], async () => {
+      const { id, units, cancelled } = await db.transaction('rw', [db.products, db.movements, db.units, db.kv], async () => {
         let id: number
         if (isNew) id = (await db.products.add(record)) as number
         else {
@@ -469,15 +474,32 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
           await db.products.update(id, changes)
         }
         let units: StockUnit[] = []
+        let cancelled: string[] = []
+        if (!isNew && stockTouched && record.trackStock !== false) {
+          // Compare with the stock right now (sales may have happened while the form was open).
+          const target = Math.max(0, Math.floor(Number(p.stock) || 0))
+          const current = (await db.products.get(id))?.stock ?? 0
+          const delta = target - current
+          if (delta > 5000) throw new Error('Adding more than 5,000 units — enter it in batches')
+          if (delta !== 0) {
+            await db.products.update(id, { stock: target, updatedAt: now })
+            await db.movements.add({ productId: id, change: delta, reason: 'count', note: `Stock edited ${current} → ${target}`, userId: user?.id, at: now })
+            if (delta > 0) units = await createUnits(id, delta, 'Stock edited')
+          }
+          // Never leave more labels on the shelf than units in stock.
+          cancelled = await cancelSurplusUnits(id, target)
+        }
         if (opening > 0) {
           await db.movements.add({ productId: id, change: opening, reason: 'count', note: 'Opening stock', userId: user?.id, at: now })
           units = await createUnits(id, opening, 'Opening stock')
         }
-        return { id, units }
+        return { id, units, cancelled }
       })
       const saved = (await db.products.get(id)) ?? { ...record, id }
       await logActivity('stock', `${isNew ? 'Part added' : 'Part updated'}: ${saved.name}`, {
-        detail: opening ? `${opening} opening stock · ${units.length} serial labels` : saved.sku,
+        detail: opening
+          ? `${opening} opening stock · ${units.length} serial labels`
+          : [saved.sku, units.length && `+${units.length} labels`, cancelled.length && `${cancelled.length} labels cancelled`].filter(Boolean).join(' · '),
         userId: user?.id,
         userName: user?.name,
       })
@@ -486,12 +508,15 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
         try {
           const outcome = await printLabels(labelJobs(saved, units), settings)
           if (outcome === 'blocked') toast('Part saved. Allow popups to print labels, then use the label button on the part.', 'error')
-          else toast(`Part added · ${units.length} label${units.length === 1 ? '' : 's'} sent to the printer`)
+          else toast(`${isNew ? 'Part added' : 'Part updated'} · ${units.length} ${isNew ? '' : 'new '}label${units.length === 1 ? '' : 's'} sent to the printer`)
         } catch (e) {
           toast(`Part saved, but labels did not print: ${errorText(e)}. Reprint from the label button.`, 'error')
         }
+      } else if (cancelled.length) {
+        const list = cancelled.length <= 6 ? `: ${cancelled.join(', ')}` : ` (newest first, e.g. ${cancelled.slice(-3).join(', ')})`
+        toast(`Part updated · ${cancelled.length} label${cancelled.length === 1 ? '' : 's'} cancelled${list}. Peel those off — they will no longer scan.`)
       } else {
-        toast(isNew ? (units.length ? `Part added with ${units.length} serial labels` : 'Part added') : 'Part updated')
+        toast(isNew ? (units.length ? `Part added with ${units.length} serial labels` : 'Part added') : units.length ? `Part updated with ${units.length} new labels` : 'Part updated')
       }
       onClose()
     } catch (e) {
@@ -551,6 +576,12 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
               <>
                 <Printer size={16} /> Save & print {p.stock} label{p.stock === 1 ? '' : 's'}
               </>
+            ) : stockDelta > 0 && settings.autoPrintLabels ? (
+              <>
+                <Printer size={16} /> Save & print {stockDelta} label{stockDelta === 1 ? '' : 's'}
+              </>
+            ) : stockDelta < 0 ? (
+              `Save & cancel ${-stockDelta} label${stockDelta === -1 ? '' : 's'}`
             ) : (
               'Save part'
             )}
@@ -666,18 +697,29 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
             <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
           </div>
           <div>
-            <label className="label">{isNew ? 'Opening stock' : 'Stock'}</label>
+            <label className="label">{isNew ? 'Opening stock' : 'Stock on hand'}</label>
             <input
               className="input"
               type="number"
               min={0}
-              value={p.stock ?? 0}
-              disabled={!isNew || p.trackStock === false}
-              title={isNew ? '' : 'Use Adjust stock so the change is logged'}
-              onChange={(e) => set('stock', Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+              value={!isNew && !stockTouched ? stockNow : (p.stock ?? 0)}
+              disabled={p.trackStock === false}
+              onChange={(e) => {
+                setStockTouched(true)
+                set('stock', Math.max(0, Math.floor(Number(e.target.value) || 0)))
+              }}
             />
             {isNew && p.trackStock !== false && (
               <span className="text-[10px] text-slate-500">One serial barcode label per unit is generated{settings.autoPrintLabels ? ' and printed' : ''}.</span>
+            )}
+            {!isNew && p.trackStock !== false && (
+              <span className={`text-[10px] ${stockDelta > 0 ? 'text-emerald-700' : stockDelta < 0 ? 'text-red-600' : 'text-slate-500'}`}>
+                {stockDelta > 0
+                  ? `+${stockDelta} — ${stockDelta} new serial label${stockDelta === 1 ? '' : 's'} ${settings.autoPrintLabels ? 'will print' : 'will be created'}.`
+                  : stockDelta < 0
+                    ? `${stockDelta} — the ${-stockDelta} newest label${stockDelta === -1 ? '' : 's'} will be cancelled and stop scanning.`
+                    : `Now ${stockNow}. Change it to add (prints labels) or remove stock.`}
+              </span>
             )}
           </div>
           <div>
@@ -758,7 +800,8 @@ function AdjustModal({ product, onClose }: { product: Product; onClose: () => vo
     try {
       const created = await adjustStock(product.id!, change, mode, user?.id, note || undefined, undefined, change > 0)
       if (mode === 'damage' && picked.length) await writeOffUnits(picked)
-      toast(`Stock ${change > 0 ? '+' : ''}${change} → ${product.stock + change}`)
+      const cancelled = change < 0 ? await cancelSurplusUnits(product.id!, product.stock + change) : []
+      toast(`Stock ${change > 0 ? '+' : ''}${change} → ${product.stock + change}${cancelled.length ? ` · ${cancelled.length} label${cancelled.length === 1 ? '' : 's'} cancelled` : ''}`)
       if (created.length && settings.autoPrintLabels) {
         try {
           const outcome = await printLabels(labelJobs(product, created), settings)

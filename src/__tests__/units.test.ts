@@ -211,3 +211,21 @@ describe('production migration (v2 → v3)', () => {
     await Dexie.delete(name)
   })
 })
+
+describe('lowering stock', () => {
+  it('cancels the newest surplus labels so they no longer scan', async () => {
+    const pads = await bySku('BRK-PAD-F')
+    const first = await createUnits(pads.id!, 3, 'Opening stock')
+    await new Promise((r) => setTimeout(r, 5))
+    const newer = await createUnits(pads.id!, 2, 'Stock edited')
+    const { cancelSurplusUnits } = await import('../db/units')
+    const cancelled = await cancelSurplusUnits(pads.id!, 3)
+    expect(cancelled.sort()).toEqual(newer.map((u) => u.serial).sort())
+    expect(await cancelSurplusUnits(pads.id!, 3)).toEqual([])
+    const products = await db.products.toArray()
+    const scan = await lookupCode(newer[0].serial, products)
+    expect('error' in scan && scan.error).toMatch(/cancelled/)
+    const ok = await lookupCode(first[0].serial, products)
+    expect('product' in ok).toBe(true)
+  })
+})

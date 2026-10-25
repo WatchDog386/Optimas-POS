@@ -74,6 +74,22 @@ export async function writeOffUnits(serials: string[]): Promise<void> {
   })
 }
 
+/**
+ * Stock was lowered: cancel the newest labels on the shelf until no more than
+ * `stock` labelled units remain in stock. Returns the cancelled serials so the
+ * shop can peel those labels off.
+ */
+export async function cancelSurplusUnits(productId: number, stock: number): Promise<string[]> {
+  return db.transaction('rw', db.units, async () => {
+    const units = await db.units.where('productId').equals(productId).filter((u) => u.status === 'in_stock').sortBy('createdAt')
+    const surplus = units.length - Math.max(0, stock)
+    if (surplus <= 0) return []
+    const cancel = units.slice(-surplus)
+    for (const u of cancel) await db.units.update(u.id!, { status: 'cancelled' })
+    return cancel.map((u) => u.serial)
+  })
+}
+
 export type ScanMatch = { product: Product; serial?: string } | { error: string }
 
 /**
@@ -92,6 +108,7 @@ export async function lookupCode(code: string, products: Product[]): Promise<Sca
   if (unit) {
     if (unit.status === 'sold') return { error: `Label ${unit.serial} was already sold on ${unit.receiptNo ?? 'an earlier receipt'}` }
     if (unit.status === 'written_off') return { error: `Label ${unit.serial} was written off as damaged/lost` }
+    if (unit.status === 'cancelled') return { error: `Label ${unit.serial} was cancelled when the stock count was lowered — scan another label` }
     const owner = products.find((p) => p.id === unit.productId)
     if (!owner) return { error: `Label ${unit.serial} belongs to a part that is not active for sale` }
     return { product: owner, serial: unit.serial }

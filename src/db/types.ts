@@ -137,7 +137,8 @@ export interface ParkedSale {
   userId: number
 }
 
-export type UnitStatus = 'in_stock' | 'sold' | 'written_off'
+/** cancelled = label withdrawn because the stock count was lowered. */
+export type UnitStatus = 'in_stock' | 'sold' | 'written_off' | 'cancelled'
 
 /**
  * One physical item on the shelf. Every unit carries its own barcode label
