@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Check, Download, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { useInstall } from '../lib/installPrompt'
 import { db } from '../db/db'
 import { saveSettings, useSettings } from '../db/settings'
 import { createOwner, needsSetup } from '../db/seed'
@@ -88,6 +89,7 @@ function useOnline() {
 function AuthShell({ children }: { children: ReactNode }) {
   const settings = useSettings()
   const online = useOnline()
+  const app = useInstall()
   return (
     <div className="login-easy flex h-full min-h-0 flex-col items-center overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10 text-white">
       <main className="login-enter my-auto w-full max-w-[340px]">
@@ -102,6 +104,14 @@ function AuthShell({ children }: { children: ReactNode }) {
         <span className="max-w-[12rem] truncate">{settings.shopName}</span>
         <span aria-hidden="true">·</span>
         <span>v{APP_VERSION}</span>
+        {app.canInstall && !app.installed && (
+          <>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={app.install} className="inline-flex items-center gap-1 font-normal text-white underline-offset-2 hover:underline">
+              <Download size={12} /> Install app
+            </button>
+          </>
+        )}
       </footer>
     </div>
   )

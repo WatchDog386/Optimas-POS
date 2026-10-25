@@ -1,7 +1,8 @@
 /* Optimas POS — offline app-shell service worker.
    Navigations: network-first (falls back to cached shell when offline).
-   Same-origin assets: cache-first (hashed build files are immutable). */
-const CACHE = 'optimas-shell-v2'
+   Hashed /assets/ files: cache-first (immutable). Other files (manifest,
+   icons, print agent): network-first so updates reach installed apps. */
+const CACHE = 'optimas-shell-v3'
 const SHELL = [
   '/',
   '/index.html',
@@ -52,6 +53,21 @@ self.addEventListener('fetch', (event) => {
           return res
         })
         .catch(() => caches.match('/index.html')),
+    )
+    return
+  }
+
+  if (!url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok && res.type === 'basic') {
+            const copy = res.clone()
+            caches.open(CACHE).then((cache) => cache.put(req, copy))
+          }
+          return res
+        })
+        .catch(() => caches.match(req).then((hit) => hit || Response.error())),
     )
     return
   }

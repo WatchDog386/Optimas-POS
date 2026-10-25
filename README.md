@@ -49,6 +49,19 @@ npm run typecheck
 - **Hardware:** see [docs/HARDWARE.md](docs/HARDWARE.md) for the recommended bundle and setup, including the Xprinter label printer.
 - **Server security:** set `HOST=127.0.0.1` when the server sits behind nginx, and optionally `AUTH_SECRET` (32+ random characters). Without it a signing key is generated and kept in the database.
 
+## Install as an app (desktop and Android)
+
+Optimas installs from the browser — no app store needed.
+
+- **Windows / Mac / Linux / Chromebook:** open https://pos.optimaswifi.co.ke in Chrome or Edge and
+  click **Install app** in the top bar (or on the sign-in page). It gets its own window, a
+  Start-menu / Dock entry and a desktop shortcut. If the button isn't shown, use the browser's
+  install icon at the right of the address bar (Edge: ⋯ → Apps → Install). Safari on Mac: File → Add to Dock.
+- **Android:** Chrome → ⋮ → Install app.
+
+Right-click the installed icon for shortcuts to *New sale*, *Inventory* and *Add a part*.
+Updates arrive automatically on the next launch after `deploy.sh`.
+
 ## Architecture
 
 ```

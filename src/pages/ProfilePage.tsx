@@ -239,11 +239,7 @@ export default function ProfilePage() {
               Install app
             </button>
           )}
-          {!appInstall.installed && !appInstall.canInstall && appInstall.isIOS && (
-            <p className="mt-4 px-1 text-xs leading-relaxed text-slate-400">
-              On iPhone: tap <b className="text-slate-500">Share</b> → <b className="text-slate-500">Add to Home Screen</b> to install the app.
-            </p>
-          )}
+          {!appInstall.installed && !appInstall.canInstall && <p className="mt-4 px-1 text-xs leading-relaxed text-slate-400">{appInstall.hint}</p>}
           {appInstall.installed && (
             <p className="mt-4 flex items-center gap-1.5 px-1 text-xs text-slate-400">
               <Badge tone="green">Installed</Badge>
@@ -366,15 +362,19 @@ export default function ProfilePage() {
                     <Download size={16} className="text-brand-600" /> Install on this desktop
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    Installs the till as a desktop app with its own window and Start-menu entry.
+                    Installs Optimas as an app on this computer (Windows, Mac, Linux, Chromebook) — its own window, Start-menu / Dock icon and desktop shortcut. Android phones and tablets install the same way.
                   </p>
-                  <button
-                    className="btn-primary mt-3 w-full"
-                    disabled={!appInstall.canInstall || appInstall.installed}
-                    onClick={appInstall.install}
-                  >
-                    {appInstall.installed ? 'Installed' : appInstall.canInstall ? 'Install app' : 'Already available'}
-                  </button>
+                  {appInstall.installed ? (
+                    <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
+                      <Badge tone="green">Installed</Badge> Open it from the Start menu, taskbar or desktop.
+                    </p>
+                  ) : appInstall.canInstall ? (
+                    <button className="btn-primary mt-3 w-full" onClick={appInstall.install}>
+                      Install app
+                    </button>
+                  ) : (
+                    <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-200">{appInstall.hint}</p>
+                  )}
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-2 text-sm font-bold text-slate-800">

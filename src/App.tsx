@@ -1,6 +1,7 @@
 import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import {
   Bell,
+  Download,
   Bike,
   ClipboardList,
   BarChart3,
@@ -28,6 +29,7 @@ import { useSession, type Permission } from './session'
 import { useSyncStatus } from './lib/sync'
 import { syncLabel } from './components/SyncStatus'
 import { useSettings } from './db/settings'
+import { useInstall } from './lib/installPrompt'
 import LoginPage, { PinChangeGate } from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
@@ -123,6 +125,22 @@ function useOnline() {
 }
 
 /** "Synced · 2 min ago" / "3 waiting" beside Online — opens Settings → Sync for the owner. */
+/** Shows only while the browser is offering to install the app (desktop or Android). */
+function InstallButton() {
+  const app = useInstall()
+  if (app.installed || !app.canInstall) return null
+  return (
+    <button
+      type="button"
+      onClick={app.install}
+      className="mr-1 hidden items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/25 sm:inline-flex"
+      title="Install Optimas POS as an app on this computer"
+    >
+      <Download size={15} /> Install app
+    </button>
+  )
+}
+
 function SyncNote() {
   const s = useSyncStatus()
   const { can } = useSession()
@@ -244,6 +262,7 @@ export default function App() {
               {online ? 'Online' : 'Offline'}
             </span>
             <SyncNote />
+            <InstallButton />
             <NavLink
               to="/shift"
               className={`mr-1 hidden text-sm font-medium md:inline ${shift ? 'text-white' : 'text-red-300'}`}

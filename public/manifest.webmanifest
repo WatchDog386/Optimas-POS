@@ -6,12 +6,73 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "launch_handler": { "client_mode": "focus-existing" },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
   "background_color": "#092a36",
   "theme_color": "#092a36",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "New sale",
+      "short_name": "Sell",
+      "url": "/sell",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "url": "/inventory",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Add a part",
+      "short_name": "New part",
+      "url": "/inventory?new=1",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
