@@ -7,6 +7,8 @@ import { createPurchaseOrder, draftReorder, receivePurchaseOrder } from '../db/p
 import type { Product, PurchaseOrder, PurchaseOrderLine, PurchaseOrderStatus, Supplier } from '../db/types'
 import { money, toCents } from '../lib/money'
 import { useSession } from '../session'
+import { useSettings } from '../db/settings'
+import { labelJobs, printLabels } from '../lib/printReceipt'
 import { Badge, Empty, ListPanel, Modal, PageHeader, Segmented, errorText, useToast } from '../components/ui'
 
 const TONE: Record<PurchaseOrderStatus, 'slate' | 'blue' | 'amber' | 'green' | 'red'> = {
@@ -160,6 +162,7 @@ function SupplierModal({ supplier, onClose }: { supplier: Partial<Supplier>; onC
 function PurchaseOrderModal({ po, suppliers, onClose }: { po?: PurchaseOrder; suppliers: Supplier[]; onClose: () => void }) {
   const { user } = useSession()
   const toast = useToast()
+  const settings = useSettings()
   const products = useLiveQuery(() => db.products.filter((p) => p.trackStock).sortBy('name'), [], [] as Product[])
   const byId = Object.fromEntries(products.map((p) => [p.id, p]))
   const [supplierId, setSupplierId] = useState(po?.supplierId)
@@ -195,9 +198,20 @@ function PurchaseOrderModal({ po, suppliers, onClose }: { po?: PurchaseOrder; su
   const doReceive = async () => {
     try {
       if (po!.status === 'draft') await db.purchaseOrders.update(po!.id!, { lines })
-      await receivePurchaseOrder(po!.id!, receive, user?.id)
-      toast('Stock received')
+      const units = await receivePurchaseOrder(po!.id!, receive, user?.id)
+      toast(units.length ? `Stock received · ${units.length} serial labels created` : 'Stock received')
       onClose()
+      if (units.length && settings.autoPrintLabels) {
+        // One label per received unit, grouped by part.
+        const products = await db.products.bulkGet([...new Set(units.map((u) => u.productId))])
+        const jobs = products.flatMap((p) => (p ? labelJobs(p, units.filter((u) => u.productId === p.id)) : []))
+        try {
+          const outcome = await printLabels(jobs, settings)
+          if (outcome === 'blocked') toast('Allow popups to print the labels, or reprint them from Inventory', 'error')
+        } catch (e) {
+          toast(`Labels did not print: ${errorText(e)} — reprint from Inventory`, 'error')
+        }
+      }
     } catch (e) {
       toast(errorText(e), 'error')
     }

@@ -1,4 +1,4 @@
-import type { Customer, Product, Sale, Settings } from '../db/types'
+import type { Customer, Sale, Settings } from '../db/types'
 
 // Minimal ESC/POS command builder. Works with the vast majority of 58/80mm thermal
 // printers (Epson TM series, Xprinter, Rongta, HPRT, Sunmi built-ins, etc.).
@@ -59,13 +59,34 @@ export class EscPos {
     this.bytes.push(ESC, 0x70, 0x00, 0x19, 0xfa)
     return this
   }
-  /** Print a CODE128 barcode (alphanumeric, works with most thermal/label printers). */
-  barcode(code: string, opts: { height?: number } = {}) {
-    const h = Math.min(Math.max(opts.height ?? 40, 1), 255)
-    this.bytes.push(GS, 0x68, h) // GS h barcode height
-    this.bytes.push(GS, 0x6b, 73) // GS k 73 = CODE128
-    for (const ch of code) this.bytes.push(ch.charCodeAt(0))
-    this.bytes.push(0) // NUL terminator
+  /**
+   * Print a CODE128 barcode with the human-readable text underneath.
+   * Uses function B of GS k (m = 73), which needs an explicit length byte and a
+   * code-set prefix ({B for text, {C for even-length digit strings).
+   */
+  barcode(code: string, opts: { height?: number; moduleWidth?: number } = {}) {
+    const clean = code.replace(/[^\x20-\x7e]/g, '')
+    if (!clean) return this
+    const h = Math.min(Math.max(opts.height ?? 60, 1), 255)
+    const mw = Math.min(Math.max(opts.moduleWidth ?? 2, 2), 6)
+    this.bytes.push(GS, 0x68, h) // GS h — height in dots
+    this.bytes.push(GS, 0x77, mw) // GS w — module width
+    this.bytes.push(GS, 0x48, 2) // GS H — HRI below
+    this.bytes.push(GS, 0x66, 0) // GS f — HRI font A
+    let data: number[]
+    if (/^\d+$/.test(clean) && clean.length % 2 === 0) {
+      data = [0x7b, 0x43] // {C
+      for (let i = 0; i < clean.length; i += 2) data.push(Number(clean.slice(i, i + 2)))
+    } else {
+      data = [0x7b, 0x42] // {B
+      for (const ch of clean) {
+        const c = ch.charCodeAt(0)
+        if (c === 0x7b) data.push(0x7b, 0x7b) // a literal { is sent as {{
+        else data.push(c)
+      }
+    }
+    this.bytes.push(GS, 0x6b, 73, Math.min(255, data.length), ...data.slice(0, 255))
+    this.bytes.push(0x0a)
     return this
   }
   build(): Uint8Array {
@@ -125,14 +146,22 @@ export function receiptBytes(
   return p.build()
 }
 
-export function barcodeLabelBytes(product: Product, settings: Settings): Uint8Array {
+/** Labels on a receipt-type printer: one block per unit, cut between labels. */
+export function escposLabelBytes(
+  jobs: { name: string; sku: string; code: string; price?: number }[],
+  settings: Pick<Settings, 'paperWidth' | 'shopName' | 'currency' | 'labelShowPrice' | 'labelShowShopName'>,
+): Uint8Array {
   const cols = columnsFor(settings.paperWidth)
   const p = new EscPos(cols).init()
-  p.align('center')
-  p.bold(true).size(true).line(product.name.slice(0, cols)).size(false).bold(false)
-  p.line(product.sku)
-  p.barcode(product.barcode || product.sku, { height: 50 })
-  p.feed(2).cut()
+  for (const job of jobs) {
+    p.align('center')
+    if (settings.labelShowShopName && settings.shopName) p.line(settings.shopName.slice(0, cols))
+    p.bold(true).line(job.name.slice(0, cols)).bold(false)
+    if (settings.labelShowPrice && job.price) p.bold(true).size(true).line(`${settings.currency} ${amt(job.price)}`).size(false).bold(false)
+    p.barcode(job.code, { height: 60, moduleWidth: settings.paperWidth === 58 ? 2 : 3 })
+    p.line(`SKU ${job.sku}`)
+    p.feed(2).cut()
+  }
   return p.build()
 }
 

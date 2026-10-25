@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Download, History, MonitorSpeaker, Power, ShieldCheck, UserRound } from 'lucide-react'
 import { db } from '../db/db'
+import { pushUsers } from '../lib/api'
 import { useSession } from '../session'
 import type { LogEntry, User } from '../db/types'
 import { Badge, PageHeader, errorText, useToast } from '../components/ui'
@@ -118,6 +119,7 @@ export default function ProfilePage() {
         phone: draft.phone.trim() || undefined,
         about: draft.about.trim() || undefined,
       })
+      void pushUsers()
       toast('Profile updated')
       setDirty(false)
     } catch (e) {
@@ -250,7 +252,7 @@ export default function ProfilePage() {
           )}
 
           <p className="mt-4 hidden px-1 text-xs leading-relaxed text-slate-400 md:block">
-            Signed in with your {user.pin.length}-digit PIN. Profile details stay on this device.
+            Signed in with your private PIN. Profile details stay on this device.
           </p>
         </nav>
 
@@ -323,7 +325,7 @@ export default function ProfilePage() {
                 </Field>
                 <Field label="PIN">
                   <div className="flex items-center gap-2">
-                    <input className="input font-mono tracking-[0.4em]" value={'•'.repeat(user.pin.length)} disabled readOnly />
+                    <input className="input font-mono tracking-[0.4em]" value="••••" disabled readOnly />
                     <button className="btn-ghost shrink-0" onClick={() => setSection('security')}>
                       Change
                     </button>

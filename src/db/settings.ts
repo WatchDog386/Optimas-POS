@@ -23,6 +23,15 @@ export const DEFAULT_SETTINGS: Settings = {
   notifyLowStock: true,
   notifyOwing: true,
   notifyJobUpdates: true,
+  autoLockMinutes: 10,
+  labelLanguage: 'tspl',
+  labelWidthMm: 40,
+  labelHeightMm: 30,
+  labelGapMm: 2,
+  labelDensity: 8,
+  labelShowPrice: true,
+  labelShowShopName: true,
+  autoPrintLabels: true,
 }
 
 export async function getSettings(): Promise<Settings> {

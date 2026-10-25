@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
-import { ChevronsLeft, ChevronsRight, Minus, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react'
+import { Bike, ChevronsLeft, ChevronsRight, MapPin, Minus, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { completeSale } from '../db/sales'
+import { lookupCode } from '../db/units'
+import { logActivity } from '../db/logs'
 import { openShift } from '../db/shifts'
 import type { Customer, Product, Sale, SaleLine } from '../db/types'
 import { computeTotals, lineTotal } from '../lib/cart'
@@ -15,7 +17,7 @@ import { useSession } from '../session'
 import { Modal, useToast } from '../components/ui'
 import PaymentModal from '../components/PaymentModal'
 import ReceiptModal from '../components/ReceiptModal'
-import CustomerPicker from '../components/CustomerPicker'
+import CustomerPicker, { CustomerForm } from '../components/CustomerPicker'
 import { CART_KEY, lineFromProduct, matchesSearch, OpenShiftModal } from './SellPage'
 
 interface CartState {
@@ -32,7 +34,7 @@ function loadCart(): CartState {
   }
 }
 
-type Dialog = 'pay' | 'customer' | 'discount' | 'custom' | 'parked' | 'shift' | { line: number } | null
+type Dialog = 'pay' | 'customer' | 'editCustomer' | 'discount' | 'custom' | 'parked' | 'shift' | { line: number } | null
 
 export default function StaffDashboardPage() {
   const settings = useSettings()
@@ -51,6 +53,7 @@ export default function StaffDashboardPage() {
   const [categoryPage, setCategoryPage] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [discountInput, setDiscountInput] = useState<string | null>(null)
+  const [bike, setBike] = useState<string>('all')
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -93,6 +96,15 @@ export default function StaffDashboardPage() {
         .slice(0, 5),
     [todaySales, user],
   )
+  const myToday = useMemo(() => {
+    const mine = todaySales.filter((s) => s.userId === user?.id && s.status !== 'voided')
+    const sales = mine.filter((s) => s.total > 0)
+    return {
+      count: sales.length,
+      takings: mine.reduce((sum, s) => sum + s.total, 0),
+      items: sales.reduce((sum, s) => sum + s.lines.reduce((n, l) => n + l.qty, 0), 0),
+    }
+  }, [todaySales, user])
   const lowStockCount = useMemo(
     () => products.filter((p) => p.trackStock && p.stock <= p.reorderLevel).length,
     [products],
@@ -102,14 +114,15 @@ export default function StaffDashboardPage() {
     const term = query.trim()
     return products
       .filter((p) => category === 'all' || p.categoryId === category)
-      .filter((p) => !term || matchesSearch(p, term))
+      .filter((p) => bike === 'all' || p.fitment.length === 0 || p.fitment.includes(bike))
+      .filter((p) => !term || matchesSearch(p, term) || p.fitment.some((f) => f.toLowerCase().includes(term.toLowerCase())))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [products, category, query])
+  }, [products, category, query, bike])
 
   const totals = computeTotals(cart.lines, cart.discount, settings.vatRate, settings.pricesIncludeVat)
   const categoryPages = Math.max(1, Math.ceil(categories.length / 2))
   const visibleCategories = categories.slice(categoryPage * 2, categoryPage * 2 + 2)
-  const isLookingUp = query.trim().length > 0 || category !== 'all'
+  const isLookingUp = query.trim().length > 0 || category !== 'all' || bike !== 'all'
 
   useEffect(() => {
     setCategoryPage((page) => Math.min(page, categoryPages - 1))
@@ -118,28 +131,42 @@ export default function StaffDashboardPage() {
   const qtyInCart = (productId?: number) =>
     cart.lines.filter((l) => l.productId === productId).reduce((sum, l) => sum + l.qty, 0)
 
-  const findExact = (code: string) => {
-    const value = code.trim().toLowerCase()
-    return products.find(
-      (p) => p.barcode?.toLowerCase() === value || p.sku.toLowerCase() === value || p.partNumber?.toLowerCase() === value,
-    )
-  }
-
-  const addProduct = (product: Product) => {
+  const addProduct = (product: Product, serial?: string) => {
+    if (serial && cart.lines.some((line) => line.serial === serial)) {
+      toast(`Label ${serial} is already in this sale`, 'error')
+      return
+    }
     const inCart = qtyInCart(product.id)
     if (product.trackStock && product.stock - inCart <= 0) {
       toast(`${product.name}: no stock recorded — sale will go negative`, 'error')
     }
     setCart((current) => {
-      const index = product.serialized ? -1 : current.lines.findIndex((line) => line.productId === product.id && !line.serial)
+      const index = product.serialized || serial ? -1 : current.lines.findIndex((line) => line.productId === product.id && !line.serial)
       if (index >= 0) {
         return {
           ...current,
           lines: current.lines.map((line, lineIndex) => (lineIndex === index ? { ...line, qty: line.qty + 1 } : line)),
         }
       }
-      return { ...current, lines: [...current.lines, lineFromProduct(product)] }
+      return { ...current, lines: [...current.lines, lineFromProduct(product, serial)] }
     })
+    // Batteries, controllers… without a scanned label: ask for the serial now.
+    if (product.serialized && !serial) setTimeout(() => setDialog({ line: cart.lines.length }), 0)
+  }
+
+  /** Scan or Enter: exact barcode / SKU / OEM / unit label, else the single search hit. */
+  const addByCode = async (code: string, fallback?: Product) => {
+    const match = await lookupCode(code, products)
+    if ('product' in match) {
+      addProduct(match.product, match.serial)
+      return true
+    }
+    if (fallback) {
+      addProduct(fallback)
+      return true
+    }
+    toast(match.error, 'error')
+    return false
   }
 
   const applyDiscountPercent = (percent: number) => {
@@ -151,9 +178,7 @@ export default function StaffDashboardPage() {
 
   useBarcodeScanner(
     (code) => {
-      const product = findExact(code)
-      if (product) addProduct(product)
-      else toast(`No product with barcode ${code}`, 'error')
+      void addByCode(code).then((ok) => ok && setQuery(''))
     },
     dialog === null && receipt === null,
   )
@@ -175,7 +200,8 @@ export default function StaffDashboardPage() {
         placeOrder()
       } else if (event.key === 'F6') {
         event.preventDefault()
-        clear()
+        if (cart.lines.length) void park()
+        else clear()
       } else if (event.key === 'F8') {
         event.preventDefault()
         void park()
@@ -196,6 +222,20 @@ export default function StaffDashboardPage() {
 
   const clear = () => {
     setCart({ lines: [], discount: 0 })
+    setBike('all')
+  }
+
+  /** Void the open sale — confirmed and written to the activity log for shrinkage checks. */
+  const voidSale = async () => {
+    if (!cart.lines.length) return
+    if (!confirm(`Void this sale of ${money(totals.total, settings.currency)}? The items will be removed.`)) return
+    await logActivity('sale', 'Sale voided before payment', {
+      detail: `${totals.itemCount} item(s) · ${money(totals.total, settings.currency)} · ${cart.lines.map((l) => `${l.qty}× ${l.name}`).join(', ').slice(0, 300)}`,
+      userId: user?.id,
+      userName: user?.name,
+    })
+    clear()
+    toast('Sale voided')
   }
 
   const park = async () => {
@@ -256,14 +296,15 @@ export default function StaffDashboardPage() {
   }
 
   const runSearch = () => {
-    const product = findExact(query) ?? (visible.length === 1 ? visible[0] : undefined)
-    if (product) {
-      addProduct(product)
-      setQuery('')
-      searchRef.current?.focus()
-    } else {
-      searchRef.current?.focus()
-    }
+    searchRef.current?.focus()
+    if (!query.trim()) return
+    void addByCode(query, visible.length === 1 ? visible[0] : undefined).then((ok) => ok && setQuery(''))
+  }
+
+  const pickCustomer = (entry?: Customer) => {
+    setCart((current) => ({ ...current, customerId: entry?.id }))
+    // Show only parts that fit the customer's bike.
+    if (entry?.bikeModel && settings.bikeModels.includes(entry.bikeModel)) setBike(entry.bikeModel)
   }
 
   return (
@@ -306,7 +347,7 @@ export default function StaffDashboardPage() {
               id="customer-select"
               className="pos-customer-select"
               value={cart.customerId ?? ''}
-              onChange={(event) => setCart((current) => ({ ...current, customerId: event.target.value ? Number(event.target.value) : undefined }))}
+              onChange={(event) => pickCustomer(customers.find((c) => c.id === Number(event.target.value)))}
             >
               <option value="">Walk-in customer</option>
               {customers.map((entry) => (
@@ -325,8 +366,8 @@ export default function StaffDashboardPage() {
               <button className="pos-register-action pos-register-action-green" onClick={() => setDialog('customer')}>
                 Find Customer
               </button>
-              <button className="pos-register-action pos-register-action-red" onClick={() => setDialog('customer')}>
-                Add Customer
+              <button className="pos-register-action pos-register-action-red" onClick={() => setDialog('editCustomer')} disabled={!customer}>
+                Edit Customer
               </button>
             </div>
           </div>
@@ -481,9 +522,33 @@ export default function StaffDashboardPage() {
           </div>
 
           <div className="pos-product-information">
-            <strong>Product Information</strong>
-            <p>{isLookingUp ? `${visible.length} matching product${visible.length === 1 ? '' : 's'} available.` : 'Search by part number, SKU, OEM or barcode.'}</p>
-            <p>{category === 'all' ? 'Choose a category or start typing to look up stock.' : 'Use the product list below to add a part.'}</p>
+            <strong>My shift today</strong>
+            <div className="pos-shift-stats">
+              <span>
+                <b>{myToday.count}</b>
+                <small>sales</small>
+              </span>
+              <span>
+                <b>{myToday.items}</b>
+                <small>items</small>
+              </span>
+              <span>
+                <b>{money(myToday.takings, '')}</b>
+                <small>{settings.currency} taken</small>
+              </span>
+            </div>
+            <label className="pos-fits-filter">
+              <Bike size={16} />
+              <select value={bike} onChange={(event) => setBike(event.target.value)} aria-label="Show parts that fit this bike">
+                <option value="all">All bikes</option>
+                {settings.bikeModels.map((model) => (
+                  <option key={model} value={model}>
+                    Fits {model}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!shift && <p>No shift open — you'll be asked for the opening float on the first sale.</p>}
             {lowStockCount > 0 && <p>{lowStockCount} part{lowStockCount === 1 ? '' : 's'} at or below reorder level — see the Products page.</p>}
           </div>
 
@@ -494,7 +559,7 @@ export default function StaffDashboardPage() {
             <button className="pos-register-action" onClick={() => setDialog('customer')}>
               Add customer
             </button>
-            <button className="pos-register-action" onClick={() => setDialog('customer')} disabled={!customer}>
+            <button className="pos-register-action" onClick={() => setDialog('editCustomer')} disabled={!customer}>
               Edit customer
             </button>
             <button
@@ -528,16 +593,33 @@ export default function StaffDashboardPage() {
                 {visible.length === 0 ? (
                   <p>No parts match this search.</p>
                 ) : (
-                  visible.slice(0, 7).map((product) => (
-                    <button key={product.id} onClick={() => addProduct(product)}>
-                      <span>
-                        <b>{product.name}</b>
-                        <small>{product.sku}{product.trackStock ? ` · ${product.stock} in stock` : ''}</small>
-                      </span>
-                      <strong>{money(product.price, settings.currency)}</strong>
-                      <Plus size={15} />
-                    </button>
-                  ))
+                  visible.slice(0, 40).map((product) => {
+                    const left = product.stock - qtyInCart(product.id)
+                    return (
+                      <button key={product.id} onClick={() => addProduct(product)}>
+                        <span>
+                          <b>{product.name}</b>
+                          <small>
+                            {product.sku}
+                            {product.partNumber && product.partNumber !== product.sku ? ` · OEM ${product.partNumber}` : ''}
+                            {product.location ? (
+                              <>
+                                {' · '}
+                                <MapPin size={11} className="pos-inline-icon" />
+                                {product.location}
+                              </>
+                            ) : null}
+                            {product.fitment.length ? ` · fits ${product.fitment.join(', ')}` : ''}
+                          </small>
+                        </span>
+                        {product.trackStock && (
+                          <em className={`pos-stock-chip ${left <= 0 ? 'is-out' : left <= product.reorderLevel ? 'is-low' : ''}`}>{left <= 0 ? 'Out' : `${left} left`}</em>
+                        )}
+                        <strong>{money(product.price, settings.currency)}</strong>
+                        <Plus size={15} />
+                      </button>
+                    )
+                  })
                 )}
               </div>
             ) : (
@@ -585,10 +667,10 @@ export default function StaffDashboardPage() {
         <button className="pos-terminal-action" onClick={() => navigate('/sales')}>
           <span>Return</span>
         </button>
-        <button className="pos-terminal-action pos-terminal-new" onClick={clear}>
+        <button className="pos-terminal-action pos-terminal-new" onClick={() => (cart.lines.length ? void park() : clear())} title="Parks the current sale and starts a new one">
           <span>New Sale</span><small>(F6)</small>
         </button>
-        <button className="pos-terminal-action pos-terminal-void" onClick={clear} disabled={!cart.lines.length}>
+        <button className="pos-terminal-action pos-terminal-void" onClick={() => void voidSale()} disabled={!cart.lines.length}>
           <span>Void</span>
         </button>
         <button className="pos-terminal-action" onClick={() => navigate('/shift')}>
@@ -612,10 +694,22 @@ export default function StaffDashboardPage() {
         <CustomerPicker
           onClose={() => setDialog(null)}
           onPick={(entry?: Customer) => {
-            setCart((current) => ({ ...current, customerId: entry?.id }))
+            pickCustomer(entry)
             setDialog(null)
           }}
         />
+      )}
+      {dialog === 'editCustomer' && customer && (
+        <Modal title={`Edit ${customer.name}`} onClose={() => setDialog(null)}>
+          <CustomerForm
+            initial={customer}
+            onCancel={() => setDialog(null)}
+            onSaved={(entry) => {
+              pickCustomer(entry)
+              setDialog(null)
+            }}
+          />
+        </Modal>
       )}
       {dialog === 'discount' && (
         <DiscountModal

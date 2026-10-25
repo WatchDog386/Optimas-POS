@@ -1,4 +1,4 @@
-﻿import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import {
   Bell,
   BarChart3,
@@ -24,8 +24,7 @@ import {
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSession, type Permission } from './session'
 import { useSettings } from './db/settings'
-import LoginPage from './pages/LoginPage'
-import LoadingScreen from './components/LoadingScreen'
+import LoginPage, { PinChangeGate } from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
 import StaffProductsPage from './pages/StaffProductsPage'
@@ -125,20 +124,11 @@ export default function App() {
   const { user, shift, lock, can } = useSession()
   const settings = useSettings()
   const online = useOnline()
-  const [booting, setBooting] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
 
-  // Brief loading screen after a successful login, before the dashboard shell.
-  useEffect(() => {
-    if (!user) return
-    setBooting(true)
-    const t = setTimeout(() => setBooting(false), 5000)
-    return () => clearTimeout(t)
-  }, [user])
-
   if (!user) return <LoginPage />
-  if (booting) return <LoadingScreen />
+  if (user.mustChangePin) return <PinChangeGate user={user} />
 
   const isOwner = can('users')
   const isCashier = user.role === 'cashier'

@@ -153,15 +153,35 @@ driver. Ask the supplier to *demonstrate* the Enter suffix before you pay.
 
 ### 2.4 Label printer (strongly recommended — buy it)
 
-Most spare parts arrive with no barcode at all. Without printed SKU labels the scanner is
-useless and the whole "tap-to-add" flow dies.
+Most spare parts arrive with no barcode at all. The POS gives **every unit its own serial
+barcode**: enter a part with an opening stock of 12 and 12 labels print — same part name,
+price and SKU on each, a different serial on each. Scanning a label at the till sells that
+exact unit; a label that was already sold (copied or re-stuck) is refused.
 
 | Model | KSh (approx.) | Spec |
 |---|---|---|
-| **Xprinter XB-330B** | **9,999 – 11,599** | Direct thermal, USB, ESC/POS, 40×30 mm / 58×40 mm labels. |
+| **Xprinter XB-330B / XP-365B** | **9,999 – 11,599** | Direct thermal, 203 dpi, USB (365B: USB + LAN), **TSPL**, 20–80 mm labels. |
 | Xprinter XP-470B | 16,000 – 18,560 | 4-inch (108 mm) roll, USB. Use for big boxes and tyres. |
 
-Buy **one** to start. Print a SKU barcode for every part as it is racked.
+Buy **one** to start. Xprinter label models speak **TSPL**; choose *TSPL — Xprinter label
+printer* in the app. (Receipt-type printers printing labels on a roll use ESC/POS.)
+
+**Setting it up**
+
+1. Load a 40 × 30 mm direct-thermal roll (gap labels). Switch on while holding **FEED** until
+   it beeps — the printer measures the label and gap.
+2. Connect it: **USB** (Chrome/Edge, *Settings → Hardware → Barcode label printer → USB →
+   Pair*; on Windows install the WinUSB driver for it once with Zadig), **LAN** (XP-365B and
+   other network models: *Network*, printer IP, port 9100) or **Bluetooth/serial**.
+3. Pick the label size (presets for 40×30, 50×30, 50×25, 38×25, 30×20, 60×40 mm or custom),
+   darkness, and whether the price and shop name print.
+4. Press **Print test label**. If labels drift, press **Calibrate gap sensor**.
+5. Leave *Print labels automatically when stock is added* ticked: labels then print when a
+   part is created with opening stock, when a purchase order is received and when stock is
+   added by an adjustment. Reprint any time from the barcode button on the part in Inventory.
+
+Serials are in-store EAN-13 numbers (prefix 21 + till number + counter) printed as Code 128,
+so every USB/Bluetooth scanner reads them without configuration.
 
 ### 2.5 Optional
 
@@ -272,8 +292,8 @@ D. BARCODE SCANNER
         Budget: E-POS ES2D-2D (KSh 8,000)
 
 E. LABEL PRINTER
-   6. Direct-thermal label printer, USB, ESC/POS, for 40x30 mm / 58x40 mm labels
-      - Preferred: Xprinter XB-330B (KSh 9,999-11,599)
+   6. Direct-thermal label printer, USB (LAN optional), TSPL, for 40x30 mm / 58x40 mm labels
+      - Preferred: Xprinter XB-330B / XP-365B (KSh 9,999-11,599)
 
 F. POWER AND NETWORK
    7. UPS 1000 VA / 600 W line-interactive with AVR, 4+ outlets
@@ -322,8 +342,9 @@ TOTAL ESTIMATE REQUESTED: KSh ____________  (excluding the till terminal)
 
 1. **Plug the till into the switch, the switch into the router.** Confirm the till gets an IP.
 2. **Install Node 22 LTS, Chrome, then the app.** `npm install && npm run build`.
-3. **Start the server** and open `http://localhost:8787` — the login screen appears.
-   Default PINs: owner `1234`, cashier `0000`. Change them in *Settings → Users*.
+3. **Start the server** and open `http://localhost:8787` — the *Set up your till* screen
+   appears. Enter the shop name, the owner's name and a private 4–6 digit PIN. Add cashiers
+   and managers in *Staff*; each picks their own PIN at first sign-in.
 4. **Install it as an app** (Chrome menu → *Install Optimas POS*).
 5. **Printer:** plug the printer into the switch. Hold **FEED while powering on** → the
    self-test page prints the IP address. In the POS: *Settings → Hardware → Receipt printer →
@@ -334,8 +355,8 @@ TOTAL ESTIMATE REQUESTED: KSh ____________  (excluding the till terminal)
    Test cash drawer*. Tick *Open cash drawer on cash sales*.
 8. **Scanner:** plug into USB-A. Scan a barcode — the code should appear in the search box
    with no driver install. Scan a catalogue barcode → the part is added to the sale.
-9. **Label printer:** install the vendor driver, load a 40×30 mm roll, print one test label
-   and stick it on a part.
+9. **Label printer:** follow *2.4 → Setting it up*: load a 40×30 mm roll, pair it in
+   *Settings → Hardware → Barcode label printer*, print a test label and scan it at the till.
 10. **M-Pesa:** *Settings → Payments*. Set the mode to STK push once the server `.env` has
     the gateway credentials (`docs/MPESA.md`), then send a KSh 1 test prompt to your own phone.
 11. **UPS:** power-cut test — pull the mains plug and confirm the till, the printer and the

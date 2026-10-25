@@ -4,7 +4,9 @@ import { Plus, Power, Search, ShieldCheck, UserRound, Users } from 'lucide-react
 import { db } from '../db/db'
 import { logActivity } from '../db/logs'
 import type { Role, User } from '../db/types'
-import { PERMS, PIN_LENGTH, useSession, type Permission } from '../session'
+import { PERMS, PIN_MAX, PIN_MIN, useSession, type Permission } from '../session'
+import { hashPin, weakPinReason } from '../lib/pinHash'
+import { pushUsers } from '../lib/api'
 import { Modal, errorText, useToast } from '../components/ui'
 
 const PERM_COLS: { key: Permission; label: string }[] = [
@@ -55,6 +57,7 @@ export default function StaffPage() {
       return toast('Keep at least one active owner', 'error')
     }
     await db.users.update(u.id!, { active: !u.active })
+    void pushUsers()
     await logActivity('user', `${u.name} ${u.active ? 'deactivated' : 'reactivated'}`, { userId: me?.id, userName: me?.name })
     toast(`${u.name} ${u.active ? 'deactivated' : 'reactivated'}`)
   }
@@ -109,7 +112,7 @@ export default function StaffPage() {
                 <tr>
                   <th className="px-4 py-3">Staff member</th>
                   <th className="px-3 py-3">Role</th>
-                  <th className="px-3 py-3">Till PIN</th>
+                  <th className="px-3 py-3">Last sign-in</th>
                   <th className="px-3 py-3 text-right">Sales · 30d</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Access</th>
@@ -128,7 +131,7 @@ export default function StaffPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3"><RoleTag role={u.role} /></td>
-                    <td className="px-3 py-3 font-mono text-sm tracking-[0.22em] text-mc-muted">{'•'.repeat(u.pin.length)}</td>
+                    <td className="px-3 py-3 text-xs text-mc-muted">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' }) : 'Never'}{u.mustChangePin && <span className="ml-1.5 rounded bg-mc-warn-soft px-1.5 py-0.5 font-semibold text-amber-800">PIN reset pending</span>}</td>
                     <td className="px-3 py-3 text-right text-sm font-semibold tabular-nums text-mc-body">{(salesByUser[u.id ?? -1] ?? 0).toLocaleString('en-KE')}</td>
                     <td className="px-3 py-3"><span className={`mc-pill ${u.active ? 'bg-mc-ok-soft text-green-800' : 'bg-slate-100 text-slate-500'}`}><span className={`h-1.5 w-1.5 rounded-full ${u.active ? 'bg-mc-ok' : 'bg-slate-400'}`} />{u.active ? 'Active' : 'Disabled'}</span></td>
                     <td className="px-4 py-3 text-right">
@@ -167,7 +170,7 @@ export default function StaffPage() {
             ))}
           </div>
           <div className="m-3 rounded-lg border border-mc-cobalt-line bg-mc-cobalt-soft p-3 text-xs leading-relaxed text-mc-cobalt-hover">
-            Each person signs in with a {PIN_LENGTH}-digit till PIN. Keep one active owner account; the last active owner cannot be disabled.
+            Each person taps their name and enters a private {PIN_MIN}–{PIN_MAX} digit PIN. PINs are stored hashed; a PIN you set for someone must be changed by them at their next sign-in. Keep one active owner account; the last active owner cannot be disabled.
           </div>
         </section>
       </div>
@@ -212,20 +215,30 @@ function UserModal({ user, users, onClose }: { user: Partial<User>; users: User[
   const toast = useToast()
   const { user: me } = useSession()
   const [u, setU] = useState(user)
+  const [pin, setPin] = useState('')
+  const isNew = u.id === undefined
 
   const save = async () => {
     try {
       if (!u.name?.trim()) throw new Error('Name is required')
-      if (!new RegExp(`^\\d{${PIN_LENGTH}}$`).test(u.pin ?? '')) throw new Error(`PIN must be ${PIN_LENGTH} digits`)
-      if (users.some((x) => x.pin === u.pin && x.id !== u.id)) throw new Error('That PIN is already used')
+      if (isNew || pin) {
+        const weak = weakPinReason(pin)
+        if (weak) throw new Error(weak)
+      }
       const remainingOwners = users.filter((x) => x.role === 'owner' && x.active && x.id !== u.id).length
       if (remainingOwners === 0 && (u.role !== 'owner' || !u.active)) throw new Error('Keep at least one active owner')
       const rec = { ...u, name: u.name.trim() } as User
-      const isNew = rec.id === undefined
+      if (pin) {
+        rec.pinHash = hashPin(pin)
+        // A PIN set by someone else is known to two people — the holder must replace it.
+        rec.mustChangePin = rec.id !== me?.id ? true : undefined
+      }
+      delete rec.pin
       if (isNew) delete rec.id
       await db.users.put(rec)
+      void pushUsers()
       await logActivity('user', `${isNew ? 'Added' : 'Updated'} staff ${rec.name}`, {
-        detail: `${rec.role}${rec.active ? '' : ' · disabled'}`,
+        detail: `${rec.role}${rec.active ? '' : ' · disabled'}${pin && !isNew ? ' · PIN reset' : ''}`,
         userId: me?.id,
         userName: me?.name,
       })
@@ -238,7 +251,7 @@ function UserModal({ user, users, onClose }: { user: Partial<User>; users: User[
 
   return (
     <Modal
-      title={u.id ? `Edit ${user.name}` : 'Add staff'}
+      title={isNew ? 'Add staff' : `Edit ${user.name}`}
       onClose={onClose}
       footer={
         <button className="btn-primary" onClick={save}>
@@ -250,13 +263,16 @@ function UserModal({ user, users, onClose }: { user: Partial<User>; users: User[
         <Field label="Name">
           <input className="input" value={u.name ?? ''} onChange={(e) => setU({ ...u, name: e.target.value })} autoFocus />
         </Field>
-        <Field label={`PIN (${PIN_LENGTH} digits)`}>
+        <Field label={isNew ? `PIN (${PIN_MIN}–${PIN_MAX} digits)` : 'Reset PIN (optional)'}>
           <input
-            className="input font-mono"
+            className="input font-mono tracking-[0.3em]"
+            type="password"
             inputMode="numeric"
-            maxLength={PIN_LENGTH}
-            value={u.pin ?? ''}
-            onChange={(e) => setU({ ...u, pin: e.target.value.replace(/\D/g, '') })}
+            autoComplete="new-password"
+            maxLength={PIN_MAX}
+            placeholder={isNew ? '' : 'Leave blank to keep'}
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
           />
         </Field>
         <Field label="Role">
@@ -271,7 +287,7 @@ function UserModal({ user, users, onClose }: { user: Partial<User>; users: User[
         </label>
       </div>
       <p className="mt-3 text-xs text-slate-500">
-        PINs are stored on this device only and unlock the till — not a password for online accounts.
+        Give the PIN to the staff member in person. They will be asked to choose their own private PIN the first time they sign in.
       </p>
     </Modal>
   )

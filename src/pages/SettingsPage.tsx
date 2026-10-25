@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Banknote, Bell, Bike, CreditCard, Database, Download, Info, Loader2, PackageSearch, Percent, Printer, Save, ShieldCheck, Smartphone, Store, Trash2, UserRound } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db/db'
+import { db, PRE_PRODUCTION_ARCHIVE } from '../db/db'
+import { logActivity } from '../db/logs'
+import { hashPin, isPinHash, verifyPin } from '../lib/pinHash'
+import { pushUsers, reconnectServer, registerWithServer, serverLink, type ServerLink } from '../lib/api'
 import { saveSettings, useSettings } from '../db/settings'
-import type { PaymentMethod, Settings } from '../db/types'
-import { loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig } from '../lib/printer'
-import { printLabelsInBrowser } from '../lib/labelPrint'
-import { drawerKickBytes, testPageBytes } from '../lib/escpos'
+import type { PaymentMethod, Settings, User } from '../db/types'
+import { loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig, type PrinterSlot } from '../lib/printer'
+import { printLabelsInBrowser, priceText, tsplBytes, tsplCalibrateBytes, type LabelJob } from '../lib/labels'
+import { code128Svg } from '../lib/barcode'
+import { drawerKickBytes, escposLabelBytes, testPageBytes } from '../lib/escpos'
 import { download } from '../lib/csv'
 import { money, toCents } from '../lib/money'
 import { useSession } from '../session'
@@ -17,7 +21,7 @@ import ChangePinForm from '../components/ChangePinForm'
 const TABS = ['Shop & receipt', 'Taxes', 'Payments', 'Hardware', 'Bike models', 'Notifications', 'Security', 'Backup', 'About'] as const
 type Tab = (typeof TABS)[number]
 
-const APP_VERSION = '0.1.0'
+const APP_VERSION = '1.0.0'
 
 const SECTIONS: { group: string; items: { id: Tab; icon: typeof Store; tint: string; desc: string }[] }[] = [
   {
@@ -444,6 +448,99 @@ function PaymentsSettings() {
 
 // ---------------------------------------------------------------- Hardware
 
+const MODES = [
+  ['browser', 'Browser print'],
+  ['usb', 'USB (WebUSB)'],
+  ['serial', 'Serial / Bluetooth'],
+  ['network', 'Network (LAN)'],
+] as const
+
+const LABEL_PRESETS: { label: string; w: number; h: number; gap: number }[] = [
+  { label: '40 × 30 mm', w: 40, h: 30, gap: 2 },
+  { label: '50 × 30 mm', w: 50, h: 30, gap: 2 },
+  { label: '50 × 25 mm', w: 50, h: 25, gap: 2 },
+  { label: '38 × 25 mm', w: 38, h: 25, gap: 2 },
+  { label: '30 × 20 mm', w: 30, h: 20, gap: 2 },
+  { label: '60 × 40 mm', w: 60, h: 40, gap: 3 },
+]
+
+/** Connection picker shared by the receipt and label printer cards. */
+function PrinterConnection({
+  slot,
+  cfg,
+  onChange,
+  onPaired,
+  run,
+}: {
+  slot: PrinterSlot
+  cfg: PrinterConfig
+  onChange: (c: PrinterConfig) => void
+  onPaired: (c: PrinterConfig) => void
+  run: (fn: () => Promise<void>, ok: string) => Promise<void>
+}) {
+  return (
+    <>
+      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+        {MODES.map(([m, label]) => (
+          <button key={m} className={cfg.mode === m ? 'btn-dark' : 'btn-ghost'} onClick={() => onChange({ ...cfg, mode: m, device: undefined, deviceName: undefined })}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {(cfg.mode === 'usb' || cfg.mode === 'serial') && (
+        <div className="mb-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <button className="btn-primary" onClick={() => run(async () => onPaired(await pairPrinter(slot, cfg)), 'Printer paired')}>
+              {cfg.deviceName ? 'Re-pair printer' : 'Pair printer'}
+            </button>
+            {cfg.deviceName ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {cfg.deviceName}
+              </span>
+            ) : (
+              <span className="text-xs font-semibold text-amber-700">Not paired yet</span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500">
+            {cfg.mode === 'usb'
+              ? supports.usb()
+                ? 'Chrome/Edge. On Windows, install the WinUSB driver for the printer once with Zadig, then pair.'
+                : 'WebUSB is not supported in this browser — use Chrome or Edge.'
+              : supports.serial()
+                ? 'For USB-serial and paired Bluetooth printers.'
+                : 'Web Serial is not supported in this browser — use Chrome or Edge.'}
+          </p>
+          {cfg.mode === 'serial' && (
+            <div className="w-48">
+              <Field label="Baud rate">
+                <select className="input" value={cfg.baudRate ?? 9600} onChange={(e) => onChange({ ...cfg, baudRate: Number(e.target.value) })}>
+                  {[9600, 19200, 38400, 57600, 115200].map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          )}
+        </div>
+      )}
+      {cfg.mode === 'network' && (
+        <div className="mb-3 grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <Field label="Printer IP address" hint="Print the printer's self-test page to find it (hold FEED while switching on).">
+              <input className="input font-mono" placeholder="192.168.1.50" value={cfg.host ?? ''} onChange={(e) => onChange({ ...cfg, host: e.target.value.trim() })} />
+            </Field>
+          </div>
+          <Field label="Port">
+            <input className="input" type="number" min={9100} max={9109} value={cfg.port ?? 9100} onChange={(e) => onChange({ ...cfg, port: Number(e.target.value) })} />
+          </Field>
+        </div>
+      )}
+    </>
+  )
+}
+
 function HardwareSettings() {
   const { draft, set, save } = useDraft()
   const toast = useToast()
@@ -467,134 +564,177 @@ function HardwareSettings() {
     }
   }
 
+  const sample: LabelJob = { name: 'Brake pads (front)', sku: 'BRK-PAD-F', code: '2100000000014', price: 85000 }
+  const testLabel = () =>
+    run(async () => {
+      // Print with the values on screen, so the test reflects unsaved changes.
+      const outcome = await printLabelsWith([sample], draft, bcCfg)
+      if (outcome === 'blocked') throw new Error('Allow popups for this site to print in the browser')
+    }, 'Test label sent')
+
+  const presetKey = `${draft.labelWidthMm}x${draft.labelHeightMm}`
+
   return (
     <>
-      <h3 className="mb-2 font-semibold">Receipt printer</h3>
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-        {(
-          [
-            ['browser', 'Browser print'],
-            ['usb', 'USB (WebUSB)'],
-            ['serial', 'Serial / Bluetooth'],
-            ['network', 'Network (LAN)'],
-          ] as const
-        ).map(([m, label]) => (
-          <button key={m} className={cfg.mode === m ? 'btn-dark' : 'btn-ghost'} onClick={() => update({ ...cfg, mode: m })}>
-            {label}
+      <Section title="Receipt printer" desc="58/80 mm ESC/POS thermal printers — Xprinter XP-58/XP-80, Epson TM and compatibles.">
+        <PrinterConnection slot="receipt" cfg={cfg} onChange={update} onPaired={update} run={run} />
+        {cfg.mode === 'browser' && <p className="mb-3 text-sm text-slate-600">Uses the system print dialog with an 80 mm layout. Works with any installed driver but cannot open the cash drawer.</p>}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), cfg, draft.apiUrl, 'receipt'), 'Test page sent')}>
+            Print test page
           </button>
-        ))}
-      </div>
-      {cfg.mode === 'browser' && <p className="mb-3 text-sm text-slate-600">Uses the system print dialog with an 80mm layout. Works with any installed printer driver but cannot open the cash drawer.</p>}
-      {(cfg.mode === 'usb' || cfg.mode === 'serial') && (
-        <div className="mb-3 flex items-center gap-3">
-          <button className="btn-primary" onClick={() => run(() => pairPrinter(cfg.mode as 'usb' | 'serial'), 'Printer paired')}>
-            Pair printer
+          <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(drawerKickBytes(), cfg, draft.apiUrl, 'receipt'), 'Drawer kick sent')}>
+            Test cash drawer
           </button>
-          <span className="text-sm text-slate-500">
-            {cfg.mode === 'usb' ? (supports.usb() ? 'Chrome/Edge required. On Windows install the WinUSB driver with Zadig.' : 'WebUSB not supported in this browser.') : supports.serial() ? 'For USB-serial and paired Bluetooth printers.' : 'Web Serial not supported in this browser.'}
-          </span>
         </div>
-      )}
-      {cfg.mode === 'network' && (
-        <div className="mb-3 grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <Field label="Printer IP address">
-              <input className="input font-mono" placeholder="192.168.1.50" value={cfg.host ?? ''} onChange={(e) => update({ ...cfg, host: e.target.value })} />
-            </Field>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Paper width">
+            <select className="input" value={draft.paperWidth} onChange={(e) => set('paperWidth', Number(e.target.value) as 58 | 80)}>
+              <option value={80}>80 mm (48 columns)</option>
+              <option value={58}>58 mm (32 columns)</option>
+            </select>
+          </Field>
+          <div className="space-y-2 pt-6 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={draft.autoPrint} onChange={(e) => set('autoPrint', e.target.checked)} /> Print receipt automatically after every sale
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={draft.openDrawerOnCash} onChange={(e) => set('openDrawerOnCash', e.target.checked)} /> Open cash drawer on cash sales
+            </label>
           </div>
-          <Field label="Port">
-            <input className="input" type="number" value={cfg.port ?? 9100} onChange={(e) => update({ ...cfg, port: Number(e.target.value) })} />
+        </div>
+      </Section>
+
+      <Section title="Barcode label printer" desc="Each unit you add to stock gets its own serial barcode label. Xprinter XP-235B / 365B / 420B / 460B / 470B use TSPL.">
+        <PrinterConnection slot="label" cfg={bcCfg} onChange={updateBc} onPaired={updateBc} run={run} />
+        {bcCfg.mode === 'browser' && (
+          <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+            Labels open in the browser print dialog with real, scannable barcodes. For a thermal label printer, pick USB, Serial or Network above.
+          </p>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Field label="Printer language" hint="Label printers (gap-sensing rolls) use TSPL.">
+            <select className="input" value={draft.labelLanguage} onChange={(e) => set('labelLanguage', e.target.value as Settings['labelLanguage'])}>
+              <option value="tspl">TSPL — Xprinter label printer</option>
+              <option value="escpos">ESC/POS — receipt-type printer</option>
+            </select>
+          </Field>
+          <Field label="Label size">
+            <select
+              className="input"
+              value={LABEL_PRESETS.some((p) => `${p.w}x${p.h}` === presetKey) ? presetKey : 'custom'}
+              onChange={(e) => {
+                const p = LABEL_PRESETS.find((x) => `${x.w}x${x.h}` === e.target.value)
+                if (p) {
+                  set('labelWidthMm', p.w)
+                  set('labelHeightMm', p.h)
+                  set('labelGapMm', p.gap)
+                }
+              }}
+            >
+              {LABEL_PRESETS.map((p) => (
+                <option key={p.label} value={`${p.w}x${p.h}`}>
+                  {p.label}
+                </option>
+              ))}
+              <option value="custom">Custom…</option>
+            </select>
+          </Field>
+          <Field label="Print darkness" hint="Raise if bars look faint; lower if they bleed.">
+            <input className="w-full accent-cta" type="range" min={1} max={15} value={draft.labelDensity} onChange={(e) => set('labelDensity', Number(e.target.value))} />
+            <div className="text-xs font-semibold text-slate-600">{draft.labelDensity} / 15</div>
+          </Field>
+          <Field label="Width (mm)">
+            <input className="input" type="number" min={20} max={110} value={draft.labelWidthMm} onChange={(e) => set('labelWidthMm', clampNum(e.target.value, 20, 110))} />
+          </Field>
+          <Field label="Height (mm)">
+            <input className="input" type="number" min={15} max={150} value={draft.labelHeightMm} onChange={(e) => set('labelHeightMm', clampNum(e.target.value, 15, 150))} />
+          </Field>
+          <Field label="Gap between labels (mm)">
+            <input className="input" type="number" min={0} max={10} step={0.5} value={draft.labelGapMm} onChange={(e) => set('labelGapMm', clampNum(e.target.value, 0, 10))} />
           </Field>
         </div>
-      )}
-      <div className="mb-5 flex flex-wrap gap-2">
-        <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), cfg, draft.apiUrl), 'Test page sent')}>
-          Print test page
-        </button>
-        <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(drawerKickBytes(), cfg, draft.apiUrl), 'Drawer kick sent')}>
-          Test cash drawer
-        </button>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Paper width">
-          <select className="input" value={draft.paperWidth} onChange={(e) => set('paperWidth', Number(e.target.value) as 58 | 80)}>
-            <option value={80}>80 mm (48 columns)</option>
-            <option value={58}>58 mm (32 columns)</option>
-          </select>
-        </Field>
-        <div className="space-y-2 pt-6 text-sm">
+        <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={draft.autoPrint} onChange={(e) => set('autoPrint', e.target.checked)} /> Print receipt automatically after every sale
+            <input type="checkbox" checked={draft.autoPrintLabels} onChange={(e) => set('autoPrintLabels', e.target.checked)} /> Print labels automatically when stock is added
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={draft.openDrawerOnCash} onChange={(e) => set('openDrawerOnCash', e.target.checked)} /> Open cash drawer on cash sales
+            <input type="checkbox" checked={draft.labelShowPrice} onChange={(e) => set('labelShowPrice', e.target.checked)} /> Show selling price
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={draft.labelShowShopName} onChange={(e) => set('labelShowShopName', e.target.checked)} /> Show shop name
           </label>
         </div>
-      </div>
 
-      <h3 className="mb-1 mt-6 font-semibold">Barcode scanner</h3>
-      <p className="text-sm text-slate-600">
-        Any USB or Bluetooth scanner in keyboard (HID) mode works with no setup. Set it to send <b>Enter</b> after each scan. Scan anywhere on the Sell screen to add the part to the sale.
-      </p>
-
-      <h3 className="mb-2 mt-6 font-semibold">Barcode label printer</h3>
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-        {(
-          [
-            ['browser', 'Browser print'],
-            ['usb', 'USB (WebUSB)'],
-            ['serial', 'Serial / Bluetooth'],
-            ['network', 'Network (LAN)'],
-          ] as const
-        ).map(([m, label]) => (
-          <button key={m} className={bcCfg.mode === m ? 'btn-dark' : 'btn-ghost'} onClick={() => updateBc({ ...bcCfg, mode: m })}>
-            {label}
-          </button>
-        ))}
-      </div>
-      {bcCfg.mode === 'browser' && <p className="mb-3 text-sm text-slate-600">Prints labels through the browser's print dialog. For sticky thermal labels choose USB or Network below.</p>}
-      {(bcCfg.mode === 'usb' || bcCfg.mode === 'serial') && (
-        <div className="mb-3 flex items-center gap-3">
-          <button className="btn-primary" onClick={() => run(() => pairPrinter(bcCfg.mode as 'usb' | 'serial'), 'Barcode printer paired')}>
-            Pair printer
-          </button>
-          <span className="text-sm text-slate-500">
-            {bcCfg.mode === 'usb' ? (supports.usb() ? 'Chrome/Edge required. On Windows install the WinUSB driver with Zadig.' : 'WebUSB not supported in this browser.') : supports.serial() ? 'For USB-serial and paired Bluetooth printers.' : 'Web Serial not supported in this browser.'}
-          </span>
-        </div>
-      )}
-      {bcCfg.mode === 'network' && (
-        <div className="mb-3 grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <Field label="Printer IP address">
-              <input className="input font-mono" placeholder="192.168.1.50" value={bcCfg.host ?? ''} onChange={(e) => updateBc({ ...bcCfg, host: e.target.value })} />
-            </Field>
+        <div className="mt-4 grid gap-4 md:grid-cols-[auto_1fr]">
+          <div>
+            <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Preview</div>
+            <LabelPreview job={sample} s={draft} />
           </div>
-          <Field label="Port">
-            <input className="input" type="number" value={bcCfg.port ?? 9100} onChange={(e) => updateBc({ ...bcCfg, port: Number(e.target.value) })} />
-          </Field>
+          <div className="space-y-2 text-sm text-slate-600">
+            <p>
+              <b>Setting up an Xprinter label printer:</b> load the label roll, switch on while holding <b>FEED</b> until it beeps (auto-calibration), connect by USB or LAN, choose
+              the matching label size here, then press <b>Print test label</b>.
+            </p>
+            <p className="text-xs text-slate-500">Serials are in-store EAN-13 numbers (prefix 21) printed as Code 128 — every USB/Bluetooth scanner reads them out of the box.</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button className="btn-primary" onClick={testLabel}>
+                <Printer size={16} /> Print test label
+              </button>
+              <button
+                className="btn-ghost"
+                disabled={bcCfg.mode === 'browser' || draft.labelLanguage !== 'tspl'}
+                onClick={() => run(() => sendRaw(tsplCalibrateBytes(draft), bcCfg, draft.apiUrl, 'label'), 'Calibration sent — the printer feeds to the next gap')}
+              >
+                Calibrate gap sensor
+              </button>
+            </div>
+          </div>
         </div>
-      )}
-      <div className="mb-5 flex flex-wrap gap-2">
-        <button
-          className="btn-ghost"
-          onClick={() =>
-            run(
-              async () => {
-                if (bcCfg.mode === 'browser') printLabelsInBrowser({ name: 'Test part', sku: 'TEST-001', barcode: 'TEST001' })
-                else await sendRaw(testPageBytes(draft), bcCfg, draft.apiUrl)
-              },
-              'Test label sent',
-            )
-          }
-        >
-          Print test label
-        </button>
-      </div>
+      </Section>
+
+      <Section title="Barcode scanner" desc="Any USB or Bluetooth scanner in keyboard (HID) mode works with no setup.">
+        <p className="text-sm text-slate-600">
+          Set the scanner to send <b>Enter</b> after each scan. Scanning a unit's serial label at the till adds that exact item to the sale and marks the label sold, so a copied
+          or reused label is caught.
+        </p>
+      </Section>
 
       <SaveBar onSave={save} />
     </>
+  )
+}
+
+function clampNum(v: string, min: number, max: number): number {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min
+}
+
+/** Print labels with explicit (possibly unsaved) settings and printer config. */
+async function printLabelsWith(jobs: LabelJob[], s: Settings, cfg: PrinterConfig): Promise<'printed' | 'browser' | 'blocked'> {
+  if (cfg.mode === 'browser') return printLabelsInBrowser(jobs, s) ? 'browser' : 'blocked'
+  const bytes = s.labelLanguage === 'escpos' ? escposLabelBytes(jobs, s) : tsplBytes(jobs, s)
+  await sendRaw(bytes, cfg, s.apiUrl, 'label')
+  return 'printed'
+}
+
+/** On-screen label at true proportions, using the same SVG barcode as browser printing. */
+function LabelPreview({ job, s }: { job: LabelJob; s: Settings }) {
+  const scale = 4 // px per mm
+  return (
+    <div
+      className="flex flex-col items-center justify-between overflow-hidden rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-black shadow-sm"
+      style={{ width: s.labelWidthMm * scale, height: s.labelHeightMm * scale }}
+    >
+      {s.labelShowShopName && <div className="text-[8px] font-bold uppercase tracking-wide">{s.shopName}</div>}
+      <div className="line-clamp-2 text-[10px] font-bold leading-tight">{job.name}</div>
+      {s.labelShowPrice && job.price ? <div className="text-[11px] font-extrabold">{priceText(job.price, s.currency)}</div> : null}
+      <div className="min-h-0 w-full flex-1 py-0.5 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: code128Svg(job.code, { height: 60, moduleWidth: 2 }) }} />
+      <div className="font-mono text-[9px] font-bold tracking-wider">{job.code}</div>
+      <div className="text-[7px]">SKU {job.sku}</div>
+    </div>
   )
 }
 
@@ -672,6 +812,7 @@ function NotifySettings() {
 
 function SecuritySettings() {
   const { user } = useSession()
+  const { draft, set, save } = useDraft()
 
   if (!user) return null
 
@@ -684,13 +825,101 @@ function SecuritySettings() {
         </div>
       </div>
 
-      <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-600">Change my PIN</h3>
-      <ChangePinForm />
+      <Section title="Auto-lock" desc="Locks the till after this long without a tap, click or key press.">
+        <div className="flex flex-wrap items-end gap-3">
+          <select className="input w-56" value={draft.autoLockMinutes} onChange={(e) => set('autoLockMinutes', Number(e.target.value))}>
+            {[2, 5, 10, 15, 30, 60].map((m) => (
+              <option key={m} value={m}>
+                After {m} minutes
+              </option>
+            ))}
+            <option value={0}>Never (not recommended)</option>
+          </select>
+          <button className="btn-primary" onClick={save}>
+            <Save size={16} /> Save
+          </button>
+        </div>
+      </Section>
 
-      <p className="mt-5 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-        PINs are stored only on this device. To add, disable or re-role staff members, open <b>Staff</b> from the sidebar (owner only) — or your own details from <b>My profile</b> in the top-right menu.
-      </p>
+      <Section title="Change my PIN">
+        <ChangePinForm />
+      </Section>
+
+      {user.role === 'owner' && <ServerLinkCard />}
+
+      <ul className="mt-2 space-y-1.5 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+        <li>• PINs are stored as salted PBKDF2 hashes — not even the owner can read them.</li>
+        <li>• 5 wrong PINs lock that account for 30 seconds, doubling with each further miss (up to 15 minutes).</li>
+        <li>• A PIN set by the owner for someone else must be replaced by them at their next sign-in.</li>
+        <li>• The shop server only accepts changes from signed-in staff, with their role checked on every request.</li>
+      </ul>
     </>
+  )
+}
+
+function ServerLinkCard() {
+  const { user } = useSession()
+  const toast = useToast()
+  const [link, setLink] = useState<ServerLink | null>(null)
+  const [code, setCode] = useState('')
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const refresh = () => void serverLink().then(setLink)
+  useEffect(refresh, [])
+
+  const connect = async () => {
+    if (!user) return
+    if (!verifyPin(pin, user.pinHash)) return toast('That is not your PIN', 'error')
+    setBusy(true)
+    try {
+      if (link === 'needs-setup') await registerWithServer(user, pin, code)
+      else await reconnectServer(user, pin)
+      await pushUsers()
+      await logActivity('system', link === 'needs-setup' ? 'Till registered with the shop server' : 'Reconnected to the shop server', { userId: user.id, userName: user.name })
+      toast('Connected to the shop server')
+      setPin('')
+      setCode('')
+      refresh()
+    } catch (e) {
+      toast(errorText(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const label: Record<ServerLink, [string, string]> = {
+    connected: ['Connected', 'bg-emerald-50 text-emerald-700 ring-emerald-200'],
+    'needs-setup': ['Not registered', 'bg-amber-50 text-amber-800 ring-amber-200'],
+    'signed-out': ['Not signed in', 'bg-amber-50 text-amber-800 ring-amber-200'],
+    offline: ['Unreachable', 'bg-slate-100 text-slate-600 ring-slate-200'],
+  }
+
+  return (
+    <Section title="Shop server" desc="Staff accounts, STK Push and network printing go through the shop server. The till keeps selling without it.">
+      <div className="flex flex-wrap items-center gap-3">
+        {link && <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${label[link][1]}`}>{label[link][0]}</span>}
+        <button className="text-xs font-semibold text-brand-600" onClick={refresh}>
+          Check again
+        </button>
+      </div>
+      {(link === 'needs-setup' || link === 'signed-out') && (
+        <div className="mt-3 grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          {link === 'needs-setup' && (
+            <Field label="Server setup code" hint="SETUP_CODE in the server's .env (printed by deploy.sh)">
+              <input className="input font-mono" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" />
+            </Field>
+          )}
+          <Field label="Your PIN">
+            <input className="input font-mono tracking-[0.3em]" type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} />
+          </Field>
+          <button className="btn-primary" disabled={busy || pin.length < 4} onClick={() => void connect()}>
+            {busy ? <Loader2 size={16} className="animate-spin" /> : null} {link === 'needs-setup' ? 'Register this till' : 'Connect'}
+          </button>
+        </div>
+      )}
+      {link === 'offline' && <p className="mt-2 text-xs text-slate-500">Check the server is running and the address under Payments → Local server.</p>}
+    </Section>
   )
 }
 
@@ -698,26 +927,60 @@ function SecuritySettings() {
 
 function BackupSettings() {
   const toast = useToast()
+  const { user } = useSession()
+  const archive = useLiveQuery(() => db.kv.get(PRE_PRODUCTION_ARCHIVE), [])
+  const archived = archive?.value as { at: number; data: Record<string, unknown[]> } | undefined
+  const archivedRows = archived ? Object.values(archived.data).reduce((n, rows) => n + rows.length, 0) : 0
+
   const backup = async () => {
     const data: Record<string, unknown> = {}
-    for (const t of db.tables) data[t.name] = await t.toArray()
-    download(`optimas-backup-${new Date().toISOString().slice(0, 16).replace(':', '')}.json`, JSON.stringify({ version: 1, exportedAt: Date.now(), data }), 'application/json')
+    for (const t of db.tables) {
+      // The pre-production archive is downloaded separately; don't bloat daily backups with it.
+      data[t.name] = t.name === 'kv' ? (await t.toArray()).filter((r) => (r as { key: string }).key !== PRE_PRODUCTION_ARCHIVE) : await t.toArray()
+    }
+    download(`optimas-backup-${new Date().toISOString().slice(0, 16).replace(':', '')}.json`, JSON.stringify({ version: db.verno, exportedAt: Date.now(), data }), 'application/json')
+    await logActivity('system', 'Backup downloaded', { userId: user?.id, userName: user?.name })
   }
+
   const restore = async (file: File) => {
     if (!confirm('Restoring replaces ALL data on this till with the backup. Continue?')) return
     try {
-      const { data } = JSON.parse(await file.text()) as { data: Record<string, unknown[]> }
+      const parsed = JSON.parse(await file.text()) as { data?: Record<string, unknown[]> }
+      const data = parsed.data
+      if (!data || typeof data !== 'object' || !Array.isArray(data.users)) throw new Error('This is not an Optimas POS backup file')
+      // Backups from before hashed PINs carry plain PINs: hash them on the way in.
+      const users = (data.users as (User & { pin?: string })[]).map((u) => {
+        if (isPinHash(u.pinHash)) return u
+        const { pin, ...rest } = u
+        return { ...rest, pinHash: hashPin(pin ?? ''), mustChangePin: true }
+      })
+      if (!users.some((u) => u.role === 'owner' && u.active)) throw new Error('The backup has no active owner account — restoring it would lock you out')
       await db.transaction('rw', db.tables, async () => {
         for (const t of db.tables) {
           await t.clear()
-          if (data[t.name]) await t.bulkAdd(data[t.name])
+          const rows = t.name === 'users' ? users : data[t.name]
+          if (Array.isArray(rows) && rows.length) await t.bulkAdd(rows)
         }
       })
-      toast('Backup restored')
+      toast('Backup restored — sign in again')
+      setTimeout(() => window.location.reload(), 800)
     } catch (e) {
       toast(`Restore failed: ${errorText(e)}`, 'error')
     }
   }
+
+  const downloadArchive = () => {
+    if (!archived) return
+    download(`optimas-pre-production-archive-${new Date(archived.at).toISOString().slice(0, 10)}.json`, JSON.stringify({ version: 2, exportedAt: archived.at, data: archived.data }), 'application/json')
+  }
+
+  const deleteArchive = async () => {
+    if (!confirm('Delete the archive of the old test data for good?')) return
+    await db.kv.delete(PRE_PRODUCTION_ARCHIVE)
+    await logActivity('system', 'Pre-production archive deleted', { userId: user?.id, userName: user?.name })
+    toast('Archive deleted')
+  }
+
   return (
     <>
       <p className="mb-4 text-sm text-slate-600">
@@ -733,8 +996,26 @@ function BackupSettings() {
         </label>
       </div>
       <p className="mt-4 text-xs text-slate-500">
-        The backup JSON contains every table — products, sales, customers, jobs, staff, settings and the activity log. Restore it on any till running this app.
+        The backup JSON contains every table — products, serial labels, sales, customers, jobs, staff (PIN hashes only), settings and the activity log. Keep it private.
       </p>
+
+      {archived && (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="font-semibold text-amber-900">Old test data archive</div>
+          <p className="mt-1 text-sm text-amber-800">
+            When this till was prepared for production on {new Date(archived.at).toLocaleDateString('en-KE', { dateStyle: 'medium' })}, {archivedRows} demo/test records were removed
+            and kept here in case anything real was among them.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button className="btn-ghost" onClick={downloadArchive}>
+              <Download size={16} /> Download archive
+            </button>
+            <button className="btn-ghost text-red-600" onClick={() => void deleteArchive()}>
+              <Trash2 size={16} /> Delete archive
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -770,6 +1051,7 @@ function AboutSettings() {
   const counts = useLiveQuery(
     async () => ({
       products: await db.products.count(),
+      units: await db.units.where('status').equals('in_stock').count(),
       customers: await db.customers.count(),
       sales: await db.sales.count(),
       jobs: await db.jobs.count(),
@@ -797,6 +1079,7 @@ function AboutSettings() {
   const rows: [string, number | undefined][] = counts
     ? [
         ['Products', counts.products],
+        ['Labelled units in stock', counts.units],
         ['Customers', counts.customers],
         ['Sales receipts', counts.sales],
         ['Service jobs', counts.jobs],
