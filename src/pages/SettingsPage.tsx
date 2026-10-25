@@ -12,9 +12,10 @@ import { currentTill } from '../db/till'
 import { lookupCode } from '../db/units'
 import { saveSettings, useSettings } from '../db/settings'
 import type { PaymentMethod, Settings, User } from '../db/types'
-import { loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig, type PrinterSlot } from '../lib/printer'
+import { agentPrinters, agentStatus, guessPrinter, loadPrinterConfig, loadBarcodePrinterConfig, pairPrinter, savePrinterConfig, saveBarcodePrinterConfig, sendRaw, supports, type PrinterConfig, type PrinterSlot } from '../lib/printer'
 import { printLabelsInBrowser, priceText, tsplBytes, tsplCalibrateBytes, type LabelJob } from '../lib/labels'
 import { code128Svg } from '../lib/barcode'
+import { agentInstallerCmd } from '../lib/agentInstaller'
 import { drawerKickBytes, escposLabelBytes, testPageBytes } from '../lib/escpos'
 import { download } from '../lib/csv'
 import { money, toCents } from '../lib/money'
@@ -460,6 +461,7 @@ function PaymentsSettings() {
 // ---------------------------------------------------------------- Hardware
 
 const MODES = [
+  ['agent', 'Windows printer'],
   ['browser', 'Browser print'],
   ['usb', 'USB (WebUSB)'],
   ['serial', 'Serial / Bluetooth'],
@@ -491,7 +493,7 @@ function PrinterConnection({
 }) {
   return (
     <>
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-5">
         {MODES.map(([m, label]) => (
           <button key={m} className={cfg.mode === m ? 'btn-dark' : 'btn-ghost'} onClick={() => onChange({ ...cfg, mode: m, device: undefined, deviceName: undefined })}>
             {label}
@@ -536,10 +538,11 @@ function PrinterConnection({
           )}
         </div>
       )}
+      {cfg.mode === 'agent' && <AgentPicker slot={slot} cfg={cfg} onChange={onChange} />}
       {cfg.mode === 'network' && !shopNetworkServer() && (
         <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">
           <b>This won't reach your printer.</b> Network printing is relayed by the shop server, and this till uses an online server ({window.location.hostname}) that
-          can't see printers on the shop's network. Connect the printer by <b>USB</b> instead.
+          can't see printers on the shop's network. Use <b>Windows printer</b> instead.
         </p>
       )}
       {cfg.mode === 'network' && (
@@ -555,6 +558,93 @@ function PrinterConnection({
         </div>
       )}
     </>
+  )
+}
+
+/** Agent status + Windows printer dropdown for one slot. */
+function AgentPicker({ slot, cfg, onChange }: { slot: PrinterSlot; cfg: PrinterConfig; onChange: (c: PrinterConfig) => void }) {
+  const [version, setVersion] = useState<string | null | undefined>(undefined)
+  const [printers, setPrinters] = useState<string[]>([])
+  const [error, setError] = useState('')
+
+  const check = async () => {
+    setError('')
+    const v = await agentStatus()
+    setVersion(v)
+    if (!v) return setPrinters([])
+    try {
+      const names = await agentPrinters()
+      setPrinters(names)
+      // First time: pick the XP-330B for labels / XP-80C for receipts automatically.
+      if (!cfg.printerName || !names.includes(cfg.printerName)) {
+        const guess = guessPrinter(names, slot)
+        if (guess) onChange({ ...cfg, printerName: guess })
+      }
+    } catch (e) {
+      setError(errorText(e))
+    }
+  }
+  useEffect(() => {
+    void check()
+    // Run once when the panel opens.
+  }, [])
+
+  const installer = () => download('Install Optimas Print Agent.cmd', agentInstallerCmd(window.location.origin), 'application/octet-stream')
+  const want = slot === 'label' ? 'XP-330B' : 'XP-80C'
+
+  return (
+    <div className="mb-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        {version === undefined ? (
+          <span className="text-slate-500">Checking the print agent…</span>
+        ) : version ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Print agent running (v{version})
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Print agent not found on this computer
+          </span>
+        )}
+        <button type="button" className="text-xs font-semibold text-brand-600" onClick={() => void check()}>
+          Check
+        </button>
+      </div>
+
+      {version ? (
+        <Field label={`Windows printer for ${slot === 'label' ? 'barcode labels' : 'receipts'}`} hint={`Pick the ${want}. Jobs go straight to it — no print dialog.`}>
+          <select className="input" value={cfg.printerName ?? ''} onChange={(e) => onChange({ ...cfg, printerName: e.target.value || undefined })}>
+            <option value="">Choose a printer…</option>
+            {printers.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : (
+        <div className="space-y-2 text-slate-600">
+          <p>
+            The print agent is a small helper for this Windows computer. It sends receipts to the <b>XP-80C</b> and labels to the <b>XP-330B</b> by name, using their normal
+            Windows drivers — no print dialog, no driver changes. Install it once:
+          </p>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>Install both printers in Windows with the Xprinter drivers (they appear under Settings → Printers).</li>
+            <li>
+              <button type="button" className="font-semibold text-brand-600 underline" onClick={installer}>
+                Download the installer
+              </button>{' '}
+              and double-click it. (If Windows warns about the file, choose More info → Run anyway.)
+            </li>
+            <li>Come back here and press Check. If Chrome asks to allow access to devices on your local network, choose Allow.</li>
+          </ol>
+        </div>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {version && slot === 'label' && cfg.printerName && guessPrinter([cfg.printerName], 'receipt') && !/330/.test(cfg.printerName) && (
+        <p className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">“{cfg.printerName}” looks like the receipt printer. Labels should go to the XP-330B.</p>
+      )}
+    </div>
   )
 }
 
@@ -659,10 +749,10 @@ function HardwareSettings() {
         {cfg.mode === 'browser' && (
           <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             Browser print uses the system print dialog: choose the <b>XP-80C</b> there each time — Chrome remembers the last printer used, which may be the label printer.
-            It also cannot open the cash drawer. <b>USB</b> sends receipts straight to the XP-80C.
+            It also cannot open the cash drawer. Choose <b>Windows printer</b> to send receipts straight to the XP-80C.
           </p>
         )}
-        {cfg.mode !== 'network' && <ConnectGuide model="XP-80C" />}
+        {cfg.mode === 'usb' && <ConnectGuide model="XP-80C" />}
         <div className="mb-4 flex flex-wrap gap-2">
           <button className="btn-ghost" disabled={cfg.mode === 'browser'} onClick={() => run(() => sendRaw(testPageBytes(draft), cfg, draft.apiUrl, 'receipt'), 'Test page sent')}>
             Print test page
@@ -721,10 +811,10 @@ function HardwareSettings() {
         {bcCfg.mode === 'browser' && (
           <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             Browser print opens the system print dialog: choose the <b>XP-330B</b> there and set its paper size to the label size — Chrome remembers the last printer used,
-            which may be the receipt printer. <b>USB</b> sends labels straight to the XP-330B.
+            which may be the receipt printer. Choose <b>Windows printer</b> to send labels straight to the XP-330B.
           </p>
         )}
-        {bcCfg.mode !== 'network' && <ConnectGuide model="XP-330B" />}
+        {bcCfg.mode === 'usb' && <ConnectGuide model="XP-330B" />}
 
         <div className="grid gap-4 md:grid-cols-3">
           <Field label="Printer language" hint="Label printers (gap-sensing rolls) use TSPL.">

@@ -158,7 +158,8 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob:",
-      "connect-src 'self'",
+      // The Optimas Print Agent runs on the till computer itself.
+      "connect-src 'self' http://127.0.0.1:9180 http://localhost:9180",
       "object-src 'none'",
       "base-uri 'self'",
       "frame-ancestors 'none'",

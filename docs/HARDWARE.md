@@ -364,6 +364,24 @@ TOTAL ESTIMATE REQUESTED: KSh ____________  (excluding the till terminal)
 12. **Backup:** *Settings → Backup → Export JSON* every day at close of business, and copy
     the file to a USB stick. Also back up `data/optimas.db`.
 
+### 7.1 Two printers on one Windows till (XP-80C + XP-330B)
+
+Browser printing cannot choose a printer — Chrome sends every job to whichever printer
+was used last, so labels end up on the receipt printer. Use **Windows printer** mode:
+
+1. Install both printers in Windows with the Xprinter drivers (Settings → Printers & scanners).
+2. In Optimas: **Settings → Hardware → Receipt printer → Windows printer**. Press
+   *Download the installer*, double-click `Install Optimas Print Agent.cmd`
+   (More info → Run anyway if SmartScreen warns). It installs a small helper in
+   `%LOCALAPPDATA%\OptimasPrintAgent` that starts with Windows and listens on
+   `127.0.0.1:9180` only, accepting jobs from this shop's address only.
+3. Press **Check** (allow local network access if Chrome asks). Pick **XP-80C**.
+4. **Barcode label printer → Windows printer** → pick **XP-330B** → *Print test label*.
+
+Receipts then go to the XP-80C and labels to the XP-330B with no print dialog.
+To remove the agent: delete `Optimas Print Agent.vbs` from
+`shell:startup` and the `%LOCALAPPDATA%\OptimasPrintAgent` folder.
+
 ---
 
 ## 8. Troubleshooting
@@ -383,6 +401,8 @@ TOTAL ESTIMATE REQUESTED: KSh ____________  (excluding the till terminal)
 | `npm install` fails on better-sqlite3 | Node version too old, or no prebuilt binary | Use Node 22 LTS; if still failing install VS Build Tools 2022 (Desktop C++) |
 | Server will not start after `npm ci --omit=dev` | `tsx` is a devDependency | Run a full `npm install` |
 | Everything works on USB but the till reboots daily | Browser lost the USB grant | Use LAN mode instead — it survives reboots and tab crashes |
+| Test label comes out of the receipt printer | Label printer is in Browser print mode | Switch it to **Windows printer** and pick the XP-330B (§7.1) |
+| "Print agent not found on this computer" | Agent not installed or not running | Re-run the installer; check port 9180 is free (`netstat -ano \| findstr 9180`) |
 | Page looks cramped / two-column | Panel is 1024×768, below the 1180 px desktop breakpoint | Use a 1920×1080 panel or set Windows display scaling to 100% |
 
 ---

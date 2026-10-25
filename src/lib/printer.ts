@@ -2,6 +2,8 @@
 //  - 'usb'     WebUSB, direct from Chrome/Edge (on Windows the printer needs the WinUSB driver)
 //  - 'serial'  Web Serial, for USB-serial and Bluetooth SPP printers
 //  - 'network' LAN printers on port 9100, relayed through the shop server (/api/print)
+//  - 'agent'   a named Windows printer (e.g. "XP-330B") through the Optimas Print
+//              Agent running on this computer — normal drivers, no print dialog
 // When none is configured we fall back to the browser print dialog.
 //
 // The receipt printer and the barcode label printer are separate "slots": each
@@ -10,7 +12,7 @@
 
 import { authHeaders } from './api'
 
-export type PrinterMode = 'browser' | 'usb' | 'serial' | 'network'
+export type PrinterMode = 'browser' | 'usb' | 'serial' | 'network' | 'agent'
 export type PrinterSlot = 'receipt' | 'label'
 
 export interface DeviceId {
@@ -35,6 +37,48 @@ export interface PrinterConfig {
   deviceName?: string
   /** Printer model picked in Settings (applies its defaults), e.g. "xp-80c", "xp-330b". */
   model?: string
+  /** Windows printer name the print agent sends to (agent mode), e.g. "XP-330B". */
+  printerName?: string
+}
+
+/** The Optimas Print Agent (public/print-agent) listens here on the till computer. */
+export const AGENT_URL = 'http://127.0.0.1:9180'
+
+async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  let res: Response
+  try {
+    res = await fetch(`${AGENT_URL}${path}`, { ...init, cache: 'no-store' })
+  } catch {
+    throw new Error('The Optimas Print Agent is not running on this computer. Install it from Settings → Hardware, or start it again.')
+  }
+  const body = (await res.json().catch(() => ({}))) as { error?: string }
+  if (!res.ok) throw new Error(body.error ?? `Print agent error (HTTP ${res.status})`)
+  return body as T
+}
+
+/** Is the agent running? Returns its version, or null. */
+export async function agentStatus(): Promise<string | null> {
+  try {
+    const r = await agentFetch<{ ok: boolean; version?: string }>('/status')
+    return r.ok ? r.version ?? 'unknown' : null
+  } catch {
+    return null
+  }
+}
+
+/** Printers installed in Windows, as the agent sees them. */
+export async function agentPrinters(): Promise<string[]> {
+  return (await agentFetch<{ printers: string[] }>('/printers')).printers
+}
+
+/** Best guess for a slot from the Windows printer names (XP-80C → receipts, XP-330B → labels). */
+export function guessPrinter(names: string[], slot: PrinterSlot): string | undefined {
+  const tests = slot === 'label' ? [/330/i, /label|barcode|tspl|xp-?3\d\d|xp-?4\d\d/i] : [/80c|xp-?80/i, /receipt|pos-?80|80\s?mm|xp-?58/i]
+  for (const t of tests) {
+    const hit = names.find((n) => t.test(n))
+    if (hit) return hit
+  }
+  return undefined
 }
 
 const KEYS: Record<PrinterSlot, string> = { receipt: 'optimas.printer', label: 'optimas.barcodePrinter' }
@@ -242,8 +286,17 @@ export async function sendRaw(bytes: Uint8Array, cfg = loadPrinterConfig(), apiU
       if (!res.ok) throw new Error(`Print server error: ${await res.text()}`)
       return
     }
+    case 'agent': {
+      if (!cfg.printerName) throw new Error(`Choose the Windows printer for ${slot === 'label' ? 'labels' : 'receipts'} in Settings → Hardware.`)
+      await agentFetch('/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printer: cfg.printerName, data: toBase64(bytes), name: slot === 'label' ? 'Optimas labels' : 'Optimas receipt' }),
+      })
+      return
+    }
     case 'browser':
-      throw new Error('Raw printing needs a USB, serial or network printer')
+      throw new Error('Raw printing needs a USB, serial, network or print-agent printer')
   }
 }
 
