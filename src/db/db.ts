@@ -1,6 +1,7 @@
 import Dexie, { type DBCore, type DBCoreMutateRequest, type DBCoreTable, type DBCoreTransaction, type EntityTable, type Middleware, type Transaction } from 'dexie'
 import { hashPin, weakPinReason } from '../lib/pinHash'
 import { MAX_TILL, newId, randomTill, setCurrentTill } from './till'
+import { DEFAULT_STAFF } from './defaultStaff'
 import type {
   Category,
   Customer,
@@ -194,6 +195,13 @@ export class PosDB extends Dexie {
         await queueAllForUpload(tx)
       })
 
+    // v5 — the shop runs exactly two accounts: Optimas Admin and Cashier.
+    this.version(5)
+      .stores({})
+      .upgrade((tx) => installDefaultStaff(tx))
+    // A brand-new till starts with the same two accounts.
+    this.on('populate', (tx) => installDefaultStaff(tx))
+
     this.use(syncMiddleware)
     // New records get IDs that are unique across every till in the shop.
     for (const name of [...SYNC_TABLES.filter((t) => t !== 'kv'), 'users']) {
@@ -232,6 +240,12 @@ export const PRE_PRODUCTION_ARCHIVE = 'archive:pre-production'
 
 /** The two accounts every earlier build created with publicly documented PINs. */
 const DEFAULT_ACCOUNTS: Record<string, string> = { owner: '1234', cashier: '0000' }
+
+async function installDefaultStaff(tx: Transaction): Promise<void> {
+  const users = tx.table('users')
+  await users.clear()
+  await users.bulkAdd(DEFAULT_STAFF.map((u) => ({ id: u.id, name: u.name, role: u.role, active: true, pinHash: hashPin(u.pin) })))
+}
 
 async function productionReset(tx: Transaction): Promise<void> {
   // Keep a copy of everything we remove so nothing is lost for good: the owner

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
-import { migrate, sql } from '../../server/db'
+import { migrate, seedDefaultStaff, sql } from '../../server/db'
 import { createApp } from '../../server/app'
 import { resetFailures } from '../../server/auth'
 import { hashPin } from '../lib/pinHash'
@@ -229,5 +229,22 @@ describe('server sync', () => {
     expect(a.body.till).toBe(7)
     expect(b.body.till).not.toBe(7)
     expect(again.body.till).toBe(7)
+  })
+})
+
+describe('shop accounts', () => {
+  it('seeds Optimas Admin and Cashier once, and keeps later PIN changes', async () => {
+    sql.prepare("DELETE FROM server_kv WHERE key = 'staff:seeded:v1'").run()
+    expect(seedDefaultStaff()).toBe(true)
+    expect((await call('/auth/staff')).body).toEqual([
+      { id: 1, name: 'Optimas Admin', role: 'owner' },
+      { id: 2, name: 'Cashier', role: 'cashier' },
+    ])
+    expect((await call('/auth/login', { method: 'POST', body: { userId: 1, pin: '0735' } })).status).toBe(200)
+    const cashier = await call('/auth/login', { method: 'POST', body: { userId: 2, pin: '2323' } })
+    expect(cashier.status).toBe(200)
+    await call('/users/me/pin', { method: 'PUT', token: cashier.body.token, body: { currentPin: '2323', pinHash: hashPin('604918', 1000) } })
+    expect(seedDefaultStaff()).toBe(false)
+    expect((await call('/auth/login', { method: 'POST', body: { userId: 2, pin: '604918' } })).status).toBe(200)
   })
 })

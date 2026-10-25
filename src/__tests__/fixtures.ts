@@ -1,6 +1,5 @@
 import { db } from '../db/db'
 import type { Product, SaleLine } from '../db/types'
-import { hashPin } from '../lib/pinHash'
 
 export const lineFor = (p: Product, qty = 1, serial?: string): SaleLine => ({
   productId: p.id,
@@ -35,10 +34,7 @@ function part(sku: string, name: string, price: number, cost: number, stock: num
 
 /** A small, clearly-fake catalogue used only by tests. */
 export async function seedTestData() {
-  await db.users.bulkAdd([
-    { id: 1, name: 'Test Owner', pinHash: hashPin('5821', 1000), role: 'owner', active: true },
-    { id: 2, name: 'Test Cashier', pinHash: hashPin('7390', 1000), role: 'cashier', active: true },
-  ])
+  // Staff: a fresh database already holds Optimas Admin (1, PIN 0735) and Cashier (2, PIN 2323).
   await db.products.bulkAdd([
     part('BRK-PAD-F', 'Front brake pads', 850_00, 500_00, 10),
     part('TUB-17', 'Inner tube 17"', 650_00, 400_00, 8),

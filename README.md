@@ -21,7 +21,6 @@ Point-of-sale and inventory system for a **motorbike / e-bike spare parts shop**
 | **Reports** | Net sales, gross profit and margin, VAT collected (for KRA), takings by payment method, daily trend, top sellers, sales by category, reorder list. CSV export. |
 | **Staff & security** | Tap-your-name + private 4–6 digit PIN, stored as salted PBKDF2 hashes. Lockout after repeated wrong PINs, auto-lock when idle, forced PIN change for PINs set by the owner. Owner, manager and cashier roles, enforced on the server API with signed tokens. |
 | **Data & sync** | Every till works on its own copy (IndexedDB), so it keeps selling through internet and power cuts. Every change — sales, stock movements, serial labels, parts, customers, settings, deletions — is queued and synced to the shop server within seconds, and other tills pull it back. *Settings → Sync* shows this till against the server. One-click JSON backup and restore. |
-| **Admin portal** | Owner/manager portal from the Stitch "Store Executive Dashboard" design: grouped sidebar, part search (Ctrl+K), New Sale (F1), Add Part (F3), live sync status, executive KPIs, hourly revenue by tender, category movement, low-stock alerts with one-click POs, live counter transactions, Vehicle Fit Matrix and a stock movements log. |
 
 More screens: [payment](docs/screenshots/payment.png) · [receipt](docs/screenshots/receipt.png) · [inventory](docs/screenshots/inventory.png) · [reports](docs/screenshots/reports.png) · [shift](docs/screenshots/shift.png) · [service](docs/screenshots/service.png)
 
@@ -33,9 +32,8 @@ npm run build          # build the app into dist/
 npm run server:start   # serves the app + M-Pesa/printer API on http://localhost:8787
 ```
 
-Open `http://localhost:8787` in **Chrome or Edge**. The first time, the till asks you to create the owner account (shop name, your name, a private PIN). Add staff in *Staff*. There is no demo data — add your parts in *Inventory*.
+Open `http://localhost:8787` in **Chrome or Edge**. The till has two accounts: **Optimas Admin** (owner, PIN `0735`) and **Cashier** (PIN `2323`). Change the PINs under *My profile → Security*; changes sync to the server. There is no demo data — add your parts in *Inventory*.
 
-Further tills for the same shop: open the same address; the sign-in screen lists the shop's staff from the server and loads them onto the new till after the first sign-in.
 
 To develop, run `npm run dev` (Vite on :5173) and `npm run server` (API on :8787, proxied).
 

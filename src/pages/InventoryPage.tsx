@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Barcode, Bike, Download, History, Package, Pencil, Plus, Printer, Search, SlidersHorizontal, Tag, Trash2, Upload } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
@@ -151,6 +151,12 @@ export default function InventoryPage() {
             <button className="btn-ghost" onClick={exportCsv}>
               <Download size={16} /> Export
             </button>
+            <Link className="btn-ghost" to="/fitment">
+              <Bike size={16} /> Fit matrix
+            </Link>
+            <Link className="btn-ghost" to="/stock">
+              <History size={16} /> Stock log
+            </Link>
             {can('users') && products.length > 0 && (
               <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => void clearAllInventory()}>
                 <Trash2 size={16} /> Clear all

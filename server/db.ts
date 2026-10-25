@@ -6,7 +6,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import crypto from 'node:crypto'
 import Database from 'better-sqlite3'
+import { DEFAULT_STAFF } from '../src/db/defaultStaff'
 
 try {
   process.loadEnvFile()
@@ -60,4 +62,27 @@ export function migrate(): string[] {
 export function isMigrated(version: string): boolean {
   const row = sql.prepare('SELECT 1 AS ok FROM schema_migrations WHERE version = ?').get(version)
   return !!row
+}
+
+/**
+ * One-time: make the server's staff list the shop's two accounts (same IDs and
+ * PINs as a fresh till), so the till signs in to the server straight away.
+ * Runs once; PIN changes made afterwards are kept.
+ */
+export function seedDefaultStaff(): boolean {
+  const done = sql.prepare("SELECT 1 FROM server_kv WHERE key = 'staff:seeded:v1'").get()
+  if (done) return false
+  const now = Date.now()
+  const hash = (pin: string) => {
+    const salt = crypto.randomBytes(16)
+    const iterations = 30_000
+    return `pbkdf2-sha256$${iterations}$${salt.toString('base64')}$${crypto.pbkdf2Sync(pin, salt, iterations, 32, 'sha256').toString('base64')}`
+  }
+  sql.transaction(() => {
+    sql.prepare('DELETE FROM users').run()
+    const insert = sql.prepare('INSERT INTO users (id, name, pin_hash, role, active, updated_at) VALUES (?, ?, ?, ?, 1, ?)')
+    for (const u of DEFAULT_STAFF) insert.run(u.id, u.name, hash(u.pin), u.role, now)
+    sql.prepare("INSERT INTO server_kv (key, value) VALUES ('staff:seeded:v1', ?)").run(String(now))
+  })()
+  return true
 }

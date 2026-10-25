@@ -49,6 +49,7 @@ describe('outbox', () => {
   })
 
   it('does not queue staff accounts (they sync through the auth API)', async () => {
+    await db.outbox.clear()
     await db.users.add({ name: 'X', pinHash: hashPin('5821', 1000), role: 'owner', active: true })
     expect(await outbox()).toEqual([])
   })
@@ -124,7 +125,7 @@ describe('two tills through the real server', () => {
     const setup = await fetch(`${apiUrl}/auth/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: [{ ...owner, pinHash: owner.pinHash }], userId: 1, pin: '5821' }),
+      body: JSON.stringify({ users: [{ ...owner, pinHash: owner.pinHash }], userId: 1, pin: '0735' }),
     }).then((r) => r.json())
     setToken(setup.token)
     setCurrentTill(3)

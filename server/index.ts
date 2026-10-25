@@ -2,7 +2,7 @@
 // next to package.json (see .env.example).
 
 import { createApp } from './app'
-import { dbPath, migrate } from './db'
+import { dbPath, migrate, seedDefaultStaff } from './db'
 import * as pinpay from './pinpay'
 
 try {
@@ -13,6 +13,7 @@ try {
 
 const migrated = migrate()
 if (migrated.length) console.log(`DB migrations applied: ${migrated.join(', ')}`)
+if (seedDefaultStaff()) console.log('Staff accounts set: Optimas Admin, Cashier')
 
 const { app, daraja, distBuilt } = createApp()
 const PORT = Number(process.env.PORT ?? 8787)
