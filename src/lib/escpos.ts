@@ -149,13 +149,12 @@ export function receiptBytes(
 /** Labels on a receipt-type printer: one block per unit, cut between labels. */
 export function escposLabelBytes(
   jobs: { name: string; sku: string; code: string; price?: number }[],
-  settings: Pick<Settings, 'paperWidth' | 'shopName' | 'currency' | 'labelShowPrice' | 'labelShowShopName'>,
+  settings: Pick<Settings, 'paperWidth' | 'currency' | 'labelShowPrice'>,
 ): Uint8Array {
   const cols = columnsFor(settings.paperWidth)
   const p = new EscPos(cols).init()
   for (const job of jobs) {
     p.align('center')
-    if (settings.labelShowShopName && settings.shopName) p.line(settings.shopName.slice(0, cols))
     p.bold(true).line(job.name.slice(0, cols)).bold(false)
     if (settings.labelShowPrice && job.price) p.bold(true).size(true).line(`${settings.currency} ${amt(job.price)}`).size(false).bold(false)
     p.barcode(job.code, { height: 60, moduleWidth: settings.paperWidth === 58 ? 2 : 3 })

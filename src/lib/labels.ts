@@ -20,7 +20,7 @@ export interface LabelJob {
 
 type LabelSettings = Pick<
   Settings,
-  'shopName' | 'currency' | 'labelWidthMm' | 'labelHeightMm' | 'labelGapMm' | 'labelDensity' | 'labelShowPrice' | 'labelShowShopName' | 'paperWidth'
+  'currency' | 'labelWidthMm' | 'labelHeightMm' | 'labelGapMm' | 'labelDensity' | 'labelShowPrice' | 'paperWidth'
 >
 
 const DOTS_PER_MM = 8 // 203 dpi
@@ -77,43 +77,41 @@ export function tsplLabels(jobs: LabelJob[], s: LabelSettings): string {
     return `TEXT ${centerX(t.length, font)},${y},"${font}",0,1,1,"${t}"`
   }
 
+  // Label content, top to bottom: name, price, barcode, serial number, SKU —
+  // the whole block centred on the label both ways.
   const blocks = jobs.map((job) => {
-    const lines = ['CLS']
-    let y = 8
-    if (s.labelShowShopName && s.shopName) {
-      lines.push(text(y, '1', s.shopName.toUpperCase()))
-      y += 16
-    }
+    const items: { h: number; cmd: (y: number) => string }[] = []
     const name = labelText(job.name)
     const max2 = Math.floor((w - margin * 2) / FONT['2'][0])
     if (name.length <= max2) {
-      lines.push(text(y, '2', name))
-      y += 24
+      items.push({ h: 22, cmd: (y) => text(y, '2', name) })
     } else {
       // Long part names: smaller font, wrapped onto two lines.
       const [l1, l2] = wrap(name, Math.floor((w - margin * 2) / FONT['1'][0]))
-      lines.push(text(y, '1', l1))
-      y += 14
-      if (l2) {
-        lines.push(text(y, '1', l2))
-        y += 14
-      }
-      y += 2
+      items.push({ h: 14, cmd: (y) => text(y, '1', l1) })
+      if (l2) items.push({ h: 16, cmd: (y) => text(y, '1', l2) })
     }
     if (s.labelShowPrice && job.price) {
-      lines.push(text(y, '3', priceText(job.price, s.currency)))
-      y += 28
+      const price = priceText(job.price, s.currency)
+      items.push({ h: 28, cmd: (y) => text(y, '3', price) })
     }
     const code = labelText(job.code)
     const modules = code128Widths(code).reduce((a, b) => a + b, 0)
     const narrow = Math.max(1, Math.min(3, Math.floor((w - margin * 2) / modules)))
     const barX = Math.max(4, Math.round((w - modules * narrow) / 2))
-    const footer = 14 + 16 // human-readable code + SKU line
-    const barH = Math.min(100, Math.max(32, h - y - footer - 10))
-    lines.push(`BARCODE ${barX},${y + 2},"128",${barH},0,0,${narrow},${narrow},"${code}"`)
-    y += barH + 6
-    lines.push(text(y, '1', code))
-    lines.push(text(y + 14, '1', `SKU ${job.sku}`))
+    const textH = items.reduce((a, i) => a + i.h, 0) + 16 + 14 // + serial + SKU lines
+    const barH = Math.min(80, Math.max(32, h - textH - 24))
+    items.push({ h: barH + 4, cmd: (y) => `BARCODE ${barX},${y},"128",${barH},0,0,${narrow},${narrow},"${code}"` })
+    items.push({ h: 16, cmd: (y) => text(y, '1', code) })
+    items.push({ h: 14, cmd: (y) => text(y, '1', `SKU ${labelText(job.sku)}`) })
+
+    const total = items.reduce((a, i) => a + i.h, 0)
+    let y = Math.max(4, Math.round((h - total) / 2))
+    const lines = ['CLS']
+    for (const i of items) {
+      lines.push(i.cmd(y))
+      y += i.h
+    }
     lines.push('PRINT 1,1')
     return lines.join('\r\n')
   })
@@ -140,7 +138,6 @@ export function labelsHtml(jobs: LabelJob[], s: LabelSettings): string {
     .map((job) => {
       const code = labelText(job.code)
       return `<section class="label">
-  ${s.labelShowShopName && s.shopName ? `<div class="shop">${esc(s.shopName)}</div>` : ''}
   <div class="name">${esc(job.name)}</div>
   ${s.labelShowPrice && job.price ? `<div class="price">${esc(priceText(job.price, s.currency))}</div>` : ''}
   <div class="bars">${code128Svg(code, { height: 60, moduleWidth: 2 })}</div>
@@ -150,22 +147,21 @@ export function labelsHtml(jobs: LabelJob[], s: LabelSettings): string {
     })
     .join('\n')
   return `<!doctype html>
-<html><head><meta charset="utf-8"><title>Barcode labels (${jobs.length})</title>
+<html><head><meta charset="utf-8"><title>&#8203;</title>
 <style>
   @page { size: ${s.labelWidthMm}mm ${s.labelHeightMm}mm; margin: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
-  .label { width: ${s.labelWidthMm}mm; height: ${s.labelHeightMm}mm; padding: 1.2mm 1.5mm; overflow: hidden;
-           display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-           page-break-after: always; break-after: page; text-align: center; }
+  .label { width: ${s.labelWidthMm}mm; height: ${s.labelHeightMm}mm; padding: 1.5mm 2mm; overflow: hidden;
+           display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5mm;
+           page-break-after: always; break-after: page; page-break-inside: avoid; text-align: center; }
   .label:last-child { page-break-after: auto; break-after: auto; }
-  .shop { font-size: 6pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; }
-  .name { font-size: 7.5pt; font-weight: bold; line-height: 1.1; max-height: 2.2em; overflow: hidden; }
-  .price { font-size: 9pt; font-weight: 800; }
-  .bars { width: 100%; flex: 1; min-height: 6mm; display: flex; }
+  .name { font-size: 8pt; font-weight: bold; line-height: 1.1; max-height: 2.2em; overflow: hidden; max-width: 100%; }
+  .price { font-size: 10pt; font-weight: 800; line-height: 1.1; }
+  .bars { width: 88%; height: ${Math.min(11, Math.max(6, Math.round(s.labelHeightMm * 0.36)))}mm; display: flex; }
   .bars svg { width: 100%; height: 100%; }
-  .code { font-family: 'Courier New', monospace; font-size: 7pt; font-weight: bold; letter-spacing: 0.06em; }
-  .sku { font-size: 5.5pt; }
+  .code { font-family: 'Courier New', monospace; font-size: 7pt; font-weight: bold; letter-spacing: 0.06em; line-height: 1; }
+  .sku { font-size: 6.5pt; line-height: 1; }
   @media screen { body { background: #e5e7eb; padding: 12px; } .label { background: #fff; margin: 0 auto 8px; outline: 1px dashed #9ca3af; } }
 </style></head><body>${pages}</body></html>`
 }

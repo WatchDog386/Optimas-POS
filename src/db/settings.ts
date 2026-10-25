@@ -31,7 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   labelGapMm: 2,
   labelDensity: 8,
   labelShowPrice: true,
-  labelShowShopName: true,
+  labelShowShopName: false,
   autoPrintLabels: true,
 }
 

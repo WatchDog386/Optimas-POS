@@ -469,7 +469,7 @@ const MODES = [
 ] as const
 
 const LABEL_PRESETS: { label: string; w: number; h: number; gap: number }[] = [
-  { label: '40 × 30 mm', w: 40, h: 30, gap: 2 },
+  { label: '40 × 30 mm — XP-330B standard (default)', w: 40, h: 30, gap: 2 },
   { label: '50 × 30 mm', w: 50, h: 30, gap: 2 },
   { label: '50 × 25 mm', w: 50, h: 25, gap: 2 },
   { label: '38 × 25 mm', w: 38, h: 25, gap: 2 },
@@ -810,8 +810,10 @@ function HardwareSettings() {
         <PrinterConnection slot="label" cfg={bcCfg} onChange={updateBc} onPaired={updateBc} run={run} />
         {bcCfg.mode === 'browser' && (
           <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-            Browser print opens the system print dialog: choose the <b>XP-330B</b> there and set its paper size to the label size — Chrome remembers the last printer used,
-            which may be the receipt printer. Choose <b>Windows printer</b> to send labels straight to the XP-330B.
+            Browser print opens the system print dialog. In it choose the <b>XP-330B</b>, then under <b>More settings</b> set <b>Margins: None</b>, <b>Scale: Default</b> and
+            untick <b>Headers and footers</b> — otherwise the date, page title and page numbers print on the labels and they drift across the gaps. Also set the
+            XP-330B's paper size in Windows (Printer preferences → Page Setup) to the label size below. <b>Windows printer</b> mode avoids all of this: labels go straight
+            to the XP-330B at the exact size.
           </p>
         )}
         {bcCfg.mode === 'usb' && <ConnectGuide model="XP-330B" />}
@@ -865,9 +867,6 @@ function HardwareSettings() {
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={draft.labelShowPrice} onChange={(e) => set('labelShowPrice', e.target.checked)} /> Show selling price
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={draft.labelShowShopName} onChange={(e) => set('labelShowShopName', e.target.checked)} /> Show shop name
           </label>
         </div>
 
@@ -964,13 +963,12 @@ function LabelPreview({ job, s }: { job: LabelJob; s: Settings }) {
   const scale = 4 // px per mm
   return (
     <div
-      className="flex flex-col items-center justify-between overflow-hidden rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-black shadow-sm"
+      className="flex flex-col items-center justify-center gap-0.5 overflow-hidden rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-black shadow-sm"
       style={{ width: s.labelWidthMm * scale, height: s.labelHeightMm * scale }}
     >
-      {s.labelShowShopName && <div className="text-[8px] font-bold uppercase tracking-wide">{s.shopName}</div>}
       <div className="line-clamp-2 text-[10px] font-bold leading-tight">{job.name}</div>
       {s.labelShowPrice && job.price ? <div className="text-[11px] font-extrabold">{priceText(job.price, s.currency)}</div> : null}
-      <div className="min-h-0 w-full flex-1 py-0.5 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: code128Svg(job.code, { height: 60, moduleWidth: 2 }) }} />
+      <div className="w-[88%] [&>svg]:h-full [&>svg]:w-full" style={{ height: Math.min(11, Math.max(6, Math.round(s.labelHeightMm * 0.36))) * scale }} dangerouslySetInnerHTML={{ __html: code128Svg(job.code, { height: 60, moduleWidth: 2 }) }} />
       <div className="font-mono text-[9px] font-bold tracking-wider">{job.code}</div>
       <div className="text-[7px]">SKU {job.sku}</div>
     </div>
