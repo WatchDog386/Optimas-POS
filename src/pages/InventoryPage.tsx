@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { DEFAULT_BRAND, DEFAULT_PART_NUMBER, DEFAULT_SKU, nextCode } from '../lib/partCodes'
+import { DEFAULT_BRAND, nextNumber } from '../lib/partCodes'
 import type { ComponentType, ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useSearchParams } from 'react-router-dom'
@@ -382,15 +382,11 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
     ...(initial.id === undefined ? { brand: DEFAULT_BRAND } : {}),
     ...initial,
   })
-  // New parts: suggest the next SKU / part number in the shop's own numbering.
+  // New parts: SKU and part number are numbered 0001, 0002, …
   const [autoCodes, setAutoCodes] = useState<{ sku?: string; partNumber?: string }>({})
   const suggestCodes = async () => {
     const all = await db.products.toArray()
-    all.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-    return {
-      sku: nextCode(all.map((x) => x.sku), DEFAULT_SKU),
-      partNumber: nextCode(all.map((x) => x.partNumber), DEFAULT_PART_NUMBER),
-    }
+    return { sku: nextNumber(all.map((x) => x.sku)), partNumber: nextNumber(all.map((x) => x.partNumber)) }
   }
   useEffect(() => {
     if (initial.id !== undefined) return
@@ -571,7 +567,7 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
           <div>
             <label className="label">SKU *</label>
             <input className="input font-mono uppercase" value={p.sku ?? ''} onChange={(e) => set('sku', e.target.value.toUpperCase())} />
-            {isNew && p.sku && p.sku === autoCodes.sku && <span className="text-[10px] text-slate-500">Next in your numbering — edit if needed.</span>}
+            {isNew && p.sku && p.sku === autoCodes.sku && <span className="text-[10px] text-slate-500">Numbered automatically.</span>}
           </div>
           <div>
             <label className="label">Product barcode</label>
@@ -581,7 +577,7 @@ function ProductForm({ initial, onClose, onLabels }: { initial: Partial<Product>
           <div>
             <label className="label">OEM / part number</label>
             <input className="input font-mono uppercase" value={p.partNumber ?? ''} onChange={(e) => set('partNumber', e.target.value.toUpperCase())} />
-            {isNew && p.partNumber && p.partNumber === autoCodes.partNumber && <span className="text-[10px] text-slate-500">Auto-filled — replace with the OEM number if the box has one.</span>}
+            {isNew && p.partNumber && p.partNumber === autoCodes.partNumber && <span className="text-[10px] text-slate-500">Numbered automatically.</span>}
           </div>
           <div>
             <label className="label">Brand</label>
