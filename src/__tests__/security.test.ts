@@ -47,3 +47,23 @@ describe('PIN hashing', () => {
     expect(weakPinReason('739104')).toBeNull()
   })
 })
+
+describe('username matching', async () => {
+  const { matchStaff } = await import('../pages/LoginPage')
+  const staff = [
+    { id: 1, name: 'Optimas Admin' },
+    { id: 2, name: 'Cashier' },
+  ]
+  it('accepts the staff name in any case or spacing, or one unique word of it', () => {
+    expect(matchStaff(staff, 'Optimas Admin')?.id).toBe(1)
+    expect(matchStaff(staff, '  optimas   ADMIN ')?.id).toBe(1)
+    expect(matchStaff(staff, 'admin')?.id).toBe(1)
+    expect(matchStaff(staff, 'optimas')?.id).toBe(1)
+    expect(matchStaff(staff, 'cash')?.id).toBe(2)
+    expect(matchStaff(staff, '')).toBeUndefined()
+    expect(matchStaff(staff, 'manager')).toBeUndefined()
+  })
+  it('refuses an ambiguous partial name', () => {
+    expect(matchStaff([...staff, { id: 3, name: 'Cash Office' }], 'cash')).toBeUndefined()
+  })
+})

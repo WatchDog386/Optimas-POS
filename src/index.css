@@ -2685,6 +2685,28 @@ body,
 /* ── Sign-in (green "EasyPOS-style" screen) ───────────────────────────── */
 .login-easy {
   font-family: "Helvetica Neue", Helvetica, "Inter", Arial, sans-serif;
+  /* The reference green, with a barely-there light from above for depth. */
+  background: radial-gradient(120% 70% at 50% 0%, #14d085 0%, #0cc77a 55%, #0bbd73 100%);
+  -webkit-font-smoothing: antialiased;
+}
+@keyframes login-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.login-enter { animation: login-enter 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes login-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.login-shake { animation: login-shake 0.36s ease-in-out; }
+.login-notice { animation-fill-mode: both; }
+.login-menu {
+  box-shadow: 0 12px 28px -10px rgb(4 60 37 / 0.45), 0 0 0 1px rgb(7 111 68 / 0.18);
+  animation: login-enter 0.14s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-enter, .login-shake, .login-menu { animation: none; }
 }
 .login-title {
   font-weight: 300;
@@ -2728,10 +2750,20 @@ body,
   color: #fff;
   font-size: 18px;
   font-weight: 400;
-  transition: background-color 0.15s;
+  box-shadow: 0 6px 14px -8px rgb(3 50 30 / 0.7);
+  transition: background-color 0.15s, transform 0.08s;
 }
 .login-button:hover:not(:disabled) {
   background: #065f3a;
+}
+.login-button:active:not(:disabled) {
+  transform: translateY(1px);
+  background: #05532f;
+}
+.login-button:focus-visible,
+.login-link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
 }
 .login-button:disabled {
   opacity: 0.7;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Loader2 } from 'lucide-react'
+import { Check, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { db } from '../db/db'
 import { saveSettings, useSettings } from '../db/settings'
 import { createOwner, needsSetup } from '../db/seed'
@@ -14,6 +14,8 @@ type Staff = { id: number; name: string; role: Role }
 type Mode = { kind: 'loading' } | { kind: 'local' } | { kind: 'server'; staff: Staff[] } | { kind: 'setup' }
 
 const LAST_USER_KEY = 'optimas.lastUser'
+const APP_VERSION = '1.0.0'
+const ROLE_LABEL: Record<Role, string> = { owner: 'Admin', manager: 'Manager', cashier: 'Cashier' }
 
 export default function LoginPage() {
   const localUsers = useLiveQuery(() => db.users.toArray(), [], undefined)
@@ -60,7 +62,7 @@ export default function LoginPage() {
 /** The Optimas mark: a white ring with a break and a dot, in the style of the reference design. */
 function OptimasMark() {
   return (
-    <svg viewBox="0 0 100 100" className="mx-auto h-[120px] w-[120px] sm:h-[146px] sm:w-[146px]" aria-hidden="true">
+    <svg viewBox="0 0 100 100" className="mx-auto h-[112px] w-[112px] sm:h-[140px] sm:w-[140px]" role="img" aria-label="Optimas">
       {/* Ring open at the lower right, its end running out into a short tail, then a dot. */}
       <path d="M88 50 A38 38 0 1 0 50 88 H66" fill="none" stroke="#fff" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="84" cy="79" r="7" fill="#fff" />
@@ -68,24 +70,69 @@ function OptimasMark() {
   )
 }
 
+function useOnline() {
+  const [online, setOnline] = useState(navigator.onLine)
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
+  return online
+}
+
 function AuthShell({ children }: { children: ReactNode }) {
+  const settings = useSettings()
+  const online = useOnline()
   return (
-    <div className="login-easy flex h-full min-h-0 flex-col items-center overflow-y-auto bg-[#0cc77a] px-5 py-10 text-white">
-      <div className="my-auto w-full max-w-[340px]">
+    <div className="login-easy flex h-full min-h-0 flex-col items-center overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10 text-white">
+      <main className="login-enter my-auto w-full max-w-[340px]">
         <OptimasMark />
         <h1 className="login-title mt-3 text-center text-[56px] leading-none text-white sm:text-[72px]">Optimas</h1>
-        <div className="mt-11">{children}</div>
-      </div>
+        <div className="mt-10">{children}</div>
+      </main>
+      <footer className="mt-10 flex items-center gap-2 text-[12px] font-light text-white/75">
+        <span className={`h-1.5 w-1.5 rounded-full ${online ? 'bg-white' : 'bg-amber-300'}`} aria-hidden="true" />
+        <span>{online ? 'Online' : 'Offline — you can still sign in'}</span>
+        <span aria-hidden="true">·</span>
+        <span className="max-w-[12rem] truncate">{settings.shopName}</span>
+        <span aria-hidden="true">·</span>
+        <span>v{APP_VERSION}</span>
+      </footer>
     </div>
   )
 }
 
-function Notice({ children, tone = 'error' }: { children: ReactNode; tone?: 'error' | 'info' }) {
+function Notice({ children, tone = 'error', shake }: { children: ReactNode; tone?: 'error' | 'info'; shake?: number }) {
   return (
-    <p role={tone === 'error' ? 'alert' : undefined} className={`mt-3 rounded-[3px] px-3 py-2 text-center text-[13px] ${tone === 'error' ? 'bg-[#076f44] text-white' : 'bg-white/15 text-white'}`}>
+    <p
+      key={shake}
+      role={tone === 'error' ? 'alert' : 'status'}
+      className={`login-notice mt-3 rounded-[3px] px-3 py-2 text-center text-[13px] leading-snug ${tone === 'error' ? 'login-shake bg-[#076f44] text-white' : 'bg-white/15 text-white'}`}
+    >
       {children}
     </p>
   )
+}
+
+const norm = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase()
+
+/**
+ * Find the staff member a typed username means: the full name in any case or
+ * spacing ("optimas admin"), or any word of it when that picks one person
+ * ("admin", "cashier").
+ */
+export function matchStaff<T extends { name: string }>(staff: T[], typed: string): T | undefined {
+  const t = norm(typed)
+  if (!t) return undefined
+  const exact = staff.find((s) => norm(s.name) === t)
+  if (exact) return exact
+  const partial = staff.filter((s) => norm(s.name).split(' ').some((w) => w.startsWith(t)) || norm(s.name).startsWith(t))
+  return partial.length === 1 ? partial[0] : undefined
 }
 
 // ----------------------------------------------------------------- sign in
@@ -101,16 +148,24 @@ function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' 
     }
   })
   const [pin, setPin] = useState('')
+  const [showPin, setShowPin] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [shake, setShake] = useState(0)
   const [lockedUntil, setLockedUntil] = useState(0)
   const [now, setNow] = useState(Date.now())
   const [help, setHelp] = useState(false)
-  const [list, setList] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [hi, setHi] = useState(0)
   const userRef = useRef<HTMLInputElement>(null)
   const pinRef = useRef<HTMLInputElement>(null)
 
-  const person = useMemo(() => staff.find((s) => s.name.trim().toLowerCase() === username.trim().toLowerCase()), [staff, username])
+  const person = useMemo(() => matchStaff(staff, username), [staff, username])
+  const suggestions = useMemo(() => {
+    const t = norm(username)
+    if (!t || person?.name === username) return staff
+    return staff.filter((s) => norm(s.name).includes(t))
+  }, [staff, username, person])
   const lockLeft = Math.max(0, lockedUntil - now)
 
   useEffect(() => {
@@ -136,16 +191,29 @@ function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' 
     })
   }, [person, source])
 
+  const fail = (msg: string) => {
+    setError(msg)
+    setShake((n) => n + 1)
+  }
+
+  const choose = (s: Staff) => {
+    setUsername(s.name)
+    setOpen(false)
+    setError('')
+    pinRef.current?.focus()
+  }
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (busy) return
     setError('')
     if (!person) {
-      setError(username.trim() ? `No staff member called "${username.trim()}"` : 'Enter your username')
+      fail(username.trim() ? `No staff member called "${username.trim()}". Try ${staff.map((s) => s.name).join(' or ')}.` : 'Enter your name, e.g. Optimas Admin')
       return userRef.current?.focus()
     }
+    if (person.name !== username) setUsername(person.name)
     if (pin.length < PIN_MIN) {
-      setError(`Enter your ${PIN_MIN}–${PIN_MAX} digit PIN`)
+      fail(`Enter your ${PIN_MIN}–${PIN_MAX} digit PIN`)
       return pinRef.current?.focus()
     }
     if (lockLeft > 0) return
@@ -154,7 +222,7 @@ function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' 
       if (source === 'local') {
         const r = await login(person.id, pin)
         if (!r.ok) {
-          setError(r.error)
+          fail(r.error)
           setPin('')
           if (r.lockedMs) {
             setNow(Date.now())
@@ -173,91 +241,148 @@ function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' 
         /* not remembered */
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed')
+      fail(err instanceof Error ? err.message : 'Sign-in failed')
       setPin('')
     } finally {
       setBusy(false)
     }
   }
 
+  const onUserKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      setOpen(true)
+      setHi((h) => (suggestions.length ? (h + (e.key === 'ArrowDown' ? 1 : -1) + suggestions.length) % suggestions.length : 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (open && suggestions[hi]) choose(suggestions[hi])
+      else if (person) choose(person)
+      else void submit(e)
+    } else if (e.key === 'Escape') setOpen(false)
+  }
+
   return (
-    <form onSubmit={submit} noValidate>
-      <label className="sr-only" htmlFor="login-user">
-        Username
-      </label>
-      <input
-        id="login-user"
-        ref={userRef}
-        className="login-input"
-        placeholder="Username"
-        autoComplete="username"
-        list="login-staff"
-        value={username}
-        onChange={(e) => {
-          setUsername(e.target.value)
-          setError('')
-        }}
-      />
-      <datalist id="login-staff">
-        {staff.map((s) => (
-          <option key={s.id} value={s.name} />
-        ))}
-      </datalist>
+    <form onSubmit={submit} noValidate aria-label="Sign in">
+      <div className="relative">
+        <label className="sr-only" htmlFor="login-user">
+          Username
+        </label>
+        <input
+          id="login-user"
+          ref={userRef}
+          className="login-input pr-10"
+          placeholder="Username"
+          autoComplete="username"
+          autoCapitalize="words"
+          spellCheck={false}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="login-staff"
+          aria-autocomplete="list"
+          value={username}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={onUserKey}
+          onChange={(e) => {
+            setUsername(e.target.value)
+            setOpen(true)
+            setHi(0)
+            setError('')
+          }}
+        />
+        {person && (
+          <Check size={17} strokeWidth={2.5} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#0cc77a]" aria-label="Staff member found" />
+        )}
+        {open && suggestions.length > 0 && (
+          <ul id="login-staff" role="listbox" className="login-menu absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-[2px] bg-white py-1 text-left">
+            {suggestions.map((s, i) => (
+              <li key={s.id} role="option" aria-selected={i === hi}>
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setHi(i)}
+                  onClick={() => choose(s)}
+                  className={`flex w-full items-center justify-between px-3.5 py-2.5 text-[15px] font-light text-[#1f2a24] ${i === hi ? 'bg-[#e8f8f0]' : ''}`}
+                >
+                  <span>{s.name}</span>
+                  <span className="text-[11px] font-normal uppercase tracking-wider text-[#6f8f80]">{ROLE_LABEL[s.role]}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-      <label className="sr-only" htmlFor="login-pin">
-        PIN
-      </label>
-      <input
-        id="login-pin"
-        ref={pinRef}
-        className="login-input mt-3 tracking-[0.35em] placeholder:tracking-normal"
-        type="password"
-        inputMode="numeric"
-        autoComplete="current-password"
-        placeholder="PIN"
-        maxLength={PIN_MAX}
-        value={pin}
-        disabled={lockLeft > 0}
-        onChange={(e) => {
-          setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_MAX))
-          setError('')
-        }}
-      />
+      <div className="relative mt-3">
+        <label className="sr-only" htmlFor="login-pin">
+          PIN
+        </label>
+        <input
+          id="login-pin"
+          ref={pinRef}
+          className={`login-input pr-11 ${pin && !showPin ? 'tracking-[0.35em]' : ''}`}
+          type={showPin ? 'text' : 'password'}
+          inputMode="numeric"
+          autoComplete="current-password"
+          placeholder="PIN"
+          maxLength={PIN_MAX}
+          value={pin}
+          disabled={lockLeft > 0}
+          onChange={(e) => {
+            setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_MAX))
+            setError('')
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setShowPin((v) => !v)
+            pinRef.current?.focus()
+          }}
+          className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded text-[#8a9690] transition hover:text-[#1f2a24]"
+          aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
+          aria-pressed={showPin}
+        >
+          {showPin ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      </div>
 
-      {lockLeft > 0 ? <Notice>Too many wrong PINs. Try again in {formatWait(lockLeft)}.</Notice> : error ? <Notice>{error}</Notice> : null}
+      <div aria-live="polite">
+        {lockLeft > 0 ? (
+          <Notice>Too many wrong PINs for {person?.name}. Try again in {formatWait(lockLeft)}.</Notice>
+        ) : error ? (
+          <Notice shake={shake}>{error}</Notice>
+        ) : null}
+      </div>
 
-      <button type="submit" disabled={busy || lockLeft > 0} className="login-button mt-11">
-        {busy ? <Loader2 size={18} className="mx-auto animate-spin" /> : 'Sign In'}
+      <button type="submit" disabled={busy || lockLeft > 0} className="login-button mt-10" aria-busy={busy}>
+        {busy ? (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 size={17} className="animate-spin" /> Signing in…
+          </span>
+        ) : (
+          'Sign In'
+        )}
       </button>
 
-      <div className="mt-8 flex items-center justify-between text-[16px] font-light">
-        <button type="button" className="login-link" onClick={() => setHelp((h) => !h)}>
+      <div className="mt-7 flex items-center justify-between text-[16px] font-light">
+        <button type="button" className="login-link" onClick={() => setHelp((h) => !h)} aria-expanded={help}>
           Forgot PIN?
         </button>
-        <button type="button" className="login-link" onClick={() => setList((l) => !l)}>
+        <button
+          type="button"
+          className="login-link"
+          onClick={() => {
+            setOpen(true)
+            setHi(0)
+            userRef.current?.focus()
+          }}
+        >
           Staff list
         </button>
       </div>
-      {help && <Notice tone="info">Ask the Optimas Admin to reset your PIN under Staff.</Notice>}
-      {list && (
-        <div className="mt-3 flex flex-wrap justify-center gap-2">
-          {staff.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => {
-                setUsername(s.name)
-                setList(false)
-                setError('')
-                pinRef.current?.focus()
-              }}
-              className="rounded-[3px] bg-white/15 px-3 py-1.5 text-sm text-white transition hover:bg-white/25"
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {help && <Notice tone="info">Ask the Optimas Admin to reset your PIN under Staff. After 5 wrong tries the account pauses briefly.</Notice>}
     </form>
   )
 }
