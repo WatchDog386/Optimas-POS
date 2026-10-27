@@ -42,9 +42,22 @@ fi
 pm2 save >/dev/null
 
 echo "==> health check"
-sleep 2
-curl -s http://localhost:8787/api/health || echo "server not answering yet — check: pm2 logs optimas-pos --lines 30"
+ok=""
+for i in $(seq 1 15); do
+  if curl -sf http://localhost:8787/api/health; then ok=1; break; fi
+  sleep 2
+done
 echo
+if [ -z "$ok" ]; then
+  echo "!!  The app is not answering on port 8787 — the website will show 502 Bad Gateway."
+  echo "    Last log lines:"
+  pm2 logs optimas-pos --lines 40 --nostream || true
+  exit 1
+fi
+if ! systemctl list-unit-files 2>/dev/null | grep -q '^pm2-'; then
+  echo "==> NOTE: pm2 is not set to start at boot — after a server restart the site shows 502."
+  echo "    Run once:  pm2 startup   (then run the sudo command it prints)  and then:  pm2 save"
+fi
 if curl -sf -o /dev/null http://localhost:8787/print-agent/optimas-print-agent.ps1; then
   echo "    print agent installer file: OK"
 else
