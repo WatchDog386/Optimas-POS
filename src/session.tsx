@@ -6,6 +6,7 @@ import { useSettings } from './db/settings'
 import { isOpenHere } from './db/shifts'
 import { verifyPin } from './lib/pinHash'
 import { setToken } from './lib/api'
+import { relockGates } from './components/PasswordGate'
 import { setSyncCredentials, startSync } from './lib/sync'
 import type { Role, Shift, User } from './db/types'
 
@@ -116,6 +117,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // Sync keeps running on the session it has, so sales made before locking
     // still reach the server; the PIN is forgotten.
     setSyncCredentials(null)
+    relockGates()
     setAuthUser(null)
   }, [user])
 

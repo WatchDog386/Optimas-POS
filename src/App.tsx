@@ -30,6 +30,7 @@ import { useSyncStatus } from './lib/sync'
 import { syncLabel } from './components/SyncStatus'
 import { useSettings } from './db/settings'
 import { useInstall } from './lib/installPrompt'
+import { PasswordGate, PURCHASING_PASSWORD_HASH } from './components/PasswordGate'
 import LoginPage, { PinChangeGate } from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
@@ -408,7 +409,7 @@ export default function App() {
             <Route path="/inventory" element={<Guard perm="inventory"><InventoryPage /></Guard>} />
             <Route path="/fitment" element={<Guard perm="inventory"><FitMatrixPage /></Guard>} />
             <Route path="/stock" element={<Guard perm="inventory"><StockMovementsPage /></Guard>} />
-            <Route path="/purchasing" element={<Guard perm="purchasing"><PurchasingPage /></Guard>} />
+            <Route path="/purchasing" element={<Guard perm="purchasing"><PasswordGate id="purchasing" hash={PURCHASING_PASSWORD_HASH} title="Purchasing is locked"><PurchasingPage /></PasswordGate></Guard>} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/reports" element={<Guard perm="reports"><ReportsPage /></Guard>} />
             <Route path="/shift" element={<ShiftPage />} />
