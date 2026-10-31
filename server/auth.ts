@@ -140,6 +140,8 @@ export function requireAuth(roles?: Role[]) {
       return
     }
     req.auth = { uid: claims.uid, role: user.role, exp: claims.exp, name: user.name }
+    // Sliding session: a till that keeps syncing never gets signed out by the clock.
+    if (claims.exp - Date.now() < TOKEN_TTL_MS / 2) res.setHeader('X-Session-Token', signToken(claims.uid, user.role))
     next()
   }
 }

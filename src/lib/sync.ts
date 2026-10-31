@@ -13,8 +13,8 @@ import { useSyncExternalStore } from 'react'
 import { liveQuery, type Subscription } from 'dexie'
 import { applyingRemote, db, outboxId, SYNC_TABLES, SYNCED_KV_KEYS, type OutboxEntry } from '../db/db'
 import { currentTill, setCurrentTill } from '../db/till'
-import type { Product, StockMovement } from '../db/types'
-import { api, ApiError, hasServerSession } from './api'
+import type { Product, StockMovement, User } from '../db/types'
+import { api, ApiError, hasServerSession, serverSignIn } from './api'
 import { trashProducts } from '../db/recovery'
 
 export type SyncState = 'idle' | 'syncing' | 'offline' | 'signed-out' | 'error'
@@ -228,9 +228,31 @@ export function syncNow(): Promise<void> {
   return running
 }
 
+// The signed-in user's credentials, kept in memory only while they are signed
+// in, so the server session is re-established by itself after an outage, an
+// expired session or a sign-in made while the server was down.
+let creds: { user: User; pin: string } | null = null
+let lastAuthTry = 0
+const AUTH_RETRY_MS = 20_000
+
+export function setSyncCredentials(c: { user: User; pin: string } | null) {
+  creds = c
+  lastAuthTry = 0
+}
+
+async function ensureSession(): Promise<boolean> {
+  if (hasServerSession()) return true
+  if (!creds || Date.now() - lastAuthTry < AUTH_RETRY_MS) return false
+  lastAuthTry = Date.now()
+  const reason = await serverSignIn(creds.user, creds.pin)
+  setStatus({ error: reason })
+  if (!reason) registered = false
+  return hasServerSession()
+}
+
 async function syncOnce() {
-  if (!hasServerSession()) return setStatus({ state: 'signed-out' })
-  if (!navigator.onLine) return setStatus({ state: 'offline' })
+  if (navigator.onLine === false) return setStatus({ state: 'offline' })
+  if (!(await ensureSession())) return setStatus({ state: 'signed-out' })
   setStatus({ state: 'syncing', error: undefined })
   try {
     if (!registered) {
@@ -242,7 +264,10 @@ async function syncOnce() {
     setStatus({ state: 'idle', lastSync: Date.now() })
     await db.syncstate.put({ key: 'last-sync', value: Date.now() })
   } catch (e) {
-    if (e instanceof ApiError && e.status === 401) setStatus({ state: 'signed-out', error: e.message })
+    if (e instanceof ApiError && e.status === 401) {
+      lastAuthTry = 0 // session expired: sign in again on the next round
+      setStatus({ state: 'signed-out', error: e.message })
+    }
     else if (e instanceof TypeError) setStatus({ state: 'offline', error: 'Shop server unreachable' })
     else setStatus({ state: 'error', error: e instanceof Error ? e.message : String(e) })
   }

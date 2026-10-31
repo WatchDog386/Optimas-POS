@@ -150,7 +150,8 @@ function SyncNote() {
     return () => clearInterval(t)
   }, [])
   const { text, tone } = syncLabel(s)
-  const cls = `mr-1 hidden text-sm lg:inline ${tone === 'ok' ? 'text-white/80' : 'text-amber-300'}`
+  // Always visible when something is wrong (phones/tablets included); the "Synced" note only on wide screens.
+  const cls = `mr-1 text-xs sm:text-sm ${tone === 'ok' ? 'hidden text-white/80 lg:inline' : 'inline text-amber-300'}`
   return can('settings') ? (
     <Link to="/settings?tab=Sync" className={`${cls} hover:text-white`} title={s.error ?? 'Sync with the shop server'}>
       {text}

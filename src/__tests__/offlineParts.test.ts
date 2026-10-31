@@ -124,3 +124,39 @@ it('keeps deleted parts restorable on the till and on the server', async () => {
   expect((await db.products.get(id))!.stock).toBe(6)
   setToken(null)
 })
+
+it('a till signed in while the server was down starts syncing by itself when it is back', async () => {
+  const { setSyncCredentials, syncNow } = await import('../lib/sync')
+  const { signToken } = await import('../../server/auth')
+  // Register the shop's staff on the server once.
+  const owner = (await db.users.toArray()).find((u) => u.role === 'owner')!
+  await fetch(`${apiUrl}/auth/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ users: await db.users.toArray(), userId: owner.id, pin: '0735' }),
+  })
+  setToken(null)
+
+  // Signed in during the outage: the server can't be reached.
+  await saveSettings({ apiUrl: 'http://127.0.0.1:9/api' })
+  setSyncCredentials({ user: owner, pin: '0735' })
+  await syncNow()
+  await addPart('0001', 'Left hand switch', 2)
+  expect(await db.outbox.count()).toBeGreaterThan(0)
+
+  // Server is back: the next round signs in and uploads without anyone touching the till.
+  await saveSettings({ apiUrl })
+  setSyncCredentials({ user: owner, pin: '0735' }) // skip the 20 s retry wait in the test
+  await syncNow()
+  expect(await db.outbox.count()).toBe(0)
+  const onServer = sql.prepare("SELECT COUNT(*) AS n FROM sync_records WHERE tbl = 'products' AND data IS NOT NULL").get() as { n: number }
+  expect(onServer.n).toBe(1)
+
+  // An old session is renewed instead of expiring mid-day.
+  const old = signToken(owner.id!, 'owner', Date.now() - 11 * 60 * 60 * 1000)
+  const res = await fetch(`${apiUrl}/sync/status`, { headers: { Authorization: `Bearer ${old}` } })
+  expect(res.status).toBe(200)
+  expect(res.headers.get('X-Session-Token')).toBeTruthy()
+  setSyncCredentials(null)
+  setToken(null)
+})

@@ -60,6 +60,8 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
     body = JSON.stringify(init.json)
   }
   const res = await fetch(`${await base()}${path}`, { ...init, headers, body })
+  const renewed = res.headers.get('X-Session-Token')
+  if (renewed && token) setToken(renewed)
   const text = await res.text()
   let data: unknown = undefined
   try {
@@ -104,9 +106,10 @@ async function adoptUsers(users: SyncUser[]) {
 /**
  * After a successful offline sign-in, get a server token in the background.
  * If the server has never seen this shop, the owner registers the staff list.
- * Never throws — the till keeps working without the server.
+ * Never throws — the till keeps working without the server. Returns why it
+ * could not connect (shown in the sync status), or undefined when connected.
  */
-export async function serverSignIn(user: User, pin: string): Promise<void> {
+export async function serverSignIn(user: User, pin: string): Promise<string | undefined> {
   try {
     const r = await api<{ token: string; users: SyncUser[] }>('/auth/login', { method: 'POST', json: { userId: user.id, pin } })
     setToken(r.token)
@@ -114,14 +117,24 @@ export async function serverSignIn(user: User, pin: string): Promise<void> {
     const missing: SyncUser[] = []
     for (const u of r.users) if (!(await db.users.get(u.id!))) missing.push(u)
     if (missing.length) await adoptUsers(missing)
+    return undefined
   } catch (e) {
-    if (e instanceof ApiError && e.status === 404 && e.code === 'setup' && user.role === 'owner') {
-      try {
-        await registerWithServer(user, pin)
-      } catch {
-        /* needs the setup code (Settings → Security) or the server is unreachable */
+    if (e instanceof ApiError && e.status === 404 && e.code === 'setup') {
+      if (user.role === 'owner') {
+        try {
+          await registerWithServer(user, pin)
+          return undefined
+        } catch {
+          /* needs the setup code (Settings → Security) */
+        }
       }
+      return 'The shop server has no staff registered yet. Owner: open Settings → Security → Shop server and enter the setup code.'
     }
+    if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+      return `The shop server did not accept ${user.name}'s PIN (${e.message}). If the PIN was changed on another device, sign in here with that PIN.`
+    }
+    if (e instanceof ApiError) return `Shop server error (HTTP ${e.status}) — retrying automatically.`
+    return 'Shop server unreachable — sales are kept on this device and sent when it is back.'
   }
 }
 
