@@ -1,12 +1,14 @@
 // Server-side database (SQLite via better-sqlite3).
 // Holds the things the till needs shared/durable on the server: M-Pesa payment
-// prompts, staff users and shop settings. Sales/inventory stay in the browser's
+// prompts, staff accounts (PBKDF2 PIN records only) and shop settings. Sales/inventory stay in the browser's
 // IndexedDB — see docs/MPESA.md and the README section on hosting.
 
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import crypto from 'node:crypto'
 import Database from 'better-sqlite3'
+import { DEFAULT_STAFF } from '../src/db/defaultStaff'
 
 try {
   process.loadEnvFile()
@@ -62,16 +64,25 @@ export function isMigrated(version: string): boolean {
   return !!row
 }
 
-/** Ensure the two default staff accounts exist so the till can log in on the server DB. */
-export function seedDefaultUsers(): void {
-  const count = sql.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }
-  if (count.n > 0) return
-  const insert = sql.prepare(
-    `INSERT INTO users (id, name, pin, role, active, updated_at)
-     VALUES (@id, @name, @pin, @role, @active, @updated_at)`
-  )
+/**
+ * One-time: make the server's staff list the shop's two accounts (same IDs and
+ * PINs as a fresh till), so the till signs in to the server straight away.
+ * Runs once; PIN changes made afterwards are kept.
+ */
+export function seedDefaultStaff(): boolean {
+  const done = sql.prepare("SELECT 1 FROM server_kv WHERE key = 'staff:seeded:v1'").get()
+  if (done) return false
+  const now = Date.now()
+  const hash = (pin: string) => {
+    const salt = crypto.randomBytes(16)
+    const iterations = 30_000
+    return `pbkdf2-sha256$${iterations}$${salt.toString('base64')}$${crypto.pbkdf2Sync(pin, salt, iterations, 32, 'sha256').toString('base64')}`
+  }
   sql.transaction(() => {
-    insert.run({ id: 1, name: 'Owner', pin: '1234', role: 'owner', active: 1, updated_at: Date.now() })
-    insert.run({ id: 2, name: 'Cashier', pin: '0000', role: 'cashier', active: 1, updated_at: Date.now() })
+    sql.prepare('DELETE FROM users').run()
+    const insert = sql.prepare('INSERT INTO users (id, name, pin_hash, role, active, updated_at) VALUES (?, ?, ?, ?, 1, ?)')
+    for (const u of DEFAULT_STAFF) insert.run(u.id, u.name, hash(u.pin), u.role, now)
+    sql.prepare("INSERT INTO server_kv (key, value) VALUES ('staff:seeded:v1', ?)").run(String(now))
   })()
+  return true
 }

@@ -19,13 +19,18 @@ export function useBarcodeScanner(onScan: (code: string) => void, enabled = true
       const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
       if (inField && t?.dataset.scan !== 'allow') return
 
-      const now = performance.now()
+      // Use when the key was pressed, not when we got to handle it: a render
+      // that stalls the page mid-scan must not split one scan into two.
+      const now = e.timeStamp || performance.now()
       if (now - last.current > 40) buf.current = ''
       last.current = now
 
       if (e.key === 'Enter') {
         if (buf.current.length >= 4) {
+          // Stop the Enter reaching the focused field too, or a scan into the
+          // search box would add the item twice.
           e.preventDefault()
+          e.stopPropagation()
           cb.current(buf.current)
         }
         buf.current = ''

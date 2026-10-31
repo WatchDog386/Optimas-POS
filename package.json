@@ -1,7 +1,7 @@
 {
   "name": "optimas-pos",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Offline-first point of sale for a motorbike spare parts shop",
   "scripts": {
@@ -12,16 +12,20 @@
     "test": "vitest run",
     "server": "tsx watch server/index.ts",
     "server:start": "tsx server/index.ts",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "sync:report": "tsx scripts/sync-report.ts",
+    "sync:restore": "tsx scripts/sync-restore.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
+    "express": "^5.3.0",
     "lucide-react": "^1.59.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -31,10 +35,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "express": "^5.3.0",
     "fake-indexeddb": "^6.2.6",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"

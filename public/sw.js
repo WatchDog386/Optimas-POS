@@ -1,7 +1,8 @@
 /* Optimas POS — offline app-shell service worker.
    Navigations: network-first (falls back to cached shell when offline).
-   Same-origin assets: cache-first (hashed build files are immutable). */
-const CACHE = 'optimas-shell-v1'
+   Hashed /assets/ files: cache-first (immutable). Other files (manifest,
+   icons, print agent): network-first so updates reach installed apps. */
+const CACHE = 'optimas-shell-v3'
 const SHELL = [
   '/',
   '/index.html',
@@ -36,17 +37,37 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request
   if (req.method !== 'GET') return
-  if (new URL(req.url).origin !== self.location.origin) return
+  const url = new URL(req.url)
+  if (url.origin !== self.location.origin) return
+  // Never cache the API: payment status, staff and stock must always be live.
+  if (url.pathname.startsWith('/api/')) return
 
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone()
-          caches.open(CACHE).then((cache) => cache.put('/index.html', copy))
+          if (res.ok) {
+            const copy = res.clone()
+            caches.open(CACHE).then((cache) => cache.put('/index.html', copy))
+          }
           return res
         })
         .catch(() => caches.match('/index.html')),
+    )
+    return
+  }
+
+  if (!url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok && res.type === 'basic') {
+            const copy = res.clone()
+            caches.open(CACHE).then((cache) => cache.put(req, copy))
+          }
+          return res
+        })
+        .catch(() => caches.match(req).then((hit) => hit || Response.error())),
     )
     return
   }
@@ -56,7 +77,7 @@ self.addEventListener('fetch', (event) => {
       (hit) =>
         hit ||
         fetch(req).then((res) => {
-          if (res.ok) {
+          if (res.ok && res.type === 'basic') {
             const copy = res.clone()
             caches.open(CACHE).then((cache) => cache.put(req, copy))
           }

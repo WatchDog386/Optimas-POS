@@ -1,6 +1,9 @@
-﻿import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import {
   Bell,
+  Download,
+  Bike,
+  ClipboardList,
   BarChart3,
   Boxes,
   ChevronDown,
@@ -23,9 +26,11 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSession, type Permission } from './session'
+import { useSyncStatus } from './lib/sync'
+import { syncLabel } from './components/SyncStatus'
 import { useSettings } from './db/settings'
-import LoginPage from './pages/LoginPage'
-import LoadingScreen from './components/LoadingScreen'
+import { useInstall } from './lib/installPrompt'
+import LoginPage, { PinChangeGate } from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
 import StaffProductsPage from './pages/StaffProductsPage'
@@ -44,6 +49,8 @@ import MessagesPage from './pages/MessagesPage'
 import StaffPage from './pages/StaffPage'
 import LogsPage from './pages/LogsPage'
 import ProfilePage from './pages/ProfilePage'
+import FitMatrixPage from './pages/FitMatrixPage'
+import StockMovementsPage from './pages/StockMovementsPage'
 
 interface NavItem {
   to: string
@@ -75,6 +82,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/products', label: 'Products', icon: Package, iconClass: 'text-emerald-400' },
       { to: '/inventory', label: 'Inventory', icon: Boxes, perm: 'inventory', iconClass: 'text-amber-500' },
+      { to: '/fitment', label: 'Fit matrix', icon: Bike, perm: 'inventory', iconClass: 'text-sky-400' },
+      { to: '/stock', label: 'Stock log', icon: ClipboardList, perm: 'inventory', iconClass: 'text-violet-400' },
       { to: '/purchasing', label: 'Purchasing', icon: Truck, perm: 'purchasing', iconClass: 'text-orange-500' },
       { to: '/customers', label: 'Customers', icon: Users, iconClass: 'text-pink-500' },
     ],
@@ -115,6 +124,45 @@ function useOnline() {
   return online
 }
 
+/** "Synced · 2 min ago" / "3 waiting" beside Online — opens Settings → Sync for the owner. */
+/** Shows only while the browser is offering to install the app (desktop or Android). */
+function InstallButton() {
+  const app = useInstall()
+  if (app.installed || !app.canInstall) return null
+  return (
+    <button
+      type="button"
+      onClick={app.install}
+      className="mr-1 hidden items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/25 sm:inline-flex"
+      title="Install Optimas POS as an app on this computer"
+    >
+      <Download size={15} /> Install app
+    </button>
+  )
+}
+
+function SyncNote() {
+  const s = useSyncStatus()
+  const { can } = useSession()
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 15_000)
+    return () => clearInterval(t)
+  }, [])
+  const { text, tone } = syncLabel(s)
+  // Always visible when something is wrong (phones/tablets included); the "Synced" note only on wide screens.
+  const cls = `mr-1 text-xs sm:text-sm ${tone === 'ok' ? 'hidden text-white/80 lg:inline' : 'inline text-amber-300'}`
+  return can('settings') ? (
+    <Link to="/settings?tab=Sync" className={`${cls} hover:text-white`} title={s.error ?? 'Sync with the shop server'}>
+      {text}
+    </Link>
+  ) : (
+    <span className={cls} title={s.error}>
+      {text}
+    </span>
+  )
+}
+
 function Guard({ perm, children }: { perm?: Permission; children: ReactNode }) {
   const { can } = useSession()
   if (perm && !can(perm)) return <Navigate to="/dashboard" replace />
@@ -125,20 +173,11 @@ export default function App() {
   const { user, shift, lock, can } = useSession()
   const settings = useSettings()
   const online = useOnline()
-  const [booting, setBooting] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
 
-  // Brief loading screen after a successful login, before the dashboard shell.
-  useEffect(() => {
-    if (!user) return
-    setBooting(true)
-    const t = setTimeout(() => setBooting(false), 5000)
-    return () => clearTimeout(t)
-  }, [user])
-
   if (!user) return <LoginPage />
-  if (booting) return <LoadingScreen />
+  if (user.mustChangePin) return <PinChangeGate user={user} />
 
   const isOwner = can('users')
   const isCashier = user.role === 'cashier'
@@ -223,6 +262,8 @@ export default function App() {
               <span className={`h-2 w-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`} />
               {online ? 'Online' : 'Offline'}
             </span>
+            <SyncNote />
+            <InstallButton />
             <NavLink
               to="/shift"
               className={`mr-1 hidden text-sm font-medium md:inline ${shift ? 'text-white' : 'text-red-300'}`}
@@ -365,6 +406,8 @@ export default function App() {
             <Route path="/display" element={<CustomerDisplayPage />} />
             <Route path="/service" element={<ServicePage />} />
             <Route path="/inventory" element={<Guard perm="inventory"><InventoryPage /></Guard>} />
+            <Route path="/fitment" element={<Guard perm="inventory"><FitMatrixPage /></Guard>} />
+            <Route path="/stock" element={<Guard perm="inventory"><StockMovementsPage /></Guard>} />
             <Route path="/purchasing" element={<Guard perm="purchasing"><PurchasingPage /></Guard>} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/reports" element={<Guard perm="reports"><ReportsPage /></Guard>} />
