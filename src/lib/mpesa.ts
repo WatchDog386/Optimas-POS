@@ -1,5 +1,7 @@
-// Client for the M-Pesa bridge in server/index.ts (Safaricom Daraja STK Push).
-// Daraja credentials never reach the browser; the server holds them.
+// Client for the M-Pesa bridge in server/app.ts (pay gateway / Safaricom Daraja STK Push).
+// Gateway credentials never reach the browser; the server holds them.
+
+import { authHeaders } from './api'
 
 export type StkStatus = 'pending' | 'success' | 'failed'
 
@@ -26,17 +28,18 @@ export function isValidMpesaCode(code: string): boolean {
 export async function stkPush(apiUrl: string, phone: string, amountCents: number, reference: string) {
   const res = await fetch(`${apiUrl}/mpesa/stkpush`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     // Daraja only accepts whole shillings.
     body: JSON.stringify({ phone, amount: Math.ceil(amountCents / 100), reference }),
   })
   const body = await res.json().catch(() => ({}))
+  if (res.status === 401) throw new Error('Not signed in to the shop server — lock the till and sign in again, or use manual code entry')
   if (!res.ok) throw new Error(body.error ?? `STK push failed (${res.status})`)
   return body as { checkoutRequestId: string; customerMessage?: string }
 }
 
 export async function stkStatus(apiUrl: string, checkoutRequestId: string): Promise<StkResult> {
-  const res = await fetch(`${apiUrl}/mpesa/status/${encodeURIComponent(checkoutRequestId)}`)
+  const res = await fetch(`${apiUrl}/mpesa/status/${encodeURIComponent(checkoutRequestId)}`, { headers: authHeaders(), cache: 'no-store' })
   if (!res.ok) return { status: 'pending' }
   return (await res.json()) as StkResult
 }

@@ -26,6 +26,7 @@ import { useSession } from '../session'
 import type { LogEntry, PaymentMethod, Sale } from '../db/types'
 import { money, moneyShort } from '../lib/money'
 import { Badge, Empty, ListPanel } from '../components/ui'
+import { AdminInsights, SetupChecklist, TrendStrip } from '../components/AdminInsights'
 
 const METHOD_LABEL: Record<PaymentMethod, string> = { cash: 'Cash', mpesa: 'M-Pesa', card: 'Card', account: 'On account' }
 const METHOD_COLOR: Record<PaymentMethod, string> = { cash: '#22c55e', mpesa: '#2c8286', card: '#8b5cf6', account: '#fbbf24' }
@@ -279,8 +280,11 @@ export default function DashboardPage() {
         </Link>
       </div>
 
+      {isAdmin && <SetupChecklist />}
+
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
+          {isAdmin && <TrendStrip />}
           <div
             className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4"
             onScroll={(e) => {
@@ -363,6 +367,8 @@ export default function DashboardPage() {
               />
             ))}
           </div>
+
+          {isAdmin && <AdminInsights />}
 
           {/* Mobile: quick actions — circles only, no panel wrap */}
           <div className="sm:hidden">

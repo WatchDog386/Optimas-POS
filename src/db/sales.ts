@@ -3,7 +3,8 @@ import { getSettings, nextNumber } from './settings'
 import { logActivity, userName } from './logs'
 import { changeDue, computeTotals, paidAmount } from '../lib/cart'
 import { money } from '../lib/money'
-import type { Payment, Sale, SaleLine } from './types'
+import { createUnits } from './units'
+import type { Payment, Sale, SaleLine, StockUnit } from './types'
 
 export class SaleError extends Error {}
 
@@ -31,7 +32,21 @@ export async function completeSale(input: CheckoutInput): Promise<Sale> {
   const onAccount = input.payments.filter((p) => p.method === 'account').reduce((s, p) => s + p.amount, 0)
   if (onAccount > 0 && !input.customerId) throw new SaleError('Select a customer to sell on account')
 
-  return db.transaction('rw', [db.sales, db.products, db.movements, db.customers, db.kv], async () => {
+  const serials = input.lines.map((l) => l.serial?.trim()).filter((x): x is string => !!x)
+  if (new Set(serials).size !== serials.length) throw new SaleError('The same serial label is in the sale twice')
+
+  return db.transaction('rw', [db.sales, db.products, db.movements, db.customers, db.kv, db.units], async () => {
+    // Labelled units: block a label that was already sold (copied or reused labels).
+    const unitsToSell: StockUnit[] = []
+    for (const line of input.lines) {
+      if (!line.serial) continue
+      const unit = await db.units.where('serial').equals(line.serial.trim()).first()
+      if (!unit) continue // a manufacturer serial typed at the till
+      if (unit.productId !== line.productId) throw new SaleError(`Label ${unit.serial} belongs to a different part than ${line.name}`)
+      if (unit.status === 'sold') throw new SaleError(`Label ${unit.serial} was already sold on receipt ${unit.receiptNo ?? ''}`.trim())
+      unitsToSell.push(unit)
+    }
+
     if (onAccount > 0) {
       const customer = await db.customers.get(input.customerId!)
       if (!customer) throw new SaleError('Customer not found')
@@ -60,6 +75,10 @@ export async function completeSale(input: CheckoutInput): Promise<Sale> {
       note: input.note,
     }
     sale.id = await db.sales.add(sale)
+
+    for (const unit of unitsToSell) {
+      await db.units.update(unit.id!, { status: 'sold', soldAt: now, saleId: sale.id, receiptNo })
+    }
 
     for (const line of input.lines) {
       if (!line.productId) continue
@@ -100,7 +119,7 @@ export interface RefundRequest {
 /** Refund some or all lines of a sale. Creates a negative sale record for reporting. */
 export async function refundSale(saleId: number, req: RefundRequest): Promise<Sale> {
   const settings = await getSettings()
-  const refund = await db.transaction('rw', [db.sales, db.products, db.movements, db.customers, db.kv], async () => {
+  const refund = await db.transaction('rw', [db.sales, db.products, db.movements, db.customers, db.kv, db.units], async () => {
     const original = await db.sales.get(saleId)
     if (!original) throw new SaleError('Sale not found')
     if (original.refundOf) throw new SaleError('Cannot refund a refund')
@@ -163,6 +182,13 @@ export async function refundSale(saleId: number, req: RefundRequest): Promise<Sa
         if (!p || !p.trackStock) continue
         await db.products.update(p.id!, { stock: p.stock + line.qty, updatedAt: now })
         await db.movements.add({ productId: p.id!, change: line.qty, reason: 'refund', reference: receiptNo, userId: req.userId, at: now })
+        // The returned item goes back on the shelf with its original label.
+        if (line.serial) {
+          const unit = await db.units.where('serial').equals(line.serial).first()
+          if (unit && unit.status === 'sold') {
+            await db.units.update(unit.id!, { status: 'in_stock', soldAt: undefined, saleId: undefined, receiptNo: undefined })
+          }
+        }
       }
     }
     return refund
@@ -176,6 +202,10 @@ export async function refundSale(saleId: number, req: RefundRequest): Promise<Sa
   return refund
 }
 
+/**
+ * Change stock with a logged movement. With `labelNewUnits`, every unit added
+ * gets its own serial barcode; the created units are returned for printing.
+ */
 export async function adjustStock(
   productId: number,
   change: number,
@@ -183,12 +213,15 @@ export async function adjustStock(
   userId?: number,
   note?: string,
   reference?: string,
-): Promise<void> {
-  await db.transaction('rw', db.products, db.movements, async () => {
+  labelNewUnits = false,
+): Promise<StockUnit[]> {
+  return db.transaction('rw', [db.products, db.movements, db.units, db.kv], async () => {
     const p = await db.products.get(productId)
     if (!p) throw new SaleError('Product not found')
     await db.products.update(productId, { stock: p.stock + change, updatedAt: Date.now() })
     await db.movements.add({ productId, change, reason, note, reference, userId, at: Date.now() })
+    if (labelNewUnits && change > 0 && p.trackStock) return createUnits(productId, change, reference ?? note ?? 'Stock adjustment')
+    return []
   })
 }
 

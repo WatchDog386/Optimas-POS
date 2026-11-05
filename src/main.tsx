@@ -3,13 +3,16 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App'
-import { seedIfEmpty, backfillSampleImages } from './db/seed'
-import { importQuotationProducts } from './db/quotationProducts'
+import { db } from './db/db'
 import { SessionProvider } from './session'
 import { ToastProvider } from './components/ui'
 import { initAutoFullscreen } from './lib/fullscreen'
 
 initAutoFullscreen()
+
+// Ask the browser never to clear this app's data to free up space (parts, sales
+// and labels made offline live only here until they reach the server).
+void navigator.storage?.persist?.().catch(() => {})
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -17,9 +20,9 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
-seedIfEmpty()
-  .then(() => importQuotationProducts())
-  .then(() => backfillSampleImages())
+// Open (and if needed migrate) the database before the first render.
+db.open()
+  .catch((e) => console.error('Database failed to open', e))
   .finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

@@ -21,10 +21,11 @@ Check it is live: `curl https://pos.optimaswifi.co.ke/api/health` → `"mpesa":"
 
 ## Server database (SQLite)
 
-The server keeps a durable copy of **M-Pesa payments, staff users and shop settings** in `data/optimas.db` (path: `DB_PATH`). Sales and inventory stay in the till browser's IndexedDB.
+The server keeps **M-Pesa payments, staff accounts and a synced copy of all shop data** (sales, stock movements, serial labels, parts, customers, settings) in `data/optimas.db` (path: `DB_PATH`). Each till also keeps its own copy in IndexedDB so it works offline; see *How sync works* in the README.
 
 - Migrations live in `server/migrations/*.sql` and run automatically on boot; run them by hand with `npm run db:migrate`.
-- API: `GET/PUT /api/users` (PINs are accepted on PUT but never returned by GET), `POST /api/users` (single upsert), `GET/PUT /api/settings`, `GET /api/mpesa/status/:id`.
+- Staff PINs are stored only as salted PBKDF2 records, never in plain text. Tills sign in with `POST /api/auth/login` and get a 12-hour signed token; every endpoint below except the Safaricom callback needs it.
+- API: `POST /api/auth/login`, `POST /api/auth/setup` (first till only), `GET /api/auth/staff` (names for the sign-in screen), `GET/PUT /api/users` (owner pushes the staff list; PIN records are never returned), `PUT /api/users/me/pin`, `POST /api/sync/push`, `GET /api/sync/pull`, `POST /api/sync/till`, `GET /api/sync/status`, `POST /api/mpesa/stkpush`, `GET /api/mpesa/status/:id`, `POST /api/print`.
 - The file is git-ignored (`data/`, `*.db`); back it up with the VM.
 
 ## 1. Manual (no setup)

@@ -5,7 +5,13 @@ export type Role = 'owner' | 'manager' | 'cashier'
 export interface User {
   id?: number
   name: string
-  pin: string
+  /** PBKDF2 record (see lib/pinHash). Plain PINs are never stored. */
+  pinHash: string
+  /** Legacy plain PIN from older installs; hashed and removed by the v3 migration. */
+  pin?: string
+  /** Set when the PIN was issued by someone else or is too weak — asked to change at next sign-in. */
+  mustChangePin?: boolean
+  lastLoginAt?: number
   role: Role
   active: boolean
   /** Optional profile details shown on the Profile page. */
@@ -131,6 +137,27 @@ export interface ParkedSale {
   userId: number
 }
 
+/** cancelled = label withdrawn because the stock count was lowered. */
+export type UnitStatus = 'in_stock' | 'sold' | 'written_off' | 'cancelled'
+
+/**
+ * One physical item on the shelf. Every unit carries its own barcode label
+ * (serial), so two identical parts can be told apart at the till, on refunds
+ * and for warranty claims.
+ */
+export interface StockUnit {
+  id?: number
+  serial: string
+  productId: number
+  status: UnitStatus
+  /** Where the unit came from: "Opening stock", a PO number, "Stock adjustment"… */
+  source?: string
+  createdAt: number
+  soldAt?: number
+  saleId?: number
+  receiptNo?: string
+}
+
 export type MovementReason = 'sale' | 'refund' | 'receive' | 'adjust' | 'damage' | 'count'
 
 export interface StockMovement {
@@ -173,6 +200,8 @@ export interface CashMovement {
 
 export interface Shift {
   id?: number
+  /** Till the shift runs on; each till has its own drawer and its own open shift. */
+  till?: number
   userId: number
   openedAt: number
   closedAt?: number
@@ -226,6 +255,19 @@ export interface Settings {
   notifyLowStock: boolean
   notifyOwing: boolean
   notifyJobUpdates: boolean
+  /** Minutes without input before the till locks itself. 0 = never. */
+  autoLockMinutes: number
+  /** Barcode label printer (Xprinter XP-365B/420B/460B speak TSPL; receipt models speak ESC/POS). */
+  labelLanguage: 'tspl' | 'escpos'
+  labelWidthMm: number
+  labelHeightMm: number
+  labelGapMm: number
+  /** TSPL print darkness 0–15. */
+  labelDensity: number
+  labelShowPrice: boolean
+  labelShowShopName: boolean
+  /** Print one serial label per unit whenever stock is added (opening stock, receiving, adjustments). */
+  autoPrintLabels: boolean
 }
 
 export type LogKind = 'auth' | 'sale' | 'stock' | 'shift' | 'settings' | 'user' | 'system'

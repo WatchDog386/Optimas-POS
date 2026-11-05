@@ -4,6 +4,7 @@ import { Bike, Check, ChevronRight, CreditCard, Image as ImageIcon, Minus, Pause
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { completeSale } from '../db/sales'
+import { lookupCode } from '../db/units'
 import { openShift } from '../db/shifts'
 import type { Customer, ParkedSale, Product, Sale, SaleLine } from '../db/types'
 import { computeTotals, lineTotal } from '../lib/cart'
@@ -31,8 +32,9 @@ function loadCart(): CartState {
   }
 }
 
-export function lineFromProduct(p: Product): SaleLine {
+export function lineFromProduct(p: Product, serial?: string): SaleLine {
   return {
+    ...(serial ? { serial } : {}),
     productId: p.id,
     name: p.name,
     sku: p.sku,
@@ -91,33 +93,42 @@ export default function SellPage() {
 
   const totals = computeTotals(cart.lines, cart.discount, settings.vatRate, settings.pricesIncludeVat)
 
-  const addProduct = (p: Product) => {
+  const addProduct = (p: Product, serial?: string) => {
+    if (serial && cart.lines.some((l) => l.serial === serial)) return toast(`Label ${serial} is already in this sale`, 'error')
     const inCart = cart.lines.filter((l) => l.productId === p.id).reduce((s, l) => s + l.qty, 0)
     if (p.trackStock && p.stock - inCart <= 0) toast(`${p.name}: no stock recorded — sale will go negative`, 'error')
     setCart((c) => {
-      // Serial-tracked items always get their own line so each serial can be captured.
-      const idx = p.serialized ? -1 : c.lines.findIndex((l) => l.productId === p.id && !l.serial)
+      // Serial-tracked items and scanned unit labels always get their own line.
+      const idx = p.serialized || serial ? -1 : c.lines.findIndex((l) => l.productId === p.id && !l.serial)
       if (idx >= 0) {
         const lines = c.lines.map((l, i) => (i === idx ? { ...l, qty: l.qty + 1 } : l))
         return { ...c, lines }
       }
-      return { ...c, lines: [...c.lines, lineFromProduct(p)] }
+      return { ...c, lines: [...c.lines, lineFromProduct(p, serial)] }
     })
-    if (p.serialized) setTimeout(() => setDialog({ line: cart.lines.length }), 0)
+    if (p.serialized && !serial) setTimeout(() => setDialog({ line: cart.lines.length }), 0)
     setAddedId(p.id ?? null)
     window.clearTimeout(addedTimer.current)
     addedTimer.current = window.setTimeout(() => setAddedId(null), 900)
   }
 
-  const findExact = (code: string) => {
-    const c = code.trim().toLowerCase()
-    return products.find((p) => p.barcode?.toLowerCase() === c || p.sku.toLowerCase() === c || p.partNumber?.toLowerCase() === c)
+  /** Scan or Enter: exact barcode / SKU / OEM / unit label, else the single search hit. */
+  const addByCode = async (code: string, fallback?: Product) => {
+    const match = await lookupCode(code, products)
+    if ('product' in match) {
+      addProduct(match.product, match.serial)
+      return true
+    }
+    if (fallback) {
+      addProduct(fallback)
+      return true
+    }
+    toast(match.error, 'error')
+    return false
   }
 
   useBarcodeScanner((code) => {
-    const p = findExact(code)
-    if (p) addProduct(p)
-    else toast(`No product with barcode ${code}`, 'error')
+    void addByCode(code).then((ok) => ok && setQuery(''))
   }, dialog === null && receipt === null)
 
   // Keyboard shortcuts, modelled on desktop retail POS conventions.
@@ -199,12 +210,8 @@ export default function SellPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key !== 'Enter') return
-                const p = findExact(query) ?? (visible.length === 1 ? visible[0] : undefined)
-                if (p) {
-                  addProduct(p)
-                  setQuery('')
-                }
+                if (e.key !== 'Enter' || !query.trim()) return
+                void addByCode(query, visible.length === 1 ? visible[0] : undefined).then((ok) => ok && setQuery(''))
               }}
             />
             {query && (
@@ -217,11 +224,8 @@ export default function SellPage() {
               aria-label="Search"
               className="absolute right-1.5 top-1.5 grid h-8 w-10 place-items-center rounded bg-cta text-white transition hover:bg-cta-hover"
               onClick={() => {
-                const p = findExact(query) ?? (visible.length === 1 ? visible[0] : undefined)
-                if (p) {
-                  addProduct(p)
-                  setQuery('')
-                }
+                if (!query.trim()) return searchRef.current?.focus()
+                void addByCode(query, visible.length === 1 ? visible[0] : undefined).then((ok) => ok && setQuery(''))
               }}
             >
               <Search size={16} />

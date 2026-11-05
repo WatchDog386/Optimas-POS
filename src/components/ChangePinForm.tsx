@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { db } from '../db/db'
 import { logActivity } from '../db/logs'
-import { PIN_LENGTH, useSession } from '../session'
+import { PIN_MAX, PIN_MIN, useSession } from '../session'
+import { hashPin, verifyPin, weakPinReason } from '../lib/pinHash'
+import { pushOwnPin } from '../lib/api'
 import { errorText, useToast } from './ui'
 
 /** Three-field "change my PIN" form, shared by Settings → Security and the Profile page. */
@@ -15,13 +17,14 @@ export default function ChangePinForm() {
   const change = async () => {
     try {
       if (!user) throw new Error('No signed-in user')
-      if (current !== user.pin) throw new Error('Current PIN is wrong')
-      if (!new RegExp(`^\\d{${PIN_LENGTH}}$`).test(next)) throw new Error(`New PIN must be ${PIN_LENGTH} digits`)
-      if (next === user.pin) throw new Error('Pick a PIN you are not using right now')
+      if (!verifyPin(current, user.pinHash)) throw new Error('Current PIN is wrong')
+      const weak = weakPinReason(next)
+      if (weak) throw new Error(weak)
+      if (next === current) throw new Error('Pick a PIN you are not using right now')
       if (next !== confirmPin) throw new Error('New PIN and confirmation do not match')
-      const others = await db.users.where('pin').equals(next).toArray()
-      if (others.some((x) => x.id !== user.id)) throw new Error('That PIN is already used by someone else')
-      await db.users.update(user.id!, { pin: next })
+      const pinHash = hashPin(next)
+      await db.users.update(user.id!, { pinHash, mustChangePin: undefined })
+      void pushOwnPin(current, pinHash)
       await logActivity('user', `PIN changed for ${user.name}`, { userId: user.id, userName: user.name })
       toast('PIN changed')
       setCurrent('')
@@ -41,18 +44,20 @@ export default function ChangePinForm() {
           <label className="label">Current PIN</label>
           <input
             className="input font-mono tracking-[0.4em]"
+            type="password"
             inputMode="numeric"
-            maxLength={PIN_LENGTH}
+            maxLength={PIN_MAX}
             value={current}
             onChange={(e) => setCurrent(e.target.value.replace(/\D/g, ''))}
           />
         </div>
         <div>
-          <label className="label">{`New PIN (${PIN_LENGTH} digits)`}</label>
+          <label className="label">{`New PIN (${PIN_MIN}–${PIN_MAX} digits)`}</label>
           <input
             className="input font-mono tracking-[0.4em]"
+            type="password"
             inputMode="numeric"
-            maxLength={PIN_LENGTH}
+            maxLength={PIN_MAX}
             value={next}
             onChange={(e) => setNext(e.target.value.replace(/\D/g, ''))}
           />
@@ -61,8 +66,9 @@ export default function ChangePinForm() {
           <label className="label">Repeat new PIN</label>
           <input
             className="input font-mono tracking-[0.4em]"
+            type="password"
             inputMode="numeric"
-            maxLength={PIN_LENGTH}
+            maxLength={PIN_MAX}
             value={confirmPin}
             onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
           />
