@@ -33,6 +33,11 @@ function ios(): boolean {
   return typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
 }
 
+/** Phones and tablets: the app stays a plain web page there — no install. */
+export function isMobileDevice(ua = typeof navigator === 'undefined' ? '' : navigator.userAgent): boolean {
+  return /android|iphone|ipad|ipod/i.test(ua)
+}
+
 /**
  * How to install when the browser hasn't offered its own prompt (already
  * dismissed, Safari, Firefox…). Empty when the app is already installed.
@@ -49,14 +54,10 @@ export function installHint(ua = typeof navigator === 'undefined' ? '' : navigat
 
 /** Manual "Install app" button state — Chrome/Edge prompt, iOS hint, installed flag. */
 export function useInstall() {
-  const [canInstall, setCanInstall] = useState(() => deferred !== null)
-  const [installed, setInstalled] = useState(standalone)
+  const [canInstall, setCanInstall] = useState(() => deferred !== null && !isMobileDevice())
 
   useEffect(() => {
-    const update = () => {
-      setCanInstall(deferred !== null)
-      setInstalled(standalone())
-    }
+    const update = () => setCanInstall(deferred !== null && !isMobileDevice())
     listeners.add(update)
     update()
     return () => {
@@ -77,5 +78,5 @@ export function useInstall() {
     }
   }
 
-  return { canInstall, installed, isIOS: ios(), install, hint: installHint() }
+  return { canInstall, installed: standalone(), isIOS: ios(), install, hint: installHint() }
 }
