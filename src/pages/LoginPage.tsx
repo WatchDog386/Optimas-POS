@@ -24,14 +24,14 @@ export default function LoginPage() {
 
   // Decide what this till needs: normal sign-in, sign-in against the shop
   // server (a new till for an existing shop), or first-run owner setup.
+  // The server's staff list wins when it is reachable — web browsers then see
+  // Rose/Denis/Optimas Admin exactly as registered on the server. Only when the
+  // server is unreachable does a till fall back to its own IndexedDB staff so
+  // the offline till keeps working.
   useEffect(() => {
     if (localUsers === undefined) return
     let alive = true
     void (async () => {
-      if (!(await needsSetup())) {
-        if (alive) setMode({ kind: 'local' })
-        return
-      }
       try {
         const staff = await serverStaff()
         if (alive && staff.length > 0) {
@@ -39,7 +39,11 @@ export default function LoginPage() {
           return
         }
       } catch {
-        // Server unreachable — set the till up on its own.
+        // Server unreachable — fall back to the local till's own staff list.
+      }
+      if (!(await needsSetup())) {
+        if (alive) setMode({ kind: 'local' })
+        return
       }
       if (alive) setMode({ kind: 'setup' })
     })()
