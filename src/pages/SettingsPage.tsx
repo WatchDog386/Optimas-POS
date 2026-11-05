@@ -10,6 +10,7 @@ import { printLabelsInBrowser } from '../lib/labelPrint'
 import { drawerKickBytes, testPageBytes } from '../lib/escpos'
 import { download } from '../lib/csv'
 import { money, toCents } from '../lib/money'
+import { pushProducts, pushSales, pullProducts, pullSales, syncAll, type SyncResult } from '../lib/sync'
 import { useSession } from '../session'
 import { PageHeader, errorText, useToast } from '../components/ui'
 import ChangePinForm from '../components/ChangePinForm'
@@ -698,6 +699,11 @@ function SecuritySettings() {
 
 function BackupSettings() {
   const toast = useToast()
+  const settings = useSettings()
+  const [syncing, setSyncing] = useState(false)
+  const [result, setResult] = useState<SyncResult | null>(null)
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
   const backup = async () => {
     const data: Record<string, unknown> = {}
     for (const t of db.tables) data[t.name] = await t.toArray()
@@ -718,6 +724,58 @@ function BackupSettings() {
       toast(`Restore failed: ${errorText(e)}`, 'error')
     }
   }
+
+  const testSync = async () => {
+    setSyncing(true)
+    setStatus(null)
+    try {
+      const base = settings.apiUrl.replace(/\/$/, '')
+      const r = await fetch(`${base}/health`, { headers: { Accept: 'application/json' } })
+      if (!r.ok) throw new Error(`Server replied HTTP ${r.status}`)
+      setStatus({ ok: true, msg: 'Server reachable' })
+    } catch (e) {
+      setStatus({ ok: false, msg: `Not reachable — ${errorText(e)}` })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const doSync = async (mode: 'push' | 'pull' | 'both') => {
+    setSyncing(true)
+    setResult(null)
+    setStatus(null)
+    try {
+      const base = settings.apiUrl.replace(/\/$/, '')
+      const r = await fetch(`${base}/health`, { headers: { Accept: 'application/json' } })
+      if (!r.ok) throw new Error(`Server replied HTTP ${r.status}`)
+      let result: SyncResult
+      if (mode === 'push') {
+        const [p, s] = await Promise.all([pushProducts(base), pushSales(base)])
+        result = { pushedProducts: p.ok, pushedSales: s.ok, pulledProducts: 0, pulledSales: 0, errors: [...p.errors, ...s.errors.map((id) => `sale ${id}: failed`)] }
+      } else if (mode === 'pull') {
+        const [p, s] = await Promise.all([pullProducts(base), pullSales(base)])
+        result = { pushedProducts: 0, pushedSales: 0, pulledProducts: p.ok, pulledSales: s.ok, errors: [...p.errors, ...s.errors] }
+      } else {
+        result = await syncAll(base)
+      }
+      setResult(result)
+      setStatus({ ok: result.errors.length === 0, msg: `Synced: ${result.pushedProducts} products pushed, ${result.pushedSales} sales pushed, ${result.pulledProducts} products pulled, ${result.pulledSales} sales pulled` })
+      if (result.errors.length > 0) toast(`Sync completed with ${result.errors.length} error(s)`, 'error')
+      else toast('Sync complete')
+    } catch (e) {
+      setStatus({ ok: false, msg: `Sync failed — ${errorText(e)}` })
+      toast(`Sync failed: ${errorText(e)}`, 'error')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const counts = useLiveQuery(
+    async () => ({ products: await db.products.count(), sales: await db.sales.count() }),
+    [],
+    null,
+  )
+
   return (
     <>
       <p className="mb-4 text-sm text-slate-600">
@@ -732,6 +790,61 @@ function BackupSettings() {
           <input type="file" accept=".json" className="hidden" onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
         </label>
       </div>
+
+      <Section title="Server sync" desc="Push this till's stock and sales to the central server, or pull changes down so the web and this till match.">
+        <div className="mb-3 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <dt className="text-xs text-slate-500 uppercase">Products (local)</dt>
+            <dd className="font-semibold tabular-nums">{counts?.products ?? '…'}</dd>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <dt className="text-xs text-slate-500 uppercase">Sales (local)</dt>
+            <dd className="font-semibold tabular-nums">{counts?.sales ?? '…'}</dd>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <dt className="text-xs text-slate-500 uppercase">Server API</dt>
+            <dd className="font-mono text-xs text-slate-600 truncate">{settings.apiUrl}</dd>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button className="btn-ghost" disabled={syncing} onClick={testSync}>
+            {syncing ? <Loader2 size={16} className="animate-spin" /> : null} Test connection
+          </button>
+          <button className="btn-ghost" disabled={syncing} onClick={() => doSync('push')}>
+            Push to server
+          </button>
+          <button className="btn-ghost" disabled={syncing} onClick={() => doSync('pull')}>
+            Pull from server
+          </button>
+          <button className="btn-primary" disabled={syncing} onClick={() => doSync('both')}>
+            Full sync
+          </button>
+        </div>
+        {status && (
+          <p className={`mb-2 flex items-center gap-1.5 text-sm font-medium ${status.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+            <span className={`inline-block h-2 w-2 rounded-full ${status.ok ? 'bg-emerald-500' : 'bg-red-500'}`} />
+            {status.msg}
+          </p>
+        )}
+        {result && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <p className="mb-1 font-semibold text-slate-900">Last sync result</p>
+            <dl className="grid gap-1 text-slate-600">
+              <div className="flex justify-between"><dt>Products pushed</dt><dd className="font-mono">{result.pushedProducts}</dd></div>
+              <div className="flex justify-between"><dt>Sales pushed</dt><dd className="font-mono">{result.pushedSales}</dd></div>
+              <div className="flex justify-between"><dt>Products pulled</dt><dd className="font-mono">{result.pulledProducts}</dd></div>
+              <div className="flex justify-between"><dt>Sales pulled</dt><dd className="font-mono">{result.pulledSales}</dd></div>
+              {result.errors.length > 0 && (
+                <div className="col-span-2 mt-2 text-red-600 text-xs">{result.errors.join(' · ')}</div>
+              )}
+            </dl>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-slate-500">
+          Conflicts are resolved by last-write-wins (newest timestamp wins). The server can be unreachable while the till keeps selling offline — sync when you're back online.
+        </p>
+      </Section>
+
       <p className="mt-4 text-xs text-slate-500">
         The backup JSON contains every table — products, sales, customers, jobs, staff, settings and the activity log. Restore it on any till running this app.
       </p>

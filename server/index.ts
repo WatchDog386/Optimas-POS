@@ -24,6 +24,20 @@ const PORT = Number(process.env.PORT ?? 8787)
 const app = express()
 app.use(express.json({ limit: '1mb' }))
 
+// CORS for the recovery page (public/backup.html) and till sync helpers running
+// on a different address than this server — e.g. a till that serves its own copy
+// of the app pushing up to the central Proxmox server.
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin ?? '*')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
+  }
+  next()
+})
+
 const daraja = createDaraja(process.env)
 
 // --- M-Pesa ---------------------------------------------------------------
@@ -345,6 +359,115 @@ app.delete('/api/products', (_req, res) => {
   // sql.transaction() returns a function — it must be invoked.
   sql.transaction(() => {
     sql.prepare('DELETE FROM products').run()
+  })()
+  res.json({ ok: true })
+})
+
+// --- Sales (mirror of till IndexedDB sales) --------------------------------
+
+type SaleRow = {
+  id: number
+  receipt_no: string
+  created_at: number
+  lines: string
+  subtotal: number
+  discount: number
+  tax: number
+  total: number
+  payments: string
+  change: number
+  customer_id: number | null
+  user_id: number
+  shift_id: number | null
+  status: string
+  note: string | null
+  refund_of: number | null
+  updated_at: number
+}
+
+app.get('/api/sales', (_req, res) => {
+  const rows = sql.prepare(
+    `SELECT id, receipt_no, created_at, lines, subtotal, discount, tax, total, payments, change,
+            customer_id, user_id, shift_id, status, note, refund_of, updated_at
+     FROM sales ORDER BY created_at DESC`
+  ).all() as SaleRow[]
+  res.json(rows.map((r) => ({
+    id: r.id,
+    receiptNo: r.receipt_no,
+    createdAt: r.created_at,
+    lines: JSON.parse(r.lines ?? '[]'),
+    subtotal: r.subtotal,
+    discount: r.discount,
+    tax: r.tax,
+    total: r.total,
+    payments: JSON.parse(r.payments ?? '[]'),
+    change: r.change,
+    customerId: r.customer_id,
+    userId: r.user_id,
+    shiftId: r.shift_id,
+    status: r.status,
+    note: r.note,
+    refundOf: r.refund_of,
+    updatedAt: r.updated_at,
+  })))
+})
+
+app.post('/api/sales', (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const receiptNo = String(body.receiptNo ?? '').trim()
+  if (!receiptNo) {
+    res.status(400).json({ error: 'receiptNo is required' })
+    return
+  }
+  const now = Date.now()
+  const lines = JSON.stringify(body.lines ?? [])
+  const payments = JSON.stringify(body.payments ?? [])
+  const updatedAt = typeof body.updatedAt === 'number' ? body.updatedAt : now
+  sql.prepare(
+    `INSERT INTO sales (receipt_no, created_at, lines, subtotal, discount, tax, total, payments, change,
+              customer_id, user_id, shift_id, status, note, refund_of, updated_at)
+     VALUES (@receipt_no, @created_at, @lines, @subtotal, @discount, @tax, @total, @payments, @change,
+             @customer_id, @user_id, @shift_id, @status, @note, @refund_of, @updated_at)
+     ON CONFLICT(receipt_no) DO UPDATE SET
+       created_at = excluded.created_at,
+       lines = excluded.lines,
+       subtotal = excluded.subtotal,
+       discount = excluded.discount,
+       tax = excluded.tax,
+       total = excluded.total,
+       payments = excluded.payments,
+       change = excluded.change,
+       customer_id = excluded.customer_id,
+       user_id = excluded.user_id,
+       shift_id = excluded.shift_id,
+       status = excluded.status,
+       note = excluded.note,
+       refund_of = excluded.refund_of,
+       updated_at = excluded.updated_at`
+  ).run({
+    receipt_no: receiptNo,
+    created_at: typeof body.createdAt === 'number' ? body.createdAt : now,
+    lines,
+    subtotal: Number(body.subtotal ?? 0) || 0,
+    discount: Number(body.discount ?? 0) || 0,
+    tax: Number(body.tax ?? 0) || 0,
+    total: Number(body.total ?? 0) || 0,
+    payments,
+    change: Number(body.change ?? 0) || 0,
+    customer_id: body.customerId == null ? null : Number(body.customerId),
+    user_id: typeof body.userId === 'number' ? body.userId : 0,
+    shift_id: body.shiftId == null ? null : Number(body.shiftId),
+    status: body.status ?? 'completed',
+    note: body.note == null ? null : String(body.note),
+    refund_of: body.refundOf == null ? null : Number(body.refundOf),
+    updated_at: updatedAt,
+  })
+  res.json({ ok: true })
+})
+
+app.delete('/api/sales', (_req, res) => {
+  sql.transaction(() => {
+    sql.prepare('DELETE FROM sales').run()
   })()
   res.json({ ok: true })
 })

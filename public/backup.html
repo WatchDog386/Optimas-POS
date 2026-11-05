@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Optimas POS — Data Recovery</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif; background: #f1f5f9; color: #0f172a; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: #475569; font-size: 14px; margin: 0 0 24px; line-height: 1.5; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    h2 { font-size: 15px; margin: 0 0 6px; }
+    p.desc { color: #64748b; font-size: 13px; margin: 0 0 14px; line-height: 1.5; }
+    table.counts { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.counts td { padding: 6px 4px; border-bottom: 1px solid #f1f5f9; }
+    table.counts td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+    table.counts tr.h td { color: #94a3b8; font-variant-numeric: tabular-nums; font-weight: 400; }
+    button { cursor: pointer; border: 0; border-radius: 10px; padding: 12px 18px; font-size: 14px; font-weight: 700; transition: filter .15s; }
+    button:hover:not(:disabled) { filter: brightness(.94); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .primary { background: #2f63a8; color: #fff; }
+    .ghost { background: #e2e8f0; color: #0f172a; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    input[type="url"] { flex: 1; min-width: 220px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; font-family: ui-monospace, monospace; }
+    pre { background: #0f172a; color: #a5f3fc; font-size: 12px; line-height: 1.5; padding: 14px; border-radius: 10px; max-height: 260px; overflow: auto; margin: 12px 0 0; white-space: pre-wrap; word-break: break-all; }
+    .warn { background: #fef9c3; border: 1px solid #fde047; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+    .ok { color: #047857; font-weight: 600; }
+    .err { color: #dc2626; }
+    .hint { color: #94a3b8; font-size: 12px; margin-top: 8px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Data Recovery</h1>
+  <p class="sub">
+    This page works <b>without logging in</b>. It reads the data stored in this computer's browser
+    (products, sales, staff PINs, customers...) and either downloads it as a backup file or pushes it
+    to your central server.
+  </p>
+
+  <div class="card">
+    <h2>Local data found on this browser</h2>
+    <p class="desc">If the numbers below are zero or empty, this browser profile is not the one where the shop data lives — open this page using the <b>same address the POS app normally uses</b>.</p>
+    <table class="counts" id="counts"><tr><td class="err">Reading local database…</td></tr></table>
+    <p class="hint" id="dberr"></p>
+  </div>
+
+  <div class="card">
+    <h2>Step 1 — Save a backup file</h2>
+    <p class="desc">Downloads everything in this browser as a JSON file. Keep it on a flash disk or Google Drive. This file can be restored later from the app's <b>Settings → Restore from file</b>.</p>
+    <button class="primary" id="dl" disabled>Download full backup (.json)</button>
+  </div>
+
+  <div class="card">
+    <h2>Step 2 — Push products &amp; sales to the central server</h2>
+    <p class="desc">Sends the products, sales and staff PINs from this browser into the Proxmox server's database. Safe to click more than once — repeated pushes update the same entries.</p>
+    <div class="row">
+      <input id="api" type="url" placeholder="http://server-ip:8787/api" spellcheck="false" />
+      <button class="row ghost" id="test" disabled>Test connection</button>
+      <button class="primary" id="push" disabled>Push to server</button>
+    </div>
+    <p class="hint">The server address is the one your browser POS connects to, plus <b>/api</b> — e.g. <code>http://192.168.1.50:8787/api</code>.</p>
+    <pre id="log" hidden></pre>
+  </div>
+
+  <div class="warn">
+    <b>Do this before clearing any browser data.</b> Clearing history/site data erases this database permanently.
+    Also never restore a backup file onto this same computer — restoring is only for the other machines.
+  </div>
+</div>
+
+<script>
+  var data = null  // filled by readAll()
+  var DB_NAME = 'optimas-pos'
+
+  function log (msg) {
+    var pre = document.getElementById('log')
+    pre.hidden = false
+    pre.textContent += msg + '\n'
+  }
+  function setCounts (rows) {
+    var t = document.getElementById('counts')
+    t.innerHTML = ''
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr')
+      var td1 = document.createElement('td'); td1.textContent = r[0]
+      var td2 = document.createElement('td'); td2.textContent = r[1]
+      tr.appendChild(td1); tr.appendChild(td2); t.appendChild(tr)
+    })
+  }
+  function dedupe (arr) { return Array.from(new Set(arr)) }
+
+  function openDB () {
+    return new Promise(function (res, rej) {
+      var req = indexedDB.open(DB_NAME)
+      req.onsuccess = function () { res(req.result) }
+      req.onerror = function () { rej(req.error) }
+    })
+  }
+  function readAll (db) {
+    return new Promise(function (res, rej) {
+      var names = Array.from(db.objectStoreNames)
+      if (!names.length) return res({})
+      var tx = db.transaction(names, 'readonly')
+      var out = {}
+      names.forEach(function (n) {
+        var rows = []
+        tx.objectStore(n).openCursor().onsuccess = function (e) {
+          var c = e.target
+          if (c) { rows.push(c.value); c.continue() }
+        }
+        out[n] = rows
+      })
+      tx.oncomplete = function () { db.close(); void 0; res(out) }
+      tx.onerror = function () { rej(tx.error) }
+    })
+  }
+
+  function prettyCount (v) {
+    if (v == null) return 'empty'
+    if (Array.isArray(v)) return v.length === 0 ? 'empty' : v.length
+    if (typeof v === 'number') return v
+    return 'stored'
+  }
+
+  openDB().then(function (db) { return readAll(db) }).then(function (d) {
+    data = d
+    var names = Object.keys(d)
+    var rows = dedupe(names.map(function (n) {
+      return [n === 'kv' ? 'settings' : n, prettyCount(d[n])]
+    }))
+    if (rows.length && d.products) rows.unshift(['PRODUCTS', d.products.length ? d.products.length : 'empty'])
+    if (rows.length && d.sales) rows.unshift(['SALES', d.sales.length ? d.sales.length : 'empty'])
+    if (rows.length && d.users) rows.unshift(['STAFF (users)', d.users.length ? d.users.length : 'empty'])
+    setCounts(rows.length ? rows : [['nothing found — wrong browser profile or no data', '—']])
+    document.getElementById('dl').disabled = false
+    document.getElementById('test').disabled = false
+    document.getElementById('push').disabled = false
+  }).catch(function (e) {
+    setCounts([['local database not found in this browser', '—']])
+    document.getElementById('dberr').textContent = String(e && e.message || e)
+  })
+
+  document.getElementById('dl').addEventListener('click', function () {
+    if (!data) return
+    try {
+      var payload = JSON.stringify({ version: 1, exportedAt: Date.now(), data: data })
+      var a = document.createElement('a')
+      a.href = URL.createObjectURL(new Blob([payload], { type: 'application/json' }))
+      a.download = 'optimas-till-backup-' + new Date().toISOString().slice(0, 16).replace(':', '') + '.json'
+      document.body.appendChild(a); a.click(); a.remove()
+      log(new Date().toLocaleTimeString() + '  backup file downloaded — keep it on a flash disk')
+    } catch (e) {
+      log('download failed: ' + (e && e.message || e))
+    }
+  })
+
+  function apiBase () { return document.getElementById('api').value.trim().replace(/\/$/, '') }
+
+  function post (base, path, body) {
+    return fetch(base + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 120)) })
+      return r.json()
+    })
+  }
+
+  document.getElementById('test').addEventListener('click', function () {
+    var base = apiBase()
+    document.getElementById('log').hidden = false
+    log(new Date().toLocaleTimeString() + '  testing ' + base + '/health ...')
+    fetch(base + '/health').then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      return r.json()
+    }).then(function (j) {
+      log('  reachable — server db: ' + j.db + ' | mpesa: ' + j.mpesa)
+    }).catch(function (e) {
+      log('  NOT reachable: ' + (e && e.message || e))
+    })
+  })
+
+  document.getElementById('push').addEventListener('click', function () {
+    var base = apiBase()
+    if (!base) { log(new Date().toLocaleTimeString() + '  type the server API address first'); return }
+    if (!data) { log('no local data to push'); return }
+    var btn = document.getElementById('push')
+    btn.disabled = true
+    log(new Date().toLocaleTimeString() + '  pushing to ' + base + ' ...')
+
+    var pushProducts = function () {
+      var rows = data.products || []
+      var ok = 0, errors = []
+      var i = 0
+      var next = function () {
+        if (i >= rows.length) return Promise.resolve({ ok: ok, errors: errors })
+        var p = rows[i++]
+        return post(base, '/products', {
+          sku: p.sku,
+          barcode: p.barcode || null,
+          name: p.name,
+          category_id: p.categoryId == null ? null : p.categoryId,
+          brand: p.brand || null,
+          part_number: p.partNumber || null,
+          cost: p.cost || 0,
+          price: p.price || 0,
+          stock: p.stock || 0,
+          reorder_level: p.reorderLevel == null ? 2 : p.reorderLevel,
+          active: p.active === false ? 0 : 1
+        }).then(function () { ok++; }, function (e) { errors.push('product ' + p.sku + ': ' + e.message) }).then(next)
+      }
+      return next()
+    }
+
+    var pushSales = function () {
+      var rows = data.sales || []
+      var ok = 0, errors = []
+      var i = 0
+      var next = function () {
+        if (i >= rows.length) return Promise.resolve({ ok: ok, errors: errors })
+        var s = rows[i++]
+        return post(base, '/sales', {
+          receiptNo: s.receiptNo,
+          createdAt: s.createdAt,
+          lines: s.lines || [],
+          subtotal: s.subtotal || 0,
+          discount: s.discount || 0,
+          tax: s.tax || 0,
+          total: s.total || 0,
+          payments: s.payments || [],
+          change: s.change || 0,
+          customerId: s.customerId == null ? null : s.customerId,
+          userId: s.userId || 0,
+          shiftId: s.shiftId == null ? null : s.shiftId,
+          status: s.status || 'completed',
+          note: s.note || null,
+          refundOf: s.refundOf == null ? null : s.refundOf,
+          updatedAt: s.updatedAt || s.createdAt || Date.now()
+        }).then(function () { ok++; }, function (e) { errors.push('sale ' + s.receiptNo + ': ' + e.message) }).then(next)
+      }
+      return next()
+    }
+
+    var pushUsers = function () {
+      var rows = (data.users || []).filter(function (u) { return u.pin && /^\d{4}$/.test(String(u.pin)) })
+      if (!rows.length) return Promise.resolve(0)
+      return fetch(base + '/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rows.map(function (u) {
+          return {
+            id: typeof u.id === 'number' ? u.id : undefined,
+            name: u.name || 'Staff',
+            pin: String(u.pin),
+            role: u.role || 'cashier',
+            active: u.active !== false,
+            email: u.email || null,
+            phone: u.phone || null,
+            about: u.about || null
+          }
+        }))
+      }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+        return rows.length
+      })
+    }
+
+    pushProducts()
+      .then(function (r) { log('  products pushed: ' + r.ok); if (r.errors.length) r.errors.forEach(function (m) { log('  ERR ' + m) }); })
+      .then(pushSales)
+      .then(function (r) { log('  sales pushed: ' + r.ok); if (r.errors.length) r.errors.forEach(function (m) { log('  ERR ' + m) }); })
+      .then(pushUsers)
+      .then(function (n) { if (n) log('  staff PINs backed up on server: ' + n) })
+      .then(function () {
+        log(new Date().toLocaleTimeString() + '  DONE — now open the POS on the other computer and it will show this stock after a full sync or restore.')
+      })
+      .catch(function (e) {
+        log(new Date().toLocaleTimeString() + '  PUSH FAILED — ' + (e && e.message || e))
+        log('  check: server address correct? server reachable from this PC? try "Test connection" first.')
+      })
+      .then(function () { btn.disabled = false })
+  })
+</script>
+</body>
+</html>
