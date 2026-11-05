@@ -14,7 +14,8 @@
     "server:start": "tsx server/index.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "sync:report": "tsx scripts/sync-report.ts",
-    "sync:restore": "tsx scripts/sync-restore.ts"
+    "sync:restore": "tsx scripts/sync-restore.ts",
+    "staff:reset": "tsx scripts/staff-reset.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
