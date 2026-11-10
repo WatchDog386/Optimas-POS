@@ -168,11 +168,12 @@ export async function checkStockTakeScan(productId: number, serial: string): Pro
   if (!/^\d{13}$/.test(s) || !isValidEan13(s)) return 'not a valid label barcode'
   const existing = await db.units.where('serial').equals(s).first()
   if (!existing) return null
+  if (existing.status === 'sold') return `already sold on ${existing.receiptNo ?? 'an earlier receipt'}`
   if (existing.productId !== productId) {
     const other = await db.products.get(existing.productId)
-    return `belongs to ${other?.name ?? 'another part'}`
+    // A label whose part no longer exists (lost or deleted) can be claimed.
+    if (other) return `belongs to ${other.name}`
   }
-  if (existing.status === 'sold') return `already sold on ${existing.receiptNo ?? 'an earlier receipt'}`
   return null
 }
 
@@ -200,9 +201,9 @@ export async function stockTakeByScan(productId: number, serials: string[], user
         continue
       }
       const existing = await db.units.where('serial').equals(serial).first()
-      if (existing?.status === 'in_stock') result.confirmed.push(serial)
+      if (existing?.status === 'in_stock' && existing.productId === productId) result.confirmed.push(serial)
       else {
-        if (existing) await db.units.update(existing.id!, { status: 'in_stock' })
+        if (existing) await db.units.update(existing.id!, { status: 'in_stock', productId })
         else await db.units.add({ serial, productId, status: 'in_stock', source: 'Stock take', createdAt: now })
         result.added.push(serial)
       }

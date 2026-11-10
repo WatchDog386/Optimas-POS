@@ -262,3 +262,21 @@ describe('stock take by scanning', () => {
     expect('product' in scan && scan.product.id).toBe(pads.id)
   })
 })
+
+describe('stock take for a part that was lost', () => {
+  it('claims labels whose part no longer exists', async () => {
+    const { stockTakeByScan, checkStockTakeScan } = await import('../db/units')
+    const pads = await bySku('BRK-PAD-F')
+    const [a, b] = await createUnits(pads.id!, 2, 'Opening stock')
+    await db.products.delete(pads.id!) // the part was lost; its labels remain
+    const now = Date.now()
+    const id = (await db.products.add({ sku: '0099', name: 'Brake pads (re-added)', fitment: [], cost: 0, price: 850_00, stock: 0, reorderLevel: 2, taxable: true, serialized: false, trackStock: true, active: true, createdAt: now, updatedAt: now })) as number
+    expect(await checkStockTakeScan(id, a.serial)).toBeNull()
+    const r = await stockTakeByScan(id, [a.serial, b.serial])
+    expect(r.added.sort()).toEqual([a.serial, b.serial].sort())
+    expect((await db.products.get(id))!.stock).toBe(2)
+    expect((await db.units.where('serial').equals(a.serial).first())!.productId).toBe(id)
+    const scan = await lookupCode(b.serial, await db.products.toArray())
+    expect('product' in scan && scan.product.id).toBe(id)
+  })
+})

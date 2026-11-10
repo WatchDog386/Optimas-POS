@@ -8,12 +8,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Barcode, Check, Minus, Plus, ScanLine, Search, X } from 'lucide-react'
 import { db } from '../db/db'
 import { logActivity } from '../db/logs'
-import { checkStockTakeScan, stockTakeByScan } from '../db/units'
+import { checkStockTakeScan, nextProductBarcode, stockTakeByScan } from '../db/units'
 import type { Product, StockUnit } from '../db/types'
 import { useSession } from '../session'
 import { useSettings } from '../db/settings'
 import { labelJobs, printLabels } from '../lib/printReceipt'
-import { Badge, PageHeader, errorText, useToast } from '../components/ui'
+import { Badge, Modal, PageHeader, errorText, useToast } from '../components/ui'
+import { DEFAULT_BRAND, nextNumber } from '../lib/partCodes'
+import { toCents } from '../lib/money'
 
 interface Scan {
   serial: string
@@ -74,7 +76,7 @@ export default function StockTakePage() {
     const why = await checkStockTakeScan(selected.id!, serial)
     if (why) return setFlash({ ok: false, text: `${serial} — ${why}` })
     const unit = await db.units.where('serial').equals(serial).first()
-    const known = unit?.status === 'in_stock'
+    const known = unit?.status === 'in_stock' && unit.productId === selected.id
     setScans((x) => [{ serial, known }, ...x])
     setFlash({ ok: true, text: `${serial} — ${known ? 'already registered' : 'added'}` })
   }
@@ -118,10 +120,29 @@ export default function StockTakePage() {
   }
 
   const done = products.filter((p) => counted.has(p.id!)).length
+  const [adding, setAdding] = useState(false)
 
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6">
-      <PageHeader title="Stock take" subtitle={`Pick a part, scan every item of it on the shelf, save. ${done} of ${products.length} parts counted today.`} />
+      <PageHeader
+        title="Stock take"
+        subtitle={`Pick a part, scan every item of it on the shelf, save. ${done} of ${products.length} parts counted today.`}
+        actions={
+          <button className="btn-primary" onClick={() => setAdding(true)}>
+            <Plus size={16} /> Add missing part
+          </button>
+        }
+      />
+      {adding && (
+        <QuickPart
+          onClose={() => setAdding(false)}
+          onCreated={(p) => {
+            setAdding(false)
+            setQ('')
+            pick(p)
+          }}
+        />
+      )}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <section className="overflow-hidden rounded-xl border border-hairline bg-white">
           <div className="border-b border-hairline p-3">
@@ -250,5 +271,96 @@ export default function StockTakePage() {
         </section>
       </div>
     </div>
+  )
+}
+
+/** A part that was lost: enter its details, then scan the labels already on its items. */
+function QuickPart({ onClose, onCreated }: { onClose: () => void; onCreated: (p: Product) => void }) {
+  const toast = useToast()
+  const { user } = useSession()
+  const [name, setName] = useState('')
+  const [price, setPrice] = useState('')
+  const [cost, setCost] = useState('')
+  const [brand, setBrand] = useState(DEFAULT_BRAND)
+  const [location, setLocation] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return toast('Enter the part name', 'error')
+    if (toCents(price) <= 0) return toast('Enter the selling price', 'error')
+    setBusy(true)
+    try {
+      const all = await db.products.toArray()
+      const clash = all.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase())
+      if (clash && !confirm(`${clash.name} (SKU ${clash.sku}) already exists. Add another part with the same name?`)) return
+      const now = Date.now()
+      const product: Product = {
+        sku: nextNumber(all.map((p) => p.sku)),
+        partNumber: nextNumber(all.map((p) => p.partNumber)),
+        name: name.trim(),
+        barcode: await nextProductBarcode(),
+        brand: brand.trim() || undefined,
+        location: location.trim() || undefined,
+        fitment: [],
+        cost: Math.max(0, toCents(cost)),
+        price: toCents(price),
+        stock: 0, // set by the stock take when the labels are scanned
+        reorderLevel: 2,
+        taxable: true,
+        serialized: false,
+        trackStock: true,
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      }
+      const id = (await db.products.add(product)) as number
+      await logActivity('stock', `Part added: ${product.name}`, { detail: `SKU ${product.sku} · from stock take`, userId: user?.id, userName: user?.name })
+      toast(`${product.name} added (SKU ${product.sku}) — now scan its labels`)
+      onCreated({ ...product, id })
+    } catch (err) {
+      toast(errorText(err), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal
+      title="Add a missing part"
+      onClose={onClose}
+      footer={
+        <button className="btn-primary" form="quick-part" disabled={busy}>
+          <ScanLine size={16} /> Add & scan its labels
+        </button>
+      }
+    >
+      <form id="quick-part" onSubmit={save} className="grid gap-3 sm:grid-cols-2">
+        <p className="text-sm text-slate-600 sm:col-span-2">
+          For a part that is on the shelf with its barcode labels but missing from the system. SKU and part number are numbered automatically; stock comes from the
+          labels you scan next. Edit anything else later in Inventory.
+        </p>
+        <div className="sm:col-span-2">
+          <label className="label">Name *</label>
+          <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Selling price *</label>
+          <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Cost price</label>
+          <input className="input" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Brand</label>
+          <input className="input" value={brand} onChange={(e) => setBrand(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Bin / shelf location</label>
+          <input className="input" placeholder="e.g. A3-02" value={location} onChange={(e) => setLocation(e.target.value)} />
+        </div>
+      </form>
+    </Modal>
   )
 }
