@@ -156,6 +156,8 @@ export interface StockTakeResult {
   /** Labels the part had in stock that were not scanned: cancelled. */
   cancelled: string[]
   skipped: { serial: string; reason: string }[]
+  /** New labels made for items that had none — print these. */
+  created: StockUnit[]
   before: number
   after: number
 }
@@ -175,13 +177,14 @@ export async function checkStockTakeScan(productId: number, serial: string): Pro
 }
 
 /**
- * Stock take by scanning: the scanned labels are exactly what is on the shelf.
+ * Stock take by scanning: the scanned labels (plus `unlabelled` items that had
+ * no label, which get new barcodes) are exactly what is on the shelf.
  * Unknown labels are registered to the part with their own barcodes, stock is
  * set to the number of labels counted (logged as a stock movement), and labels
  * the part had in stock that were not scanned are cancelled.
  */
-export async function stockTakeByScan(productId: number, serials: string[], userId?: number): Promise<StockTakeResult> {
-  const result: StockTakeResult = { added: [], confirmed: [], cancelled: [], skipped: [], before: 0, after: 0 }
+export async function stockTakeByScan(productId: number, serials: string[], userId?: number, unlabelled = 0): Promise<StockTakeResult> {
+  const result: StockTakeResult = { added: [], confirmed: [], cancelled: [], skipped: [], created: [], before: 0, after: 0 }
   const clean = [...new Set(serials.map((s) => s.trim()).filter(Boolean))]
   await db.transaction('rw', [db.products, db.units, db.movements, db.kv], async () => {
     const product = await db.products.get(productId)
@@ -217,7 +220,9 @@ export async function stockTakeByScan(productId: number, serials: string[], user
       await db.units.update(u.id!, { status: 'cancelled' })
       result.cancelled.push(u.serial)
     }
-    result.after = counted.size
+    // Items on the shelf with no label at all get fresh barcodes.
+    result.created = await createUnits(productId, Math.max(0, Math.floor(unlabelled)), 'Stock take — new label')
+    result.after = counted.size + result.created.length
     const change = result.after - product.stock
     if (product.trackStock && change !== 0) {
       await db.products.update(productId, { stock: result.after, updatedAt: now })

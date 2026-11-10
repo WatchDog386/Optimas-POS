@@ -5,12 +5,14 @@
 
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Barcode, Check, ScanLine, Search, X } from 'lucide-react'
+import { Barcode, Check, Minus, Plus, ScanLine, Search, X } from 'lucide-react'
 import { db } from '../db/db'
 import { logActivity } from '../db/logs'
 import { checkStockTakeScan, stockTakeByScan } from '../db/units'
 import type { Product, StockUnit } from '../db/types'
 import { useSession } from '../session'
+import { useSettings } from '../db/settings'
+import { labelJobs, printLabels } from '../lib/printReceipt'
 import { Badge, PageHeader, errorText, useToast } from '../components/ui'
 
 interface Scan {
@@ -21,6 +23,7 @@ interface Scan {
 export default function StockTakePage() {
   const toast = useToast()
   const { user } = useSession()
+  const settings = useSettings()
   const products = useLiveQuery(() => db.products.filter((p) => p.trackStock).sortBy('name'), [], [] as Product[])
   const shelf = useLiveQuery(() => db.units.where('status').equals('in_stock').toArray(), [], [] as StockUnit[])
   const counted = useLiveQuery(
@@ -44,6 +47,8 @@ export default function StockTakePage() {
   const [code, setCode] = useState('')
   const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [noLabel, setNoLabel] = useState(0)
+  const total = scans.length + noLabel
   const input = useRef<HTMLInputElement>(null)
 
   const list = products.filter((p) => {
@@ -55,6 +60,7 @@ export default function StockTakePage() {
     if (scans.length && !confirm(`Discard the ${scans.length} scans for ${selected?.name}?`)) return
     setSelected(p)
     setScans([])
+    setNoLabel(0)
     setFlash(null)
     setTimeout(() => input.current?.focus(), 50)
   }
@@ -77,19 +83,31 @@ export default function StockTakePage() {
     if (!selected) return
     const missing = (labels.get(selected.id!) ?? 0) - scans.filter((s) => s.known).length
     const msg =
-      `Set ${selected.name} stock to ${scans.length} (now ${selected.stock}).` +
+      `Set ${selected.name} stock to ${total} (now ${selected.stock}).` +
+      (noLabel > 0 ? `\n\n${noLabel} new barcode label${noLabel === 1 ? '' : 's'} will be made${settings.autoPrintLabels ? ' and printed' : ''} for the items with no label.` : '') +
       (missing > 0 ? `\n\n${missing} label${missing === 1 ? '' : 's'} registered to this part ${missing === 1 ? 'was' : 'were'} not scanned and will be cancelled.` : '')
     if (!confirm(msg)) return
     setBusy(true)
     try {
-      const r = await stockTakeByScan(selected.id!, scans.map((s) => s.serial), user?.id)
+      const r = await stockTakeByScan(selected.id!, scans.map((s) => s.serial), user?.id, noLabel)
       await logActivity('stock', `Stock take: ${selected.name}`, {
-        detail: `${r.before} → ${r.after} · ${r.added.length} labels added${r.cancelled.length ? ` · ${r.cancelled.length} cancelled` : ''}`,
+        detail: `${r.before} → ${r.after} · ${r.added.length} labels added${r.created.length ? ` · ${r.created.length} new labels` : ''}${r.cancelled.length ? ` · ${r.cancelled.length} cancelled` : ''}`,
         userId: user?.id,
         userName: user?.name,
       })
-      toast(`${selected.name}: stock ${r.before} → ${r.after} · ${r.added.length} label${r.added.length === 1 ? '' : 's'} added`)
+      toast(`${selected.name}: stock ${r.before} → ${r.after} · ${r.added.length} label${r.added.length === 1 ? '' : 's'} registered${r.created.length ? ` · ${r.created.length} new` : ''}`)
+      if (r.created.length) {
+        // Print the new labels; the count is already saved even if printing fails.
+        try {
+          const product = (await db.products.get(selected.id!)) ?? selected
+          const outcome = await printLabels(labelJobs(product, r.created), settings)
+          if (outcome === 'blocked') toast('Allow popups to print the new labels — or reprint them from Inventory → Labels', 'error')
+        } catch (e) {
+          toast(`New labels did not print: ${errorText(e)}. Reprint them from Inventory → Labels.`, 'error')
+        }
+      }
       setScans([])
+      setNoLabel(0)
       setSelected(null)
       setFlash(null)
     } catch (e) {
@@ -155,7 +173,7 @@ export default function StockTakePage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-4xl font-extrabold leading-none text-brand-700">{scans.length}</div>
+                  <div className="text-4xl font-extrabold leading-none text-brand-700">{total}</div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">counted</div>
                 </div>
               </div>
@@ -196,12 +214,35 @@ export default function StockTakePage() {
                 {scans.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nothing scanned yet.</p>}
               </div>
 
+              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-hairline bg-slate-50 px-3 py-2.5">
+                <div className="min-w-0 flex-1 text-sm">
+                  <div className="font-semibold text-slate-800">Items with no barcode</div>
+                  <div className="text-xs text-slate-500">New labels are made{settings.autoPrintLabels ? ' and printed' : ''} for them when you save.</div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button type="button" className="btn-ghost px-2" aria-label="One less" onClick={() => setNoLabel((n) => Math.max(0, n - 1))}>
+                    <Minus size={15} />
+                  </button>
+                  <input
+                    className="input w-16 text-center"
+                    type="number"
+                    min={0}
+                    max={5000}
+                    value={noLabel}
+                    onChange={(e) => setNoLabel(Math.min(5000, Math.max(0, Math.floor(Number(e.target.value) || 0))))}
+                  />
+                  <button type="button" className="btn-ghost px-2" aria-label="One more" onClick={() => setNoLabel((n) => Math.min(5000, n + 1))}>
+                    <Plus size={15} />
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-4 flex flex-wrap justify-end gap-2">
-                <button className="btn-ghost" disabled={busy} onClick={() => (scans.length && !confirm('Discard these scans?') ? null : (setSelected(null), setScans([]), setFlash(null)))}>
+                <button className="btn-ghost" disabled={busy} onClick={() => (scans.length && !confirm('Discard these scans?') ? null : (setSelected(null), setScans([]), setNoLabel(0), setFlash(null)))}>
                   Cancel
                 </button>
                 <button className="btn-primary" disabled={busy} onClick={() => void save()}>
-                  <Check size={16} /> Save count: {scans.length} in stock
+                  <Check size={16} /> Save count: {total} in stock{noLabel > 0 && settings.autoPrintLabels ? ` · print ${noLabel}` : ''}
                 </button>
               </div>
             </>

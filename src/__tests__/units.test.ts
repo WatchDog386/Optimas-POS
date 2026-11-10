@@ -249,6 +249,13 @@ describe('stock take by scanning', () => {
     expect(r.after).toBe(3)
     expect((await db.products.get(pads.id!))!.stock).toBe(3)
 
+    // Two more items on the shelf with no label at all: new barcodes are made.
+    const again = await stockTakeByScan(pads.id!, [kept.serial, ...lost], undefined, 2)
+    expect(again.created).toHaveLength(2)
+    expect(again.after).toBe(5)
+    expect((await db.products.get(pads.id!))!.stock).toBe(5)
+    expect(await db.units.where('productId').equals(pads.id!).filter((u) => u.status === 'in_stock').count()).toBe(5)
+
     // The recovered labels now sell.
     const products = await db.products.toArray()
     const scan = await lookupCode(lost[1], products)
