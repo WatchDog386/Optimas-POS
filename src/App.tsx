@@ -4,6 +4,7 @@ import {
   Download,
   Bike,
   ClipboardList,
+  ScanLine,
   BarChart3,
   Boxes,
   ChevronDown,
@@ -52,6 +53,7 @@ import LogsPage from './pages/LogsPage'
 import ProfilePage from './pages/ProfilePage'
 import FitMatrixPage from './pages/FitMatrixPage'
 import StockMovementsPage from './pages/StockMovementsPage'
+import StockTakePage from './pages/StockTakePage'
 
 interface NavItem {
   to: string
@@ -84,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/products', label: 'Products', icon: Package, iconClass: 'text-emerald-400' },
       { to: '/inventory', label: 'Inventory', icon: Boxes, perm: 'inventory', iconClass: 'text-amber-500' },
       { to: '/fitment', label: 'Fit matrix', icon: Bike, perm: 'inventory', iconClass: 'text-sky-400' },
+      { to: '/stocktake', label: 'Stock take', icon: ScanLine, perm: 'inventory', iconClass: 'text-emerald-400' },
       { to: '/stock', label: 'Stock log', icon: ClipboardList, perm: 'inventory', iconClass: 'text-violet-400' },
       { to: '/purchasing', label: 'Purchasing', icon: Truck, perm: 'purchasing', iconClass: 'text-orange-500' },
       { to: '/customers', label: 'Customers', icon: Users, iconClass: 'text-pink-500' },
@@ -409,6 +412,7 @@ export default function App() {
             <Route path="/inventory" element={<Guard perm="inventory"><InventoryPage /></Guard>} />
             <Route path="/fitment" element={<Guard perm="inventory"><FitMatrixPage /></Guard>} />
             <Route path="/stock" element={<Guard perm="inventory"><StockMovementsPage /></Guard>} />
+            <Route path="/stocktake" element={<Guard perm="inventory"><StockTakePage /></Guard>} />
             <Route path="/purchasing" element={<Guard perm="purchasing"><PasswordGate id="purchasing" hash={PURCHASING_PASSWORD_HASH} title="Purchasing is locked"><PurchasingPage /></PasswordGate></Guard>} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/reports" element={<Guard perm="reports"><ReportsPage /></Guard>} />

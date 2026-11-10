@@ -148,6 +148,85 @@ export async function attachPrintedLabels(
   return { added, skipped }
 }
 
+export interface StockTakeResult {
+  /** Labels registered for the first time (or reactivated). */
+  added: string[]
+  /** Scanned labels this part already had on the shelf. */
+  confirmed: string[]
+  /** Labels the part had in stock that were not scanned: cancelled. */
+  cancelled: string[]
+  skipped: { serial: string; reason: string }[]
+  before: number
+  after: number
+}
+
+/** Why a scanned label can't be counted for `productId`, or null if it can. */
+export async function checkStockTakeScan(productId: number, serial: string): Promise<string | null> {
+  const s = serial.trim()
+  if (!/^\d{13}$/.test(s) || !isValidEan13(s)) return 'not a valid label barcode'
+  const existing = await db.units.where('serial').equals(s).first()
+  if (!existing) return null
+  if (existing.productId !== productId) {
+    const other = await db.products.get(existing.productId)
+    return `belongs to ${other?.name ?? 'another part'}`
+  }
+  if (existing.status === 'sold') return `already sold on ${existing.receiptNo ?? 'an earlier receipt'}`
+  return null
+}
+
+/**
+ * Stock take by scanning: the scanned labels are exactly what is on the shelf.
+ * Unknown labels are registered to the part with their own barcodes, stock is
+ * set to the number of labels counted (logged as a stock movement), and labels
+ * the part had in stock that were not scanned are cancelled.
+ */
+export async function stockTakeByScan(productId: number, serials: string[], userId?: number): Promise<StockTakeResult> {
+  const result: StockTakeResult = { added: [], confirmed: [], cancelled: [], skipped: [], before: 0, after: 0 }
+  const clean = [...new Set(serials.map((s) => s.trim()).filter(Boolean))]
+  await db.transaction('rw', [db.products, db.units, db.movements, db.kv], async () => {
+    const product = await db.products.get(productId)
+    if (!product) throw new Error('Part not found')
+    result.before = product.stock
+    const till = await tillNumber()
+    const now = Date.now()
+    const counted = new Set<string>()
+    for (const serial of clean) {
+      const why = await checkStockTakeScan(productId, serial)
+      if (why) {
+        result.skipped.push({ serial, reason: why })
+        continue
+      }
+      const existing = await db.units.where('serial').equals(serial).first()
+      if (existing?.status === 'in_stock') result.confirmed.push(serial)
+      else {
+        if (existing) await db.units.update(existing.id!, { status: 'in_stock' })
+        else await db.units.add({ serial, productId, status: 'in_stock', source: 'Stock take', createdAt: now })
+        result.added.push(serial)
+      }
+      counted.add(serial)
+      // Never hand out this number again from this till's counter.
+      if (serial.startsWith('21') && Number(serial.slice(2, 4)) === till) {
+        const n = Number(serial.slice(4, 12))
+        const row = await db.kv.get('seq:barcode:unit')
+        if (((row?.value as number) ?? 0) < n) await db.kv.put({ key: 'seq:barcode:unit', value: n })
+      }
+    }
+    const shelf = await db.units.where('productId').equals(productId).filter((u) => u.status === 'in_stock').toArray()
+    for (const u of shelf) {
+      if (counted.has(u.serial)) continue
+      await db.units.update(u.id!, { status: 'cancelled' })
+      result.cancelled.push(u.serial)
+    }
+    result.after = counted.size
+    const change = result.after - product.stock
+    if (product.trackStock && change !== 0) {
+      await db.products.update(productId, { stock: result.after, updatedAt: now })
+      await db.movements.add({ productId, change, reason: 'count', note: `Stock take by scan: ${product.stock} → ${result.after}`, userId, at: now })
+    }
+  })
+  return result
+}
+
 export type ScanMatch = { product: Product; serial?: string } | { error: string }
 
 /**

@@ -19,6 +19,7 @@ import {
   Users,
   Wallet,
   Wrench,
+  ScanLine,
 } from 'lucide-react'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
@@ -185,6 +186,16 @@ export default function DashboardPage() {
       perm: 'inventory' as const,
       btn: 'btn-primary',
       icon: Package,
+      img: '/sale.png',
+    },
+    {
+      title: 'Stock take',
+      body: 'Pick a part and scan the barcode on every item on the shelf: stock is set to the count and each barcode is registered for selling.',
+      action: 'Start stock take',
+      to: '/stocktake',
+      perm: 'inventory' as const,
+      btn: 'btn-primary',
+      icon: ScanLine,
       img: '/sale.png',
     },
     {

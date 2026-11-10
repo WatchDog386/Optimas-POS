@@ -229,3 +229,29 @@ describe('lowering stock', () => {
     expect('product' in ok).toBe(true)
   })
 })
+
+describe('stock take by scanning', () => {
+  it('registers scanned labels, sets stock to the count and cancels labels not found', async () => {
+    const { stockTakeByScan } = await import('../db/units')
+    const { inStoreEan13 } = await import('../lib/barcode')
+    const pads = await bySku('BRK-PAD-F')
+    const [kept, missing] = await createUnits(pads.id!, 2, 'Opening stock')
+    // Labels printed earlier that this till lost track of.
+    const lost = [inStoreEan13('21', 90001, 7), inStoreEan13('21', 90002, 7)]
+    const other = (await bySku('ACC-HLM'))
+    const [helmetLabel] = await createUnits(other.id!, 1, 'Opening stock')
+
+    const r = await stockTakeByScan(pads.id!, [kept.serial, ...lost, lost[0], helmetLabel.serial, '999'])
+    expect(r.added.sort()).toEqual([...lost].sort())
+    expect(r.confirmed).toEqual([kept.serial])
+    expect(r.cancelled).toEqual([missing.serial])
+    expect(r.skipped.map((s) => s.reason)).toEqual([expect.stringMatching(/belongs to/), 'not a valid label barcode'])
+    expect(r.after).toBe(3)
+    expect((await db.products.get(pads.id!))!.stock).toBe(3)
+
+    // The recovered labels now sell.
+    const products = await db.products.toArray()
+    const scan = await lookupCode(lost[1], products)
+    expect('product' in scan && scan.product.id).toBe(pads.id)
+  })
+})
