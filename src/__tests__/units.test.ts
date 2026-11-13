@@ -91,7 +91,7 @@ describe('first-run setup', () => {
       [1, 'Optimas Admin', 'owner'],
       [2, 'Cashier', 'cashier'],
     ])
-    expect(verifyPin('0735', users[0].pinHash)).toBe(true)
+    expect(verifyPin('3430', users[0].pinHash)).toBe(true)
     expect(verifyPin('2323', users[1].pinHash)).toBe(true)
     expect(users.every((u) => !u.mustChangePin)).toBe(true)
     expect(await needsSetup()).toBe(false)
@@ -162,7 +162,7 @@ describe('production migration (v2 → v3)', () => {
     const users = await upgraded.users.orderBy('id').toArray()
     expect(users.map((u) => u.name)).toEqual(['Optimas Admin', 'Cashier'])
     for (const u of users) expect(u).not.toHaveProperty('pin')
-    expect(verifyPin('0735', users[0].pinHash)).toBe(true)
+    expect(verifyPin('3430', users[0].pinHash)).toBe(true)
     upgraded.close()
     await Dexie.delete(name)
   })

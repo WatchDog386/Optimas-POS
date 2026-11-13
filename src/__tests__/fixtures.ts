@@ -34,7 +34,7 @@ function part(sku: string, name: string, price: number, cost: number, stock: num
 
 /** A small, clearly-fake catalogue used only by tests. */
 export async function seedTestData() {
-  // Staff: a fresh database already holds Optimas Admin (1, PIN 0735) and Cashier (2, PIN 2323).
+  // Staff: a fresh database already holds Optimas Admin (1, PIN 3430) and Cashier (2, PIN 2323).
   await db.products.bulkAdd([
     part('BRK-PAD-F', 'Front brake pads', 850_00, 500_00, 10),
     part('TUB-17', 'Inner tube 17"', 650_00, 400_00, 8),

@@ -240,7 +240,7 @@ describe('shop accounts', () => {
       { id: 1, name: 'Optimas Admin', role: 'owner' },
       { id: 2, name: 'Cashier', role: 'cashier' },
     ])
-    expect((await call('/auth/login', { method: 'POST', body: { userId: 1, pin: '0735' } })).status).toBe(200)
+    expect((await call('/auth/login', { method: 'POST', body: { userId: 1, pin: '3430' } })).status).toBe(200)
     const cashier = await call('/auth/login', { method: 'POST', body: { userId: 2, pin: '2323' } })
     expect(cashier.status).toBe(200)
     await call('/users/me/pin', { method: 'PUT', token: cashier.body.token, body: { currentPin: '2323', pinHash: hashPin('604918', 1000) } })

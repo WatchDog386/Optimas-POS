@@ -125,7 +125,7 @@ describe('two tills through the real server', () => {
     const setup = await fetch(`${apiUrl}/auth/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: [{ ...owner, pinHash: owner.pinHash }], userId: 1, pin: '0735' }),
+      body: JSON.stringify({ users: [{ ...owner, pinHash: owner.pinHash }], userId: 1, pin: '3430' }),
     }).then((r) => r.json())
     setToken(setup.token)
     setCurrentTill(3)

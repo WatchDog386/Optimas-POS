@@ -42,7 +42,7 @@ it('parts added offline survive coming back online, even when another till used 
   const setup = await fetch(`${apiUrl}/auth/setup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ users: await db.users.toArray(), userId: owner.id, pin: '0735' }),
+    body: JSON.stringify({ users: await db.users.toArray(), userId: owner.id, pin: '3430' }),
   }).then((r) => r.json())
   expect(setup.token).toBeTruthy()
 
@@ -83,7 +83,7 @@ it('keeps deleted parts restorable on the till and on the server', async () => {
   const setup = await fetch(`${apiUrl}/auth/setup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ users: await db.users.toArray(), userId: owner.id, pin: '0735' }),
+    body: JSON.stringify({ users: await db.users.toArray(), userId: owner.id, pin: '3430' }),
   }).then((r) => r.json())
   setToken(setup.token)
   setCurrentTill(6)
@@ -133,20 +133,20 @@ it('a till signed in while the server was down starts syncing by itself when it 
   await fetch(`${apiUrl}/auth/setup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ users: await db.users.toArray(), userId: owner.id, pin: '0735' }),
+    body: JSON.stringify({ users: await db.users.toArray(), userId: owner.id, pin: '3430' }),
   })
   setToken(null)
 
   // Signed in during the outage: the server can't be reached.
   await saveSettings({ apiUrl: 'http://127.0.0.1:9/api' })
-  setSyncCredentials({ user: owner, pin: '0735' })
+  setSyncCredentials({ user: owner, pin: '3430' })
   await syncNow()
   await addPart('0001', 'Left hand switch', 2)
   expect(await db.outbox.count()).toBeGreaterThan(0)
 
   // Server is back: the next round signs in and uploads without anyone touching the till.
   await saveSettings({ apiUrl })
-  setSyncCredentials({ user: owner, pin: '0735' }) // skip the 20 s retry wait in the test
+  setSyncCredentials({ user: owner, pin: '3430' }) // skip the 20 s retry wait in the test
   await syncNow()
   expect(await db.outbox.count()).toBe(0)
   const onServer = sql.prepare("SELECT COUNT(*) AS n FROM sync_records WHERE tbl = 'products' AND data IS NOT NULL").get() as { n: number }

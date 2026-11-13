@@ -74,7 +74,7 @@ export default function LoginPage() {
   return (
     <AuthShell>
       {mode.kind === 'loading' && <Loader2 className="mx-auto mt-6 animate-spin text-white/80" size={26} />}
-      {mode.kind === 'local' && <SignIn staff={localStaff} source="local" />}
+      {mode.kind === 'local' && <SignIn staff={localStaff} source="local" serverKnows={remote.length > 0} />}
       {mode.kind === 'server' && <SignIn staff={mode.staff} source="server" />}
       {mode.kind === 'setup' && <SetupOwner />}
     </AuthShell>
@@ -170,7 +170,7 @@ export function matchStaff<T extends { name: string }>(staff: T[], typed: string
 
 // ----------------------------------------------------------------- sign in
 
-function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' }) {
+function SignIn({ staff, source, serverKnows = false }: { staff: Staff[]; source: 'local' | 'server'; serverKnows?: boolean }) {
   const { login, adopt } = useSession()
   const [username, setUsername] = useState(() => {
     try {
@@ -252,22 +252,20 @@ function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' 
     if (lockLeft > 0) return
     setBusy(true)
     try {
-      if (source === 'local' && person.local === false) {
-        // Added on another device: sign in through the server, which brings the account here.
-        const u = await signInFromServer(person.id, pin)
-        await adopt(u, pin)
-      } else if (source === 'local') {
-        let r = await login(person.id, pin)
-        if (!r.ok && !r.lockedMs) {
-          // The PIN may have been changed on another device: let the server decide.
-          try {
-            const u = await signInFromServer(person.id, pin)
-            await adopt(u, pin)
-            r = { ok: true }
-          } catch {
-            /* keep the local answer */
-          }
+      // Online, the shop server decides (PINs changed on any device, staff added
+      // elsewhere); this device's copy of the PIN is only used offline.
+      let viaServer = false
+      if (source === 'local' && (person.local === false || serverKnows)) {
+        try {
+          const u = await signInFromServer(person.id, pin)
+          await adopt(u, pin)
+          viaServer = true
+        } catch (err) {
+          if (!(err instanceof TypeError) || person.local === false) throw err // wrong PIN, locked out — or no copy here
         }
+      }
+      if (source === 'local' && !viaServer) {
+        const r = await login(person.id, pin)
         if (!r.ok) {
           fail(r.error)
           setPin('')

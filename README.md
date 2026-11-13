@@ -32,7 +32,7 @@ npm run build          # build the app into dist/
 npm run server:start   # serves the app + M-Pesa/printer API on http://localhost:8787
 ```
 
-Open `http://localhost:8787` in **Chrome or Edge**. The till has two accounts: **Optimas Admin** (owner, PIN `0735`) and **Cashier** (PIN `2323`). Change the PINs under *My profile → Security*; changes sync to the server. There is no demo data — add your parts in *Inventory*.
+Open `http://localhost:8787` in **Chrome or Edge**. The till has two accounts: **Optimas Admin** (owner) and **Cashier**; the owner sets PINs (on the server: `npm run staff:pin -- "Name" 1234`). Change the PINs under *My profile → Security*; changes sync to the server. There is no demo data — add your parts in *Inventory*.
 
 
 To develop, run `npm run dev` (Vite on :5173) and `npm run server` (API on :8787, proxied).
