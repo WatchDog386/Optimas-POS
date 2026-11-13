@@ -11,7 +11,8 @@ import { pushOwnPin, serverStaff, signInFromServer } from '../lib/api'
 import { PIN_MAX, PIN_MIN, formatWait, lockRemaining, useSession } from '../session'
 import type { Role, User } from '../db/types'
 
-type Staff = { id: number; name: string; role: Role }
+/** `local`: this device has the account (and can check its PIN offline). */
+type Staff = { id: number; name: string; role: Role; local?: boolean }
 type Mode = { kind: 'loading' } | { kind: 'local' } | { kind: 'server'; staff: Staff[] } | { kind: 'setup' }
 
 const LAST_USER_KEY = 'optimas.lastUser'
@@ -21,6 +22,28 @@ const ROLE_LABEL: Record<Role, string> = { owner: 'Admin', manager: 'Manager', c
 export default function LoginPage() {
   const localUsers = useLiveQuery(() => db.users.toArray(), [], undefined)
   const [mode, setMode] = useState<Mode>({ kind: 'loading' })
+  // The shop server's staff list: staff added or renamed on another device can
+  // sign in here too (their account is fetched from the server at sign-in).
+  const [remote, setRemote] = useState<Staff[]>([])
+  useEffect(() => {
+    let alive = true
+    serverStaff()
+      .then((s) => alive && setRemote(s))
+      .catch(() => {
+        /* offline: local accounts only */
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+  const localStaff = useMemo(() => {
+    const local = (localUsers ?? []).filter((u) => u.active)
+    const ids = new Set(local.map((u) => u.id))
+    // Server names win (renamed elsewhere); accounts only on this device stay.
+    const fromServer = remote.map((s) => ({ ...s, local: ids.has(s.id) }))
+    const seen = new Set(fromServer.map((s) => s.id))
+    return [...fromServer, ...local.filter((u) => !seen.has(u.id!)).map((u) => ({ id: u.id!, name: u.name, role: u.role, local: true }))]
+  }, [localUsers, remote])
 
   // Decide what this till needs: normal sign-in, sign-in against the shop
   // server (a new till for an existing shop), or first-run owner setup.
@@ -51,7 +74,7 @@ export default function LoginPage() {
   return (
     <AuthShell>
       {mode.kind === 'loading' && <Loader2 className="mx-auto mt-6 animate-spin text-white/80" size={26} />}
-      {mode.kind === 'local' && <SignIn staff={(localUsers ?? []).filter((u) => u.active).map((u) => ({ id: u.id!, name: u.name, role: u.role }))} source="local" />}
+      {mode.kind === 'local' && <SignIn staff={localStaff} source="local" />}
       {mode.kind === 'server' && <SignIn staff={mode.staff} source="server" />}
       {mode.kind === 'setup' && <SetupOwner />}
     </AuthShell>
@@ -229,8 +252,22 @@ function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' 
     if (lockLeft > 0) return
     setBusy(true)
     try {
-      if (source === 'local') {
-        const r = await login(person.id, pin)
+      if (source === 'local' && person.local === false) {
+        // Added on another device: sign in through the server, which brings the account here.
+        const u = await signInFromServer(person.id, pin)
+        await adopt(u, pin)
+      } else if (source === 'local') {
+        let r = await login(person.id, pin)
+        if (!r.ok && !r.lockedMs) {
+          // The PIN may have been changed on another device: let the server decide.
+          try {
+            const u = await signInFromServer(person.id, pin)
+            await adopt(u, pin)
+            r = { ok: true }
+          } catch {
+            /* keep the local answer */
+          }
+        }
         if (!r.ok) {
           fail(r.error)
           setPin('')
@@ -251,7 +288,13 @@ function SignIn({ staff, source }: { staff: Staff[]; source: 'local' | 'server' 
         /* not remembered */
       }
     } catch (err) {
-      fail(err instanceof Error ? err.message : 'Sign-in failed')
+      fail(
+        err instanceof TypeError
+          ? `Can't reach the shop server. ${person.name} signs in on this device for the first time through the server — check the internet connection.`
+          : err instanceof Error
+            ? err.message
+            : 'Sign-in failed',
+      )
       setPin('')
     } finally {
       setBusy(false)
